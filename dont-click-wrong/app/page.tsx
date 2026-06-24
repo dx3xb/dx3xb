@@ -43,6 +43,15 @@ const DICTIONARY = {
       target: "目标"
     },
     start: "开始挑战",
+    tagline: "60 秒手眼反应力极限挑战",
+    howTitle: "怎么玩",
+    demoInstruction: "点击红色的圆形",
+    demoHint: "指令千变万化，看清颜色和形状再下手——点错倒扣时间！",
+    issuedTo: "签发给",
+    rankLabel: "称号",
+    beatCaption: "的人类被你的手速击败",
+    perSec: "每秒命中",
+    qrCta: "扫码应战，看朋友能不能超过你",
     time: "时间",
     score: "得分",
     gameOver: "游戏结束",
@@ -82,6 +91,15 @@ const DICTIONARY = {
       target: "Goal"
     },
     start: "START",
+    tagline: "A 60-second hand-eye reaction challenge",
+    howTitle: "HOW IT WORKS",
+    demoInstruction: "Tap the red circle",
+    demoHint: "Instructions keep flipping — read the color AND shape before you tap. Wrong taps cost time!",
+    issuedTo: "ISSUED TO",
+    rankLabel: "RANK",
+    beatCaption: "of humanity, out-tapped",
+    perSec: "HITS / SEC",
+    qrCta: "Scan to duel — can your friends beat you?",
     time: "Time",
     score: "Score",
     gameOver: "Game Over",
@@ -448,37 +466,92 @@ export default function DontClickWrong() {
   return (
     <main className={`wrap ${feedback === "wrong" ? "shake-effect" : ""}`}>
       <style dangerouslySetInnerHTML={{__html: `
-        .shake-effect { animation: shake 0.3s cubic-bezier(.36,.07,.19,.97) both; background-color: #ffeaea !important; }
+        .shake-effect { animation: shake 0.3s cubic-bezier(.36,.07,.19,.97) both; }
         @keyframes shake { 10%, 90% { transform: translate3d(-1px, 0, 0); } 20%, 80% { transform: translate3d(2px, 0, 0); } 30%, 50%, 70% { transform: translate3d(-4px, 0, 0); } 40%, 60% { transform: translate3d(4px, 0, 0); } }
-        .grid-container { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 24px auto; max-width: 300px; }
-        .shape-btn { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; background: #fff; border: 4px solid #3e4a3d; cursor: pointer; box-shadow: 4px 4px 0 #3e4a3d; transition: transform 0.1s; }
-        .shape-btn:active { transform: translate(4px, 4px); box-shadow: none; }
-        
-        .nameInput { width: 100%; padding: 12px; margin: 20px 0; border: 4px solid #3e4a3d; font-family: inherit; font-size: 18px; outline: none; }
-        .nameInput:focus { border-color: #ff6b6b; }
-        
-        .reportCard { background: #fffdf8; border: 4px solid #3e4a3d; padding: 20px; text-align: center; margin-bottom: 20px; box-shadow: 8px 8px 0 #3e4a3d; }
-        .reportTitle { color: #ff6b6b; font-size: 32px; margin: 10px 0; }
-        .reportGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 20px 0; text-align: left; background: #eee; border: 4px solid #3e4a3d; padding: 10px; }
-        .reportGrid div { display: flex; justify-content: space-between; border-bottom: 2px dashed #ccc; padding-bottom: 4px; }
-        .qrBox { display: flex; align-items: center; justify-content: center; gap: 15px; margin-top: 20px; text-align: left; }
-
-        .heroLab { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #3e4a3d; padding-bottom: 12px; margin-bottom: 20px; }
-        .labKicker { font-size: 14px; font-family: monospace; letter-spacing: 1px; color: #666; margin: 0 0 4px; }
-        .challengeNotice { background: #fff3cd; border: 3px solid #3e4a3d; box-shadow: 3px 3px 0 #3e4a3d; padding: 10px 12px; margin-bottom: 18px; font-size: 15px; }
-        .heroLab .title { margin: 0; font-size: 28px; color: #ff6b6b; }
-        .scope { display: flex; gap: 4px; align-items: flex-end; height: 30px; }
-        .scope span { width: 6px; background: #ff6b6b; animation: radar 1.5s infinite ease-in-out; }
-        .scope span:nth-child(2) { animation-delay: 0.2s; background: #3e4a3d; }
-        .scope span:nth-child(3) { animation-delay: 0.4s; background: #2ecc71; }
+        @keyframes bob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
         @keyframes radar { 0%, 100% { height: 8px; } 50% { height: 30px; } }
+        @keyframes pop { 0% { transform: scale(0.6); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
 
-        .introPanel { padding: 24px 20px; text-align: left; }
-        .introText { font-size: 16px; line-height: 1.5; margin: 0 0 20px; }
-        .rules { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; background: #eee; padding: 12px; border: 4px solid #3e4a3d; margin-bottom: 24px; text-align: center; }
-        .rules b { display: block; font-size: 24px; color: #3e4a3d; }
-        .rules span { font-size: 12px; color: #666; text-transform: uppercase; }
+        /* ----- hero ----- */
+        .heroLab { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; margin: 6px 0 22px; }
+        .labKicker { font-family: var(--font-press), monospace; font-size: 10px; letter-spacing: 1px; color: var(--ink-soft); margin: 0 0 8px; }
+        .heroLab .title { margin: 0; font-size: clamp(30px, 9vw, 58px); line-height: 1.05; color: var(--ink); }
+        .tagline { margin: 8px 0 0; font-size: 19px; color: var(--ink-soft); }
+        .showcase { display: flex; gap: 8px; flex: none; }
+        .showcase .chip { width: 38px; height: 38px; border: 3px solid var(--line); background: #fff; box-shadow: 3px 3px 0 var(--ink); display: flex; align-items: center; justify-content: center; animation: bob 1.8s ease-in-out infinite; }
+        .showcase .chip:nth-child(2) { animation-delay: .15s; }
+        .showcase .chip:nth-child(3) { animation-delay: .3s; }
+        .showcase .chip:nth-child(4) { animation-delay: .45s; }
+
+        /* ----- intro ----- */
+        .introPanel { padding: 22px 20px; }
+        .introText { font-size: 20px; line-height: 1.45; margin: 0 0 16px; }
+        .sectionTag { display: inline-block; font-family: var(--font-press), monospace; font-size: 10px; letter-spacing: 1px; background: var(--ink); color: var(--cream); padding: 5px 9px; margin-bottom: 12px; }
+        .demoCard { background: var(--cream-2); border: 3px solid var(--line); box-shadow: 3px 3px 0 var(--ink); padding: 14px; margin-bottom: 18px; }
+        .demoInstr { text-align: center; font-size: 20px; margin: 0 0 12px; }
+        .demoInstr b { color: var(--coral); }
+        .demoShapes { display: flex; gap: 10px; justify-content: center; }
+        .demoShape { position: relative; width: 52px; height: 52px; border: 3px solid var(--line); background: #fff; box-shadow: 3px 3px 0 var(--ink); display: flex; align-items: center; justify-content: center; }
+        .demoShape.correct { outline: 3px dashed var(--teal); outline-offset: 3px; }
+        .demoShape.correct::after { content: "✓"; position: absolute; top: -14px; right: -10px; font-family: var(--font-press), monospace; font-size: 14px; color: var(--teal); }
+        .demoHint { font-size: 16px; color: var(--ink-soft); margin: 12px 0 0; }
+        .challengeNotice { background: var(--yellow); border: 3px solid var(--line); box-shadow: 3px 3px 0 var(--ink); padding: 11px 13px; margin-bottom: 18px; font-size: 18px; }
+
+        .rules { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 18px 0 20px; }
+        .rules div { background: var(--cream); border: 3px solid var(--line); box-shadow: 3px 3px 0 var(--ink); padding: 10px; text-align: center; }
+        .rules b { display: block; font-family: var(--font-press), monospace; font-size: 17px; color: var(--ink); }
+        .rules span { display: block; font-size: 15px; color: var(--ink-soft); margin-top: 4px; }
+
+        /* ----- playing ----- */
+        .hudbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+        .hudbar .hud-chip { font-family: var(--font-press), monospace; font-size: 13px; background: #fff; border: 3px solid var(--line); box-shadow: 3px 3px 0 var(--ink); padding: 8px 12px; }
+        .hudbar .hud-chip.time { background: var(--yellow); }
+        .hudbar .hud-chip.score { background: var(--coral); color: #fff; }
+        .instrPanel { text-align: center; margin-bottom: 16px; padding: 18px; transition: background .12s; }
+        .instrPanel.good { background: #e8f8f1; }
+        .instrPanel h2 { margin: 0; font-size: 22px; }
+        .grid-container { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 8px auto 0; max-width: 320px; }
+        .shape-btn { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; background: #fff; border: 4px solid var(--line); cursor: pointer; box-shadow: 4px 4px 0 var(--ink); transition: transform 0.08s, box-shadow 0.08s; }
+        .shape-btn:hover { transform: translate(-1px,-1px); box-shadow: 5px 5px 0 var(--ink); }
+        .shape-btn:active { transform: translate(4px, 4px); box-shadow: none; }
+
+        /* ----- naming ----- */
+        .nameInput { width: 100%; padding: 12px 14px; margin: 16px 0; border: 3px solid var(--line); background: var(--cream); box-shadow: inset 3px 3px 0 rgba(43,34,51,.10); font-family: inherit; font-size: 22px; outline: none; }
+        .nameInput:focus { background: #fff; box-shadow: var(--shadow); }
+
+        /* ----- report poster ----- */
+        .reportCard { background: #fff; border: 4px solid var(--line); box-shadow: 10px 10px 0 var(--ink); overflow: hidden; margin-bottom: 18px; }
+        .posterHead { background: var(--ink); color: var(--cream); display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; }
+        .posterHead .pk { font-family: var(--font-press), monospace; font-size: 11px; letter-spacing: 1px; margin: 0; }
+        .posterHead .bolt { font-size: 22px; }
+        .posterBody { padding: 22px 20px; text-align: center; position: relative; }
+        .posterBody::before, .posterBody::after { content: ""; position: absolute; width: 10px; height: 10px; background: var(--yellow); border: 2px solid var(--line); }
+        .posterBody::before { top: 12px; left: 12px; }
+        .posterBody::after { top: 12px; right: 12px; background: var(--teal); }
+        .issued { font-size: 16px; color: var(--ink-soft); margin: 0 0 4px; }
+        .issuedName { font-family: var(--font-press), monospace; font-size: 17px; color: var(--ink); }
+        .rankLabel { display: inline-block; font-family: var(--font-press), monospace; font-size: 9px; letter-spacing: 1px; color: var(--ink-soft); margin: 16px 0 0; }
+        .rankTitle { font-family: var(--font-press), monospace; font-size: clamp(24px, 8vw, 40px); color: var(--coral); margin: 6px 0 8px; line-height: 1.12; animation: pop .25s ease-out; }
+        .rankDesc { font-size: 18px; color: var(--ink-soft); margin: 0 0 18px; }
+        .pctWrap { background: var(--cream-2); border: 3px solid var(--line); padding: 14px; margin-bottom: 16px; }
+        .pctNum { font-family: var(--font-press), monospace; font-size: clamp(40px, 16vw, 70px); color: var(--ink); line-height: 1; }
+        .pctNum span { color: var(--coral); }
+        .pctCaption { font-size: 16px; color: var(--ink-soft); margin: 8px 0 12px; }
+        .pctBar { height: 18px; border: 3px solid var(--line); background: #fff; overflow: hidden; }
+        .pctBar i { display: block; height: 100%; background: repeating-linear-gradient(45deg, var(--coral) 0 8px, #ffa3a3 8px 16px); }
+        .statStrip { display: flex; gap: 10px; margin-bottom: 16px; }
+        .statStrip div { flex: 1; background: var(--cream); border: 3px solid var(--line); padding: 9px; }
+        .statStrip span { display: block; font-size: 13px; color: var(--ink-soft); text-transform: uppercase; }
+        .statStrip b { display: block; font-family: var(--font-press), monospace; font-size: 19px; }
+        .qrRow { display: flex; align-items: center; gap: 14px; border-top: 3px dashed rgba(43,34,51,.38); padding-top: 16px; text-align: left; }
+        .qrFrame { border: 4px solid var(--line); background: #fff; padding: 5px; box-shadow: var(--shadow); line-height: 0; flex: none; }
+        .qrText .pixel { font-size: 12px; margin: 0 0 4px; }
+        .qrCta { font-size: 16px; color: var(--ink-soft); margin: 0; }
+        .qrUrl { font-family: var(--font-press), monospace; font-size: 9px; color: var(--ink); margin: 5px 0 0; }
+
         .actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+        .btn.ghost { background: #fff; color: var(--ink); }
+        .btn.link { background: transparent; color: var(--ink-soft); border: none; box-shadow: none; text-decoration: underline; }
       `}} />
 
       <div className="backbar" style={{ display: phase === "finished" ? "none" : "flex" }}>
@@ -494,17 +567,35 @@ export default function DontClickWrong() {
             <div>
               <p className="labKicker">{t.readyKicker}</p>
               <h1 className="pixel title">{t.readyTitle}</h1>
+              <p className="tagline">{t.tagline}</p>
             </div>
-            <div className="scope" aria-hidden="true">
-              <span /><span /><span />
+            <div className="showcase" aria-hidden="true">
+              <div className="chip"><PixelCircle color="#e74c3c" /></div>
+              <div className="chip"><PixelSquare color="#3498db" /></div>
+              <div className="chip"><PixelTriangle color="#2ecc71" /></div>
+              <div className="chip"><PixelCircle color="#f1c40f" /></div>
             </div>
           </section>
 
+          {challengeScore > 0 && (
+            <div className="challengeNotice">{t.challengeNotice(challengerName, challengeScore)}</div>
+          )}
+
           <section className="panel introPanel">
             <p className="introText">{t.readyDesc}</p>
-            {challengeScore > 0 && (
-              <div className="challengeNotice">{t.challengeNotice(challengerName, challengeScore)}</div>
-            )}
+
+            <span className="sectionTag">{t.howTitle}</span>
+            <div className="demoCard">
+              <p className="demoInstr" dangerouslySetInnerHTML={{ __html: t.demoInstruction.replace(/(红色的圆形|red circle)/, "<b>$1</b>") }} />
+              <div className="demoShapes">
+                <div className="demoShape correct"><PixelCircle color="#e74c3c" /></div>
+                <div className="demoShape"><PixelSquare color="#3498db" /></div>
+                <div className="demoShape"><PixelTriangle color="#2ecc71" /></div>
+                <div className="demoShape"><PixelCircle color="#f1c40f" /></div>
+              </div>
+              <p className="demoHint">{t.demoHint}</p>
+            </div>
+
             <div className="rules">
               <div>
                 <b className="pixel">60s</b>
@@ -530,13 +621,13 @@ export default function DontClickWrong() {
 
       {phase === "playing" && (
         <div>
-          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 16 }}>
-            <div className="pixel" style={{ fontSize: 18 }}>{t.time}: {timeLeft}s</div>
-            <div className="pixel" style={{ fontSize: 18, color: "#e74c3c" }}>{t.score}: {score}</div>
+          <div className="hudbar">
+            <div className="hud-chip time pixel">{t.time} {timeLeft}s</div>
+            <div className="hud-chip score pixel">{t.score} {score}</div>
           </div>
-          
-          <div className="panel" style={{ textAlign: "center", marginBottom: 16, backgroundColor: feedback === "correct" ? "#e8f8f5" : "" }}>
-            <h2 style={{ margin: 0, fontSize: 20 }}>{instruction}</h2>
+
+          <div className={`panel instrPanel ${feedback === "correct" ? "good" : ""}`}>
+            <h2>{instruction}</h2>
           </div>
 
           <div className="grid-container">
@@ -552,8 +643,9 @@ export default function DontClickWrong() {
       )}
 
       {phase === "naming" && (
-        <div className="panel" style={{ textAlign: "center" }}>
-          <h2 className="pixel" style={{ fontSize: 24, color: "#3e4a3d" }}>{t.generating}</h2>
+        <div className="panel introPanel" style={{ textAlign: "center" }}>
+          <span className="sectionTag">{t.reportKicker}</span>
+          <h2 className="pixel" style={{ fontSize: 24, margin: "8px 0 0" }}>{t.generating}</h2>
           <p style={{ marginTop: 10 }}>{t.namingHint}</p>
           <input
             className="nameInput pixel"
@@ -564,46 +656,63 @@ export default function DontClickWrong() {
             onKeyDown={(e) => e.key === "Enter" && submitName()}
             autoFocus
           />
-          <button className="btn coral" onClick={submitName}>{t.viewReport}</button>
+          <div className="actions">
+            <button className="btn coral" onClick={submitName} style={{ width: "100%" }}>{t.viewReport}</button>
+          </div>
         </div>
       )}
 
       {phase === "finished" && (
         <div>
           <div className="reportCard" ref={reportRef}>
-            <p className="pixel labKicker">{t.reportKicker}</p>
-            <p style={{ marginTop: 15 }}>{t.beatPct1} <strong>{playerName}</strong> {t.beatPct2}</p>
-            <div className="pixel" style={{ fontSize: 48, color: "#ff6b6b", margin: "10px 0" }}>{beatPct}%</div>
-            <p>{t.beatPct3}</p>
-            
-            <h2 className="pixel reportTitle">{rankInfo.title}</h2>
-            <p style={{ fontSize: 14, color: "#666", marginBottom: 20 }}>"{rankInfo.desc}"</p>
-
-            <div className="reportGrid">
-              <div><span>{t.reportFinalScore}</span><b className="pixel">{score}</b></div>
-              <div><span>{t.reportTimeLeft}</span><b className="pixel">0s</b></div>
-              <div><span>{t.reportGame}</span><b className="pixel">dx3xb</b></div>
+            <div className="posterHead">
+              <p className="pk">{t.reportKicker}</p>
+              <span className="bolt" aria-hidden="true">⚡</span>
             </div>
+            <div className="posterBody">
+              <p className="issued">{t.issuedTo}</p>
+              <p className="issuedName">{playerName || t.anonPlayer}</p>
 
-            <div className="qrBox">
-              <div style={{ border: "4px solid #3e4a3d", padding: 4, background: "#fff", display: "flex" }}>
-                <QRCodeSVG value={challengeUrl()} size={60} fgColor="#3e4a3d" />
+              <p className="rankLabel">{t.rankLabel}</p>
+              <h2 className="rankTitle">{rankInfo.title}</h2>
+              <p className="rankDesc">&ldquo;{rankInfo.desc}&rdquo;</p>
+
+              <div className="pctWrap">
+                <div className="pctNum">{beatPct}<span>%</span></div>
+                <p className="pctCaption">{t.beatCaption}</p>
+                <div className="pctBar"><i style={{ width: `${beatPct}%` }} /></div>
               </div>
-              <div style={{ flex: 1 }}>
-                <p className="pixel" style={{ fontSize: 14, margin: "0 0 4px" }}>{t.qrScan}</p>
-                <p style={{ fontSize: 12, color: "#666", margin: 0 }}>dont-click-wrong.dx3xb.com</p>
+
+              <div className="statStrip">
+                <div>
+                  <span>{t.reportFinalScore}</span>
+                  <b className="pixel">{score}</b>
+                </div>
+                <div>
+                  <span>{t.perSec}</span>
+                  <b className="pixel">{(score / 60).toFixed(1)}</b>
+                </div>
+              </div>
+
+              <div className="qrRow">
+                <div className="qrFrame">
+                  <QRCodeSVG value={challengeUrl()} size={92} fgColor="#2b2233" bgColor="#ffffff" />
+                </div>
+                <div className="qrText">
+                  <p className="pixel">{t.qrScan}</p>
+                  <p className="qrCta">{t.qrCta}</p>
+                  <p className="qrUrl">dont-click-wrong.dx3xb.com</p>
+                </div>
               </div>
             </div>
           </div>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <div className="actions" style={{ flexDirection: "column", alignItems: "stretch" }}>
             <button className="btn coral" onClick={downloadReport}>{saving ? t.saving : t.saveBtn}</button>
             <button className="btn teal" onClick={shareNative}>{t.shareBtn}</button>
-            <button className="btn" onClick={copyResult} style={{ background: "#eee", color: "#3e4a3d", border: "4px solid #3e4a3d" }}>
-              {copied ? t.copied : t.copyBtn}
-            </button>
-            <button className="btn" onClick={startGame} style={{ background: "transparent", color: "#3e4a3d", border: "none", textDecoration: "underline" }}>{t.retry}</button>
-            <a href="https://dx3xb.com" style={{ textAlign: "center", color: "#666", marginTop: 10 }}>{t.home}</a>
+            <button className="btn ghost" onClick={copyResult}>{copied ? t.copied : t.copyBtn}</button>
+            <button className="btn link" onClick={startGame}>{t.retry}</button>
+            <a href="https://dx3xb.com" style={{ textAlign: "center", color: "var(--ink-soft)", marginTop: 6 }}>{t.home}</a>
           </div>
         </div>
       )}
