@@ -233,28 +233,25 @@ a.toy { text-decoration: none; color: inherit; }
 .toy.maintenance .emoji,
 .toy.maintenance > .pixel,
 .toy.maintenance > .note {
+  position: relative;
+  z-index: 1;
   opacity: 0.5;
   filter: grayscale(0.55);
 }
-/* 下半部分砌一面像素砖墙（错缝） */
-.toy.coming_soon::after,
-.toy.maintenance::after {
-  content: "";
+/* 下半部分的像素砖墙场景（内联 SVG，错缝砖+高光暗边+装饰） */
+.cwall {
   position: absolute;
   left: 0;
   right: 0;
   bottom: 0;
-  height: 50%;
-  background-color: #c8814f;
-  background-image:
-    linear-gradient(0deg, #5d3a22 0 3px, transparent 3px),
-    linear-gradient(90deg, #5d3a22 0 3px, transparent 3px);
-  background-size: 100% 16px, 32px 16px;
-  background-position: 0 0;
+  width: 100%;
+  height: 56%;
+  z-index: 0;
+  pointer-events: none;
   border-top: 3px solid var(--line);
   image-rendering: pixelated;
 }
-.toy.maintenance::after { background-color: #b9b0a0; }
+.toy.maintenance .cwall { filter: grayscale(0.7) brightness(1.04); }
 /* 警示牌钉在墙上 */
 .toy.coming_soon .soon,
 .toy.maintenance .soon {

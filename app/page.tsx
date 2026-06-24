@@ -16,6 +16,113 @@ type Toy = {
   status: string;
 };
 
+/* ===== 施工中卡片的像素砖墙场景（错缝砖 + 高光暗边 + 工地小装饰） ===== */
+function HardHat({ x }: { x: number }) {
+  return (
+    <g transform={`translate(${x},0)`}>
+      <rect x="0" y="9" width="16" height="2" fill="#d99a00" />
+      <rect x="0" y="11" width="16" height="1" fill="#221a2b" />
+      <rect x="4" y="3" width="8" height="6" fill="#ffd044" />
+      <rect x="5" y="1" width="6" height="2" fill="#ffd86b" />
+      <rect x="4" y="3" width="8" height="1" fill="#ffe89a" />
+      <rect x="4" y="3" width="1" height="6" fill="#ffe89a" />
+      <rect x="9" y="1" width="2" height="8" fill="#e0a800" />
+      <rect x="11" y="3" width="1" height="6" fill="#cf8f00" />
+    </g>
+  );
+}
+
+function Cone({ x }: { x: number }) {
+  return (
+    <g transform={`translate(${x},0)`}>
+      <rect x="6" y="0" width="2" height="2" fill="#ff7a3c" />
+      <rect x="5" y="2" width="4" height="2" fill="#ff8a4c" />
+      <rect x="5" y="3" width="4" height="1" fill="#fff7e7" />
+      <rect x="4" y="4" width="6" height="2" fill="#ff7a3c" />
+      <rect x="3" y="6" width="8" height="2" fill="#ff8a4c" />
+      <rect x="3" y="7" width="8" height="1" fill="#fff7e7" />
+      <rect x="2" y="8" width="10" height="2" fill="#ff7a3c" />
+      <rect x="1" y="10" width="12" height="2" fill="#d9531a" />
+      <rect x="1" y="11" width="12" height="1" fill="#221a2b" />
+    </g>
+  );
+}
+
+function Barrier({ x }: { x: number }) {
+  return (
+    <g transform={`translate(${x},0)`}>
+      <rect x="2" y="6" width="2" height="6" fill="#6b4a2a" />
+      <rect x="12" y="6" width="2" height="6" fill="#6b4a2a" />
+      <rect x="0" y="2" width="16" height="4" fill="#fff7e7" />
+      <rect x="0" y="2" width="16" height="1" fill="#221a2b" />
+      <rect x="1" y="3" width="3" height="3" fill="#ff5f57" />
+      <rect x="7" y="3" width="3" height="3" fill="#ff5f57" />
+      <rect x="13" y="3" width="3" height="3" fill="#ff5f57" />
+    </g>
+  );
+}
+
+function WallScene({ id, variant }: { id: string; variant: number }) {
+  const brickId = `br-${id}`;
+  const hazId = `hz-${id}`;
+  return (
+    <svg className="cwall" aria-hidden="true" shapeRendering="crispEdges" preserveAspectRatio="none">
+      <defs>
+        <pattern id={brickId} width="16" height="16" patternUnits="userSpaceOnUse">
+          <rect width="16" height="16" fill="#5e3a22" />
+          {/* 上层砖 */}
+          <rect x="1" y="1" width="14" height="6" fill="#c8754a" />
+          <rect x="1" y="1" width="14" height="1" fill="#e6a877" />
+          <rect x="1" y="1" width="1" height="6" fill="#e6a877" />
+          <rect x="1" y="6" width="14" height="1" fill="#8f4a28" />
+          <rect x="14" y="1" width="1" height="6" fill="#8f4a28" />
+          {/* 下层砖（错缝，颜色略深） */}
+          <rect x="9" y="9" width="6" height="6" fill="#bd6a40" />
+          <rect x="9" y="9" width="6" height="1" fill="#dc9d6b" />
+          <rect x="9" y="9" width="1" height="6" fill="#dc9d6b" />
+          <rect x="9" y="14" width="6" height="1" fill="#86421f" />
+          <rect x="14" y="9" width="1" height="6" fill="#86421f" />
+          <rect x="0" y="9" width="7" height="6" fill="#bd6a40" />
+          <rect x="0" y="9" width="7" height="1" fill="#dc9d6b" />
+          <rect x="0" y="9" width="1" height="6" fill="#dc9d6b" />
+          <rect x="0" y="14" width="7" height="1" fill="#86421f" />
+          <rect x="6" y="9" width="1" height="6" fill="#86421f" />
+        </pattern>
+        <pattern id={hazId} width="8" height="8" patternUnits="userSpaceOnUse">
+          <rect width="8" height="8" fill="#ffd044" />
+          <rect x="0" y="6" width="2" height="2" fill="#221a2b" />
+          <rect x="2" y="4" width="2" height="2" fill="#221a2b" />
+          <rect x="4" y="2" width="2" height="2" fill="#221a2b" />
+          <rect x="6" y="0" width="2" height="2" fill="#221a2b" />
+        </pattern>
+      </defs>
+      <rect width="100%" height="100%" fill={`url(#${brickId})`} />
+      {/* 单独的细节：裂缝 + 青苔，打破重复感 */}
+      <g transform={`translate(${30 + variant * 12},18)`} fill="#4a2c18">
+        <rect x="0" y="0" width="1" height="2" />
+        <rect x="1" y="2" width="1" height="2" />
+        <rect x="0" y="4" width="1" height="2" />
+        <rect x="2" y="4" width="1" height="2" />
+      </g>
+      <g transform={`translate(${64 - variant * 9},30)`} fill="#6fae3a">
+        <rect x="0" y="2" width="1" height="1" />
+        <rect x="1" y="1" width="1" height="2" />
+        <rect x="2" y="0" width="1" height="3" />
+        <rect x="3" y="1" width="1" height="2" />
+      </g>
+      {/* 顶部警示胶带 */}
+      <rect width="100%" height="7" fill={`url(#${hazId})`} />
+      {/* 墙头小装饰，按卡片轮换 */}
+      {variant === 0 && <HardHat x={14} />}
+      {variant === 0 && <Cone x={108} />}
+      {variant === 1 && <Cone x={18} />}
+      {variant === 1 && <Barrier x={92} />}
+      {variant === 2 && <Barrier x={16} />}
+      {variant === 2 && <HardHat x={104} />}
+    </svg>
+  );
+}
+
 /* ===== i18n 字典：后续新增功能都往这里加 zh / en 两份即可 ===== */
 const COPY = {
   zh: {
@@ -301,6 +408,7 @@ export default function Home() {
                 }
                 return (
                   <div className={`toy ${toy.status}`} key={toy.slug}>
+                    <WallScene id={toy.slug} variant={i % 3} />
                     {inner}
                   </div>
                 );
