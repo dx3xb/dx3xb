@@ -1,5 +1,5 @@
 {
-  "name": "dx3xb",
+  "name": "dx3xb-color-hunter",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -8,13 +8,15 @@
     "start": "next start"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.45.4",
-    "next": "^16.2.9",
+    "next": "^16.2.0",
+    "qrcode": "^1.5.4",
     "react": "19.0.0",
     "react-dom": "19.0.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.58.2",
     "@types/node": "^20",
+    "@types/qrcode": "^1.5.5",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "typescript": "^5"

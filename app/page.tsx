@@ -291,8 +291,10 @@ export default function Home() {
                   </>
                 );
                 if (toy.status === "live" && toy.url) {
+                  const sep = toy.url.includes("?") ? "&" : "?";
+                  const href = `${toy.url}${sep}lang=${lang}`;
                   return (
-                    <a className="toy live" href={toy.url} target="_blank" rel="noopener noreferrer" key={toy.slug}>
+                    <a className="toy live" href={href} target="_blank" rel="noopener noreferrer" key={toy.slug}>
                       {inner}
                     </a>
                   );

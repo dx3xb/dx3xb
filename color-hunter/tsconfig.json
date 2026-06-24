@@ -36,8 +36,6 @@
     ".next/dev/types/**/*.ts"
   ],
   "exclude": [
-    "node_modules",
-    "scaffold-toy",
-    "color-hunter"
+    "node_modules"
   ]
 }
