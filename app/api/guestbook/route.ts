@@ -32,7 +32,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: false, error: "bad_request" }, { status: 400 });
   }
 
-  const name = clean(body.name, 24) || "匿名小可爱";
+  // 空名存空串，由前端按界面语言显示「匿名小可爱 / Anonymous Cutie」
+  const name = clean(body.name, 24);
   const message = clean(body.message, 280);
 
   if (!message) {

@@ -193,7 +193,7 @@ const COPY = {
     stamp: "STAMP",
     gbErr: "Failed to send, try again.",
     gbEmpty: "No paw prints yet — be the first!",
-    anon: "a cutie",
+    anon: "Anonymous Cutie",
     footNote: "hammered together with pixels & curiosity",
     navHome: "TOP",
   },
