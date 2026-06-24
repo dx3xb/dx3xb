@@ -39,6 +39,7 @@
     "node_modules",
     "scaffold-toy",
     "color-hunter",
-    "instant-memory"
+    "instant-memory",
+    "dont-click-wrong"
   ]
 }
