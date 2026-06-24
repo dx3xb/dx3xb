@@ -402,26 +402,76 @@ a {
   justify-content: center;
 }
 
-.sharePanel {
+/* 输入称呼步骤 */
+.namingPanel {
+  padding: 22px;
   display: grid;
-  grid-template-columns: 1fr auto;
-  align-items: center;
-  gap: 18px;
-  background: var(--white);
-  border: 3px solid var(--line);
-  box-shadow: var(--shadow-lg);
-  padding: 18px;
+  gap: 14px;
 }
 
-.shareInfo {
-  display: grid;
-  gap: 10px;
-}
-
-.shareHint {
+.namingTitle {
   margin: 0;
-  font-size: 19px;
+  font-size: clamp(20px, 6vw, 34px);
+}
+
+.nameInput {
+  font-family: var(--font-vt323), "PingFang SC", monospace;
+  font-size: 26px;
+  background: var(--paper);
+  color: var(--ink);
+  border: 3px solid var(--line);
+  box-shadow: inset 3px 3px 0 rgba(34, 26, 43, 0.12);
+  padding: 12px 14px;
+  width: 100%;
+}
+
+.nameInput:focus {
+  outline: none;
+  background: var(--white);
+  box-shadow: var(--shadow);
+}
+
+.namingMeta {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
   color: var(--ink-soft);
+  font-size: 17px;
+}
+
+/* 报告头部：称呼标签 */
+.reportHead {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.playerTag {
+  max-width: 60%;
+  background: var(--coral);
+  color: var(--white);
+  border: 3px solid var(--line);
+  box-shadow: 3px 3px 0 var(--ink);
+  font-family: var(--font-press), "PingFang SC", monospace;
+  font-size: 12px;
+  padding: 7px 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 报告内置二维码区（会被一起截图到分享海报里） */
+.reportShare {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top: 3px dashed rgba(34, 26, 43, 0.4);
 }
 
 .qrBox {
@@ -430,12 +480,13 @@ a {
   box-shadow: var(--shadow);
   padding: 8px;
   line-height: 0;
+  flex: none;
 }
 
 .qrImg {
   display: block;
-  width: 160px;
-  height: 160px;
+  width: 150px;
+  height: 150px;
   image-rendering: pixelated;
 }
 
@@ -444,19 +495,37 @@ a {
     repeating-conic-gradient(var(--paper-deep) 0deg 90deg, var(--white) 90deg 180deg) 0 0 / 20px 20px;
 }
 
+.qrText {
+  display: grid;
+  gap: 6px;
+}
+
+.qrTitle {
+  margin: 0;
+  font-size: 13px;
+}
+
+.qrCaption {
+  margin: 0;
+  font-size: 19px;
+  color: var(--ink-soft);
+}
+
+.qrUrl {
+  margin: 0;
+  font-family: var(--font-press), monospace;
+  font-size: 10px;
+  color: var(--ink);
+}
+
 @media (max-width: 620px) {
-  .sharePanel {
-    grid-template-columns: 1fr;
-    justify-items: center;
+  .reportShare {
+    flex-direction: column;
     text-align: center;
   }
 
-  .shareInfo {
+  .qrText {
     justify-items: center;
-  }
-
-  .shareInfo .actions {
-    justify-content: center;
   }
 }
 
