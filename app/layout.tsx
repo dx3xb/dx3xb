@@ -22,11 +22,12 @@ export const metadata: Metadata = {
     "后 Web3 · AI 时代的网络趣味玩具铺。dx3xb 是一张噘嘴的小脸 (d ears, x eyes, 3 mouth)。A toy shop of fun web tools for the post-Web3 / AI age.",
   icons: {
     icon: [
-      { url: "/favicon.ico", sizes: "any" },
-      { url: "/favicon-32x32.png", sizes: "32x32", type: "image/png" },
-      { url: "/favicon-16x16.png", sizes: "16x16", type: "image/png" },
+      { url: "/favicon.ico?v=emoji-20260624", sizes: "any" },
+      { url: "/favicon-32x32.png?v=emoji-20260624", sizes: "32x32", type: "image/png" },
+      { url: "/favicon-16x16.png?v=emoji-20260624", sizes: "16x16", type: "image/png" },
     ],
-    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
+    shortcut: [{ url: "/favicon.ico?v=emoji-20260624" }],
+    apple: [{ url: "/apple-touch-icon.png?v=emoji-20260624", sizes: "180x180", type: "image/png" }],
   },
 };
 
