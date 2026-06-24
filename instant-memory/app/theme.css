@@ -1,0 +1,45 @@
+/* ===== dx3xb 共享像素主题：复用即和主站风格一致 ===== */
+:root {
+  --cream: #fff6e6;
+  --cream-2: #ffeccf;
+  --ink: #2b2233;
+  --ink-soft: #5a4f63;
+  --coral: #ff6b6b;
+  --teal: #2ec4b6;
+  --yellow: #ffd23f;
+  --blue: #4d79ff;
+  --line: #2b2233;
+  --shadow: 4px 4px 0 var(--ink);
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  background-color: var(--cream);
+  background-image: radial-gradient(var(--cream-2) 1.5px, transparent 1.5px);
+  background-size: 22px 22px;
+  color: var(--ink);
+  font-family: var(--font-vt323), ui-monospace, "PingFang SC", "Microsoft YaHei", monospace;
+  font-size: 22px;
+  -webkit-font-smoothing: none;
+}
+.pixel { font-family: var(--font-press), monospace; letter-spacing: 1px; }
+.wrap { max-width: 760px; margin: 0 auto; padding: 24px 18px 64px; }
+.panel { background: #fff; border: 3px solid var(--line); box-shadow: var(--shadow); padding: 20px; }
+.btn {
+  font-family: var(--font-press), monospace; font-size: 12px;
+  background: var(--coral); color: #fff; border: 3px solid var(--line);
+  box-shadow: var(--shadow); padding: 12px 16px; cursor: pointer;
+  transition: transform 0.05s, box-shadow 0.05s; text-transform: uppercase;
+}
+.btn:hover { transform: translate(-1px, -1px); box-shadow: 5px 5px 0 var(--ink); }
+.btn:active { transform: translate(4px, 4px); box-shadow: 0 0 0 var(--ink); }
+.btn.teal { background: var(--teal); }
+/* 返回主站按钮 */
+.backbar { margin-bottom: 18px; }
+.backbtn {
+  display: inline-block; text-decoration: none;
+  font-family: var(--font-press), monospace; font-size: 11px;
+  background: #fff; color: var(--ink); border: 3px solid var(--line);
+  box-shadow: 3px 3px 0 var(--ink); padding: 8px 12px;
+}
+.backbtn:hover { transform: translate(-1px, -1px); }

@@ -207,12 +207,10 @@ a {
   gap: 6px;
   transition: transform 0.08s;
 }
-.toy:hover { transform: translate(-2px, -2px); box-shadow: 6px 6px 0 var(--ink); }
+.toy.live:hover { transform: translate(-2px, -2px); box-shadow: 6px 6px 0 var(--ink); }
 a.toy { text-decoration: none; color: inherit; }
 .toy.live { cursor: pointer; }
 .toy.live .soon { color: var(--teal); }
-.toy.maintenance { opacity: 0.5; }
-.toy.maintenance .soon { color: var(--coral); }
 .toy .emoji { font-size: 34px; animation: floaty 3s ease-in-out infinite; }
 .toy .soon {
   margin-top: auto;
@@ -220,6 +218,58 @@ a.toy { text-decoration: none; color: inherit; }
   font-size: 11px;
   color: var(--ink-soft);
 }
+
+/* ---------- 施工中卡片：像素砖墙 + 工地警示牌 ---------- */
+.toy.coming_soon,
+.toy.maintenance {
+  position: relative;
+  overflow: hidden;
+  cursor: default;
+  background: #efe7d6;
+}
+.toy.coming_soon .emoji,
+.toy.coming_soon > .pixel,
+.toy.coming_soon > .note,
+.toy.maintenance .emoji,
+.toy.maintenance > .pixel,
+.toy.maintenance > .note {
+  opacity: 0.5;
+  filter: grayscale(0.55);
+}
+/* 下半部分砌一面像素砖墙（错缝） */
+.toy.coming_soon::after,
+.toy.maintenance::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 50%;
+  background-color: #c8814f;
+  background-image:
+    linear-gradient(0deg, #5d3a22 0 3px, transparent 3px),
+    linear-gradient(90deg, #5d3a22 0 3px, transparent 3px);
+  background-size: 100% 16px, 32px 16px;
+  background-position: 0 0;
+  border-top: 3px solid var(--line);
+  image-rendering: pixelated;
+}
+.toy.maintenance::after { background-color: #b9b0a0; }
+/* 警示牌钉在墙上 */
+.toy.coming_soon .soon,
+.toy.maintenance .soon {
+  position: relative;
+  z-index: 1;
+  align-self: center;
+  margin-top: auto;
+  color: var(--ink);
+  background: var(--yellow);
+  border: 3px solid var(--line);
+  box-shadow: 3px 3px 0 var(--ink);
+  padding: 5px 10px;
+  text-align: center;
+}
+.toy.maintenance .soon { background: var(--coral); color: #fff; }
 
 /* ---------- guestbook list ---------- */
 .msg {
