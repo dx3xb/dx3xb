@@ -114,7 +114,6 @@ a {
   color: var(--ink-soft);
   font-family: var(--font-press), monospace;
   font-size: 10px;
-  text-transform: uppercase;
 }
 
 .title {
@@ -439,28 +438,12 @@ a {
   font-size: 17px;
 }
 
-/* 报告头部：称呼标签 */
-.reportHead {
+/* 报告评价前的称呼引语：「称呼」的神眼，堪比 印刷厂老板 */
+.verdictLead {
   position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.playerTag {
-  max-width: 60%;
-  background: var(--coral);
-  color: var(--white);
-  border: 3px solid var(--line);
-  box-shadow: 3px 3px 0 var(--ink);
-  font-family: var(--font-press), "PingFang SC", monospace;
-  font-size: 12px;
-  padding: 7px 11px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  margin: 2px 0 0;
+  font-size: 23px;
+  color: var(--ink);
 }
 
 /* 报告内置二维码区（会被一起截图到分享海报里） */
