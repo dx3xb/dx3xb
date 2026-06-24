@@ -6,8 +6,8 @@ const press = Press_Start_2P({ weight: "400", subsets: ["latin"], variable: "--f
 const vt = VT323({ weight: "400", subsets: ["latin"], variable: "--font-vt323", display: "swap" });
 
 export const metadata: Metadata = {
-  title: "a dx3xb toy",
-  description: "a little toy from dx3xb.com",
+  title: "瞬间记忆 Instant Memory — dx3xb",
+  description: "A 60-second sequence memory challenge from dx3xb.com.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
