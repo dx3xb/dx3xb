@@ -1,0 +1,330 @@
+@font-face {
+  font-family: "FpxCJK";
+  src: url("/fonts/fpx-cjk.woff2") format("woff2");
+  font-display: swap;
+  unicode-range: U+2000-206F, U+3000-303F, U+3400-9FFF, U+F900-FAFF, U+FF00-FFEF;
+}
+
+:root {
+  --cream: #fff6e6;
+  --cream-2: #ffeccf;
+  --ink: #2b2233;
+  --ink-soft: #5a4f63;
+  --coral: #ff6b6b;
+  --pink: #ff8fab;
+  --teal: #2ec4b6;
+  --yellow: #ffd23f;
+  --blue: #4d79ff;
+  --line: #2b2233;
+  --shadow: 4px 4px 0 var(--ink);
+  --shadow-lg: 7px 7px 0 var(--ink);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: var(--cream);
+  background-image:
+    radial-gradient(var(--cream-2) 1.5px, transparent 1.5px);
+  background-size: 22px 22px;
+  color: var(--ink);
+  font-family: var(--font-vt323), "FpxCJK", ui-monospace, "PingFang SC", "Microsoft YaHei", monospace;
+  font-size: 22px;
+  line-height: 1.5;
+  -webkit-font-smoothing: none;
+  image-rendering: pixelated;
+}
+
+.pixel {
+  font-family: var(--font-press), "FpxCJK", monospace;
+  letter-spacing: 1px;
+}
+
+a {
+  color: var(--blue);
+}
+
+.wrap {
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 28px 18px 64px;
+}
+
+/* ---------- pixel card / panel ---------- */
+.panel {
+  background: #fff;
+  border: 3px solid var(--line);
+  box-shadow: var(--shadow);
+  padding: 20px;
+}
+
+.tag {
+  display: inline-block;
+  background: var(--yellow);
+  border: 3px solid var(--line);
+  box-shadow: 3px 3px 0 var(--ink);
+  font-family: var(--font-press), "FpxCJK", monospace;
+  font-size: 10px;
+  padding: 6px 10px;
+}
+
+/* ---------- buttons ---------- */
+.btn {
+  font-family: var(--font-press), "FpxCJK", monospace;
+  font-size: 11px;
+  background: var(--coral);
+  color: #fff;
+  border: 3px solid var(--line);
+  box-shadow: var(--shadow);
+  padding: 12px 16px;
+  cursor: pointer;
+  transition: transform 0.05s, box-shadow 0.05s;
+  text-transform: uppercase;
+}
+.btn:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 5px 5px 0 var(--ink);
+}
+.btn:active {
+  transform: translate(4px, 4px);
+  box-shadow: 0 0 0 var(--ink);
+}
+.btn.teal { background: var(--teal); }
+.btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+/* ---------- inputs ---------- */
+.input,
+.textarea {
+  font-family: var(--font-vt323), monospace;
+  font-size: 20px;
+  background: #fff;
+  border: 3px solid var(--line);
+  box-shadow: inset 2px 2px 0 rgba(43, 34, 51, 0.12);
+  padding: 10px 12px;
+  width: 100%;
+  color: var(--ink);
+}
+.input:focus,
+.textarea:focus {
+  outline: none;
+  border-color: var(--coral);
+}
+.textarea { resize: vertical; min-height: 70px; }
+
+/* ---------- hero face ---------- */
+.hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 26px 0 10px;
+}
+.face {
+  font-family: var(--font-press), "FpxCJK", monospace;
+  font-size: clamp(46px, 13vw, 110px);
+  display: inline-flex;
+  gap: clamp(4px, 1.5vw, 14px);
+  align-items: center;
+  user-select: none;
+}
+.face span { display: inline-block; }
+.ear { color: var(--ink); animation: wiggle 4s ease-in-out infinite; }
+.ear.r { animation-delay: 0.4s; }
+.eye { color: var(--ink); animation: blink 3.4s steps(1) infinite; transform-origin: center; }
+.eye.r { animation-delay: 0.15s; }
+.mouth { color: var(--ink); animation: pout 2.6s ease-in-out infinite; }
+
+@keyframes blink {
+  0%, 92%, 100% { transform: scaleY(1); }
+  95% { transform: scaleY(0.15); }
+}
+@keyframes pout {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(4px) scale(1.12); }
+}
+@keyframes wiggle {
+  0%, 100% { transform: rotate(0deg); }
+  50% { transform: rotate(-7deg); }
+}
+@keyframes floaty {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+/* face part labels */
+.decode {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 18px;
+}
+.chip {
+  background: #fff;
+  border: 3px solid var(--line);
+  box-shadow: 3px 3px 0 var(--ink);
+  padding: 6px 10px;
+  font-size: 18px;
+}
+.chip b { color: var(--coral); font-family: var(--font-press), "FpxCJK", monospace; font-size: 13px; margin-right: 6px; }
+
+/* ---------- sections ---------- */
+.section { margin-top: 44px; }
+.h2 {
+  font-family: var(--font-press), "FpxCJK", monospace;
+  font-size: 16px;
+  display: inline-block;
+  background: var(--ink);
+  color: var(--cream);
+  padding: 8px 12px;
+  box-shadow: 4px 4px 0 var(--coral);
+  margin: 0 0 18px;
+}
+.sub { color: var(--ink-soft); margin: -8px 0 16px; }
+
+/* ---------- tools grid ---------- */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 14px;
+}
+.toy {
+  background: #fff;
+  border: 3px solid var(--line);
+  box-shadow: var(--shadow);
+  padding: 16px;
+  min-height: 120px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: transform 0.08s;
+}
+.toy:hover { transform: translate(-2px, -2px); box-shadow: 6px 6px 0 var(--ink); }
+a.toy { text-decoration: none; color: inherit; }
+.toy.live { cursor: pointer; }
+.toy.live .soon { color: var(--teal); }
+.toy.maintenance { opacity: 0.5; }
+.toy.maintenance .soon { color: var(--coral); }
+.toy .emoji { font-size: 34px; animation: floaty 3s ease-in-out infinite; }
+.toy .soon {
+  margin-top: auto;
+  font-family: var(--font-press), "FpxCJK", monospace;
+  font-size: 11px;
+  color: var(--ink-soft);
+}
+
+/* ---------- guestbook list ---------- */
+.msg {
+  background: var(--cream-2);
+  border: 3px solid var(--line);
+  box-shadow: 3px 3px 0 var(--ink);
+  padding: 10px 12px;
+  margin-bottom: 10px;
+}
+.msg .who { font-family: var(--font-press), "FpxCJK", monospace; font-size: 11px; color: var(--teal); }
+.msg .when { font-size: 14px; color: var(--ink-soft); float: right; }
+.msg .what { margin-top: 4px; word-break: break-word; }
+
+.row { display: flex; gap: 10px; flex-wrap: wrap; align-items: stretch; }
+.row .grow { flex: 1; min-width: 160px; }
+
+.note { font-size: 18px; color: var(--ink-soft); }
+.ok { color: var(--teal); }
+.err { color: var(--coral); }
+
+/* ---------- language toggle (always visible) ---------- */
+.langtoggle {
+  position: fixed;
+  top: 14px;
+  right: 14px;
+  z-index: 60;
+  font-family: var(--font-press), "FpxCJK", monospace;
+  font-size: 11px;
+  background: var(--yellow);
+  color: var(--ink);
+  border: 3px solid var(--line);
+  box-shadow: 3px 3px 0 var(--ink);
+  padding: 9px 12px;
+  cursor: pointer;
+  transition: transform 0.05s, box-shadow 0.05s;
+}
+.langtoggle:hover { transform: translate(-1px, -1px); box-shadow: 4px 4px 0 var(--ink); }
+.langtoggle:active { transform: translate(3px, 3px); box-shadow: 0 0 0 var(--ink); }
+
+/* ---------- sticky top nav (appears on scroll) ---------- */
+.topnav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  background: var(--cream);
+  border-bottom: 3px solid var(--line);
+  box-shadow: 0 4px 0 rgba(43, 34, 51, 0.15);
+  padding: 10px 22px;
+  min-height: 56px;
+  transform: translateY(-110%);
+  transition: transform 0.22s ease;
+}
+.topnav.show { transform: translateY(0); }
+.topnav .brand {
+  font-family: var(--font-press), "FpxCJK", monospace;
+  font-size: 16px;
+  color: var(--ink);
+  background: none;
+  border: 0;
+  cursor: pointer;
+  padding: 4px 6px;
+}
+.navgroup {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-left: auto;
+}
+.navbtn,
+.navlang {
+  font-family: var(--font-press), "FpxCJK", monospace;
+  font-size: 13px;
+  line-height: 1;
+  background: #fff;
+  color: var(--ink);
+  border: 3px solid var(--line);
+  box-shadow: 2px 2px 0 var(--ink);
+  padding: 9px 11px;
+  cursor: pointer;
+  transition: transform 0.05s, box-shadow 0.05s;
+}
+.navlang { background: var(--yellow); }
+.navbtn:hover,
+.navlang:hover { transform: translate(-1px, -1px); box-shadow: 3px 3px 0 var(--ink); }
+.navbtn:hover { background: var(--cream-2); }
+.navbtn:active,
+.navlang:active { transform: translate(2px, 2px); box-shadow: 0 0 0 var(--ink); }
+
+html { scroll-behavior: smooth; }
+.section { scroll-margin-top: 70px; }
+
+.footer {
+  margin-top: 56px;
+  text-align: center;
+  color: var(--ink-soft);
+  font-size: 18px;
+}
+.footer .bigface {
+  font-family: var(--font-press), "FpxCJK", monospace;
+  font-size: 26px;
+  color: var(--ink);
+}
