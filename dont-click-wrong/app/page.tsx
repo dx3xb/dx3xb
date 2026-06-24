@@ -35,12 +35,14 @@ const DICTIONARY = {
     readyKicker: "dx3xb lab / 反应控制测试",
     readyTitle: "不要点错",
     readyDesc: "根据指令快速点击目标！点对加分，点错扣1秒时间，看你能坚持多久？",
+    challengeNotice: (name: string, s: number) =>
+      name ? `${name} 甩来一张 ${s} 分的战书，敢不敢应战？` : `有人留下了 ${s} 分的挑战，超过他！`,
     rules: {
       time: "限时",
       penalty: "点错",
       target: "目标"
     },
-    start: "开始挑战 / START",
+    start: "开始挑战",
     time: "时间",
     score: "得分",
     gameOver: "游戏结束",
@@ -58,12 +60,12 @@ const DICTIONARY = {
     reportGame: "测试项目",
     qrScan: "扫码挑战我",
     saving: "保存中...",
-    saveBtn: "保存战报长图 / SAVE",
-    shareBtn: "分享给朋友 / SHARE",
-    copied: "已复制！ / COPIED",
-    copyBtn: "复制战报文字 / COPY",
-    retry: "再玩一次 / RETRY",
-    home: "返回主页 / BACK TO HOME"
+    saveBtn: "下载战报长图",
+    shareBtn: "分享给朋友",
+    copied: "已复制！",
+    copyBtn: "复制战报文字",
+    retry: "再玩一次",
+    home: "返回主页"
   },
   en: {
     langBtn: "中",
@@ -72,6 +74,8 @@ const DICTIONARY = {
     readyKicker: "dx3xb lab / Reaction Control Test",
     readyTitle: "Don't Tap Wrong",
     readyDesc: "Tap the correct shape fast! +1 point per hit, -1s per mistake.",
+    challengeNotice: (name: string, s: number) =>
+      name ? `${name} threw down a ${s}-point gauntlet. Beat it!` : `Someone left a ${s}-point challenge. Beat it!`,
     rules: {
       time: "Time Limit",
       penalty: "Mistake",
@@ -95,12 +99,12 @@ const DICTIONARY = {
     reportGame: "Test Subject",
     qrScan: "Scan to challenge",
     saving: "Saving...",
-    saveBtn: "SAVE REPORT / SAVE",
-    shareBtn: "SHARE WITH FRIENDS / SHARE",
-    copied: "COPIED! / COPIED",
-    copyBtn: "COPY RESULT TEXT / COPY",
-    retry: "PLAY AGAIN / RETRY",
-    home: "BACK TO HOME / BACK"
+    saveBtn: "SAVE REPORT IMAGE",
+    shareBtn: "SHARE WITH FRIENDS",
+    copied: "COPIED!",
+    copyBtn: "COPY RESULT TEXT",
+    retry: "PLAY AGAIN",
+    home: "BACK TO HOME"
   }
 };
 
@@ -205,8 +209,19 @@ const PixelTriangle = ({ color }: { color: string }) => (
   </svg>
 );
 
+const SITE = "https://dont-click-wrong.dx3xb.com";
+
+function getInitialLang(): "zh" | "en" {
+  if (typeof window === "undefined") return "en";
+  const fromUrl = new URLSearchParams(window.location.search).get("lang");
+  if (fromUrl === "zh" || fromUrl === "en") return fromUrl;
+  const stored = window.localStorage.getItem("dx3xb_lang");
+  if (stored === "zh" || stored === "en") return stored;
+  return "en";
+}
+
 export default function DontClickWrong() {
-  const [lang, setLang] = useState<"zh" | "en">("zh");
+  const [lang, setLang] = useState<"zh" | "en">("en");
   const t = DICTIONARY[lang];
 
   const [phase, setPhase] = useState<"idle" | "playing" | "naming" | "finished">("idle");
@@ -225,10 +240,16 @@ export default function DontClickWrong() {
   const reportRef = useRef<HTMLDivElement>(null);
   
   const [beatPct, setBeatPct] = useState(0);
+  const [challengeScore, setChallengeScore] = useState(0);
+  const [challengerName, setChallengerName] = useState("");
 
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
+    setLang(getInitialLang());
+    const params = new URLSearchParams(window.location.search);
+    setChallengeScore(Number(params.get("score") || 0));
+    setChallengerName((params.get("from") || "").replace(/[ -<>]/g, "").slice(0, 16));
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
@@ -314,11 +335,23 @@ export default function DontClickWrong() {
   const toggleLang = () => {
     setLang(l => {
       const newLang = l === "zh" ? "en" : "zh";
-      // Hack: simply re-generating round text logic forces a fresh translation of current round
-      // Alternatively, we can just reset the game or let the user toggle before they play.
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem("dx3xb_lang", newLang);
+        const url = new URL(window.location.href);
+        url.searchParams.set("lang", newLang);
+        window.history.replaceState(null, "", url.toString());
+      }
       return newLang;
     });
-    // We intentionally let the user toggle before playing, if toggled during playing, it applies to next round
+  };
+
+  // 个性化挑战链接：带上分数/称呼/语言，扫码或点开即可应战
+  const challengeUrl = () => {
+    const params = new URLSearchParams();
+    if (score > 0) params.set("score", String(score));
+    if (playerName) params.set("from", playerName);
+    params.set("lang", lang);
+    return `${SITE}/?${params.toString()}`;
   };
 
   const startGame = () => {
@@ -332,8 +365,8 @@ export default function DontClickWrong() {
 
   const endGame = () => {
     setPhase("naming");
-    let pct = Math.min(99, Math.floor(10 + score * 1.5 + Math.random() * 2));
-    if (score === 0) pct = Math.floor(Math.random() * 5);
+    // 确定性百分位：同样分数永远同样结果，挑战才公平
+    const pct = score === 0 ? 3 : Math.min(99, Math.round(12 + score * 1.7));
     setBeatPct(pct);
   };
 
@@ -361,9 +394,9 @@ export default function DontClickWrong() {
 
   const rankInfo = getRank(beatPct, lang);
 
-  const shareText = () => lang === "zh" 
-    ? `我在【dx3xb 不要点错】中坚持60秒拿了 ${score} 分，注意力击败了 ${beatPct}% 的人，获得了「${rankInfo.title}」称号！你能超过我吗？\nhttps://dont-click-wrong.dx3xb.com`
-    : `I scored ${score} pts in 60s on [dx3xb Don't Tap Wrong], beating ${beatPct}% of players and got the title "${rankInfo.title}"! Can you beat me?\nhttps://dont-click-wrong.dx3xb.com`;
+  const shareText = () => lang === "zh"
+    ? `我「${playerName || t.anonPlayer}」在 dx3xb 不要点错坚持60秒拿了 ${score} 分，反应力击败了 ${beatPct}% 的人，称号「${rankInfo.title}」！来挑战我：${challengeUrl()}`
+    : `${playerName || t.anonPlayer} scored ${score} in 60s on dx3xb Don't Tap Wrong — beat ${beatPct}% of players, title "${rankInfo.title}"! Take me on: ${challengeUrl()}`;
 
   const copyResult = async () => {
     try {
@@ -381,7 +414,7 @@ export default function DontClickWrong() {
         await navigator.share({
           title: "dx3xb - " + t.title,
           text: shareText(),
-          url: "https://dont-click-wrong.dx3xb.com"
+          url: challengeUrl()
         });
       } else {
         copyResult();
@@ -431,7 +464,8 @@ export default function DontClickWrong() {
         .qrBox { display: flex; align-items: center; justify-content: center; gap: 15px; margin-top: 20px; text-align: left; }
 
         .heroLab { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #3e4a3d; padding-bottom: 12px; margin-bottom: 20px; }
-        .labKicker { font-size: 14px; text-transform: uppercase; font-family: monospace; letter-spacing: 1px; color: #666; margin: 0 0 4px; }
+        .labKicker { font-size: 14px; font-family: monospace; letter-spacing: 1px; color: #666; margin: 0 0 4px; }
+        .challengeNotice { background: #fff3cd; border: 3px solid #3e4a3d; box-shadow: 3px 3px 0 #3e4a3d; padding: 10px 12px; margin-bottom: 18px; font-size: 15px; }
         .heroLab .title { margin: 0; font-size: 28px; color: #ff6b6b; }
         .scope { display: flex; gap: 4px; align-items: flex-end; height: 30px; }
         .scope span { width: 6px; background: #ff6b6b; animation: radar 1.5s infinite ease-in-out; }
@@ -468,6 +502,9 @@ export default function DontClickWrong() {
 
           <section className="panel introPanel">
             <p className="introText">{t.readyDesc}</p>
+            {challengeScore > 0 && (
+              <div className="challengeNotice">{t.challengeNotice(challengerName, challengeScore)}</div>
+            )}
             <div className="rules">
               <div>
                 <b className="pixel">60s</b>
@@ -550,7 +587,7 @@ export default function DontClickWrong() {
 
             <div className="qrBox">
               <div style={{ border: "4px solid #3e4a3d", padding: 4, background: "#fff", display: "flex" }}>
-                <QRCodeSVG value="https://dont-click-wrong.dx3xb.com" size={60} fgColor="#3e4a3d" />
+                <QRCodeSVG value={challengeUrl()} size={60} fgColor="#3e4a3d" />
               </div>
               <div style={{ flex: 1 }}>
                 <p className="pixel" style={{ fontSize: 14, margin: "0 0 4px" }}>{t.qrScan}</p>

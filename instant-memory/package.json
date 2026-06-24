@@ -8,13 +8,16 @@
     "start": "next start"
   },
   "dependencies": {
+    "html-to-image": "^1.11.13",
     "next": "^16.2.0",
+    "qrcode": "^1.5.4",
     "react": "19.0.0",
     "react-dom": "19.0.0"
   },
   "devDependencies": {
     "@playwright/test": "^1.58.2",
     "@types/node": "^20",
+    "@types/qrcode": "^1.5.5",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "typescript": "^5"
