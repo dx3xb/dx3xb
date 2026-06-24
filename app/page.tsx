@@ -17,9 +17,10 @@ type Toy = {
 };
 
 /* ===== 施工中卡片的像素砖墙场景（错缝砖 + 高光暗边 + 工地小装饰） ===== */
-function HardHat({ x }: { x: number }) {
+/* 墙头装饰画在原点(0..16)，由 WallScene 放大后摆到墙沿上探出来 */
+function HardHat() {
   return (
-    <g transform={`translate(${x},0)`}>
+    <g>
       <rect x="0" y="9" width="16" height="2" fill="#d99a00" />
       <rect x="0" y="11" width="16" height="1" fill="#221a2b" />
       <rect x="4" y="3" width="8" height="6" fill="#ffd044" />
@@ -32,9 +33,9 @@ function HardHat({ x }: { x: number }) {
   );
 }
 
-function Cone({ x }: { x: number }) {
+function Cone() {
   return (
-    <g transform={`translate(${x},0)`}>
+    <g>
       <rect x="6" y="0" width="2" height="2" fill="#ff7a3c" />
       <rect x="5" y="2" width="4" height="2" fill="#ff8a4c" />
       <rect x="5" y="3" width="4" height="1" fill="#fff7e7" />
@@ -48,18 +49,28 @@ function Cone({ x }: { x: number }) {
   );
 }
 
-function Barrier({ x }: { x: number }) {
+function Barrier() {
   return (
-    <g transform={`translate(${x},0)`}>
-      <rect x="2" y="6" width="2" height="6" fill="#6b4a2a" />
-      <rect x="12" y="6" width="2" height="6" fill="#6b4a2a" />
-      <rect x="0" y="2" width="16" height="4" fill="#fff7e7" />
-      <rect x="0" y="2" width="16" height="1" fill="#221a2b" />
-      <rect x="1" y="3" width="3" height="3" fill="#ff5f57" />
-      <rect x="7" y="3" width="3" height="3" fill="#ff5f57" />
-      <rect x="13" y="3" width="3" height="3" fill="#ff5f57" />
+    <g>
+      <rect x="2" y="5" width="2" height="7" fill="#6b4a2a" />
+      <rect x="12" y="5" width="2" height="7" fill="#6b4a2a" />
+      <rect x="0" y="1" width="16" height="4" fill="#fff7e7" />
+      <rect x="0" y="1" width="16" height="1" fill="#221a2b" />
+      <rect x="0" y="4" width="16" height="1" fill="#221a2b" />
+      <rect x="1" y="2" width="3" height="3" fill="#ff5f57" />
+      <rect x="7" y="2" width="3" height="3" fill="#ff5f57" />
+      <rect x="13" y="2" width="3" height="3" fill="#ff5f57" />
     </g>
   );
+}
+
+// 透明带高度：装饰摆在这条带子里，从墙沿探出来、衬在浅色背景上
+const WALL_TOP = 24;
+const DECO = 1.7;
+
+function Deco({ x, children }: { x: number; children: React.ReactNode }) {
+  // 把 16x12 的装饰放大并让底部坐在墙沿(WALL_TOP)上
+  return <g transform={`translate(${x},${WALL_TOP - 12 * DECO}) scale(${DECO})`}>{children}</g>;
 }
 
 function WallScene({ id, variant }: { id: string; variant: number }) {
@@ -96,29 +107,33 @@ function WallScene({ id, variant }: { id: string; variant: number }) {
           <rect x="6" y="0" width="2" height="2" fill="#221a2b" />
         </pattern>
       </defs>
-      <rect width="100%" height="100%" fill={`url(#${brickId})`} />
-      {/* 单独的细节：裂缝 + 青苔，打破重复感 */}
-      <g transform={`translate(${30 + variant * 12},18)`} fill="#4a2c18">
+      {/* 砖墙：从透明带下方开始，墙体不透字 */}
+      <rect x="0" y={WALL_TOP} width="100%" height="400" fill={`url(#${brickId})`} />
+      {/* 明确的墙沿 */}
+      <rect x="0" y={WALL_TOP} width="100%" height="3" fill="#4a2c18" />
+      <rect x="0" y={WALL_TOP + 3} width="100%" height="1" fill="#e6a877" />
+      {/* 裂缝 + 青苔，打破重复 */}
+      <g transform={`translate(${34 + variant * 14},${WALL_TOP + 18})`} fill="#4a2c18">
         <rect x="0" y="0" width="1" height="2" />
         <rect x="1" y="2" width="1" height="2" />
         <rect x="0" y="4" width="1" height="2" />
         <rect x="2" y="4" width="1" height="2" />
       </g>
-      <g transform={`translate(${64 - variant * 9},30)`} fill="#6fae3a">
+      <g transform={`translate(${70 - variant * 11},${WALL_TOP + 30})`} fill="#6fae3a">
         <rect x="0" y="2" width="1" height="1" />
         <rect x="1" y="1" width="1" height="2" />
         <rect x="2" y="0" width="1" height="3" />
         <rect x="3" y="1" width="1" height="2" />
       </g>
-      {/* 顶部警示胶带 */}
-      <rect width="100%" height="7" fill={`url(#${hazId})`} />
-      {/* 墙头小装饰，按卡片轮换 */}
-      {variant === 0 && <HardHat x={14} />}
-      {variant === 0 && <Cone x={108} />}
-      {variant === 1 && <Cone x={18} />}
-      {variant === 1 && <Barrier x={92} />}
-      {variant === 2 && <Barrier x={16} />}
-      {variant === 2 && <HardHat x={104} />}
+      {/* 警示胶带：贴在墙沿上 */}
+      <rect x="0" y={WALL_TOP - 1} width="100%" height="7" fill={`url(#${hazId})`} />
+      {/* 墙头小装饰：放大、坐在墙沿上探出来 */}
+      {variant === 0 && <Deco x={12}><HardHat /></Deco>}
+      {variant === 0 && <Deco x={118}><Cone /></Deco>}
+      {variant === 1 && <Deco x={14}><Cone /></Deco>}
+      {variant === 1 && <Deco x={104}><Barrier /></Deco>}
+      {variant === 2 && <Deco x={14}><Barrier /></Deco>}
+      {variant === 2 && <Deco x={116}><HardHat /></Deco>}
     </svg>
   );
 }

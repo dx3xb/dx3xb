@@ -223,6 +223,7 @@ a.toy { text-decoration: none; color: inherit; }
 .toy.coming_soon,
 .toy.maintenance {
   position: relative;
+  isolation: isolate;
   overflow: hidden;
   cursor: default;
   background: #efe7d6;
@@ -245,18 +246,18 @@ a.toy { text-decoration: none; color: inherit; }
   right: 0;
   bottom: 0;
   width: 100%;
-  height: 56%;
-  z-index: 0;
+  height: 66%;
+  z-index: 2;
   pointer-events: none;
-  border-top: 3px solid var(--line);
   image-rendering: pixelated;
+  overflow: visible;
 }
 .toy.maintenance .cwall { filter: grayscale(0.7) brightness(1.04); }
 /* 警示牌钉在墙上 */
 .toy.coming_soon .soon,
 .toy.maintenance .soon {
   position: relative;
-  z-index: 1;
+  z-index: 3;
   align-self: center;
   margin-top: auto;
   color: var(--ink);
