@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { toPng } from "html-to-image";
 import { QRCodeSVG } from "qrcode.react";
+import { TrioFooter, ensureSession } from "./dx3xb-trio";
 
 type Shape = "circle" | "square" | "triangle";
 type ColorCode = "#e74c3c" | "#3498db" | "#2ecc71" | "#f1c40f";
@@ -265,6 +266,7 @@ export default function DontClickWrong() {
 
   useEffect(() => {
     setLang(getInitialLang());
+    void ensureSession(); // 首访即建匿名会话（跨子域 cookie）
     const params = new URLSearchParams(window.location.search);
     setChallengeScore(Number(params.get("score") || 0));
     setChallengerName((params.get("from") || "").replace(/[ -<>]/g, "").slice(0, 16));
@@ -706,6 +708,18 @@ export default function DontClickWrong() {
               </div>
             </div>
           </div>
+
+          <TrioFooter
+            game="dont-click-wrong"
+            lang={lang}
+            run={{
+              score,
+              pct: beatPct,
+              title: rankInfo.title,
+              lang,
+              stats: { perSec: Number((score / 60).toFixed(2)), beatPct },
+            }}
+          />
 
           <div className="actions" style={{ flexDirection: "column", alignItems: "stretch" }}>
             <button className="btn coral" onClick={downloadReport}>{saving ? t.saving : t.saveBtn}</button>
