@@ -717,6 +717,7 @@ export default function DontClickWrong() {
               pct: beatPct,
               title: rankInfo.title,
               lang,
+              handle: playerName,
               stats: { perSec: Number((score / 60).toFixed(2)), beatPct },
             }}
           />

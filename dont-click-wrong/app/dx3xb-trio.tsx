@@ -121,6 +121,7 @@ export type RunPayload = {
   pct: number;
   title: string;
   lang: string;
+  handle?: string;
   stats?: Record<string, unknown>;
 };
 
@@ -138,6 +139,9 @@ export async function recordRun(game: TrioGame, p: RunPayload): Promise<void> {
       lang: p.lang,
       stats: p.stats ?? {},
     });
+    if (p.handle && p.handle.trim()) {
+      await c.from("dx3xb_profiles").upsert({ user_id: id, handle: p.handle.trim().slice(0, 24) });
+    }
   } catch {
     /* 记录失败不影响游戏体验 */
   }
@@ -176,6 +180,17 @@ export async function claimAccount(email: string, redirectTo: string) {
   const c = dx3xb();
   await ensureSession();
   return c.auth.updateUser({ email }, { emailRedirectTo: redirectTo });
+}
+
+export async function getProfileHandle(): Promise<string | null> {
+  try {
+    const c = dx3xb();
+    await ensureSession();
+    const { data } = await c.from("dx3xb_profiles").select("handle").maybeSingle();
+    return data?.handle ?? null;
+  } catch {
+    return null;
+  }
 }
 
 /* ---------- UI 文案 ---------- */
