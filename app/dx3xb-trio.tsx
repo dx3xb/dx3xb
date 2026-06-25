@@ -31,6 +31,28 @@ const GAME_SENSE: Record<Lang, Record<TrioGame, string>> = {
   zh: { "color-hunter": "感官", "dont-click-wrong": "反应", "instant-memory": "记忆" },
   en: { "color-hunter": "SENSE", "dont-click-wrong": "REACT", "instant-memory": "MEMORY" },
 };
+const GAME_EMOJI: Record<TrioGame, string> = {
+  "color-hunter": "👁️",
+  "dont-click-wrong": "⚡",
+  "instant-memory": "🧠",
+};
+const GAME_COLOR: Record<TrioGame, string> = {
+  "color-hunter": "#ff5f57",
+  "dont-click-wrong": "#12b7a6",
+  "instant-memory": "#4564ff",
+};
+const GAME_TEASER: Record<Lang, Record<TrioGame, string>> = {
+  zh: {
+    "color-hunter": "一眼揪出那块不一样的颜色",
+    "dont-click-wrong": "看清指令再下手，手要够快",
+    "instant-memory": "记住闪现的序列，再点回来",
+  },
+  en: {
+    "color-hunter": "Spot the one odd color out",
+    "dont-click-wrong": "Read fast, tap even faster",
+    "instant-memory": "Memorize the flash, tap it back",
+  },
+};
 
 /* ---------- 跨子域 cookie 会话存储 ---------- */
 const isLocal =
@@ -224,8 +246,9 @@ export async function getEmail(): Promise<string | null> {
 const UI = {
   zh: {
     label: "感官与脑力三件套",
-    next: (n: string) => `下一关：${n} →`,
-    report: "查看三件套总报告 →",
+    nextEyebrow: "下一关",
+    reportEyebrow: "三件套通关 🎉",
+    reportName: "查看综合脑力总报告",
     claimTitle: "已过 2 关！注册认领你的账号",
     claimHint: "保存全部战报、解锁你的空间，继续第 3 关进度也不会丢。",
     emailPh: "你的邮箱",
@@ -237,8 +260,9 @@ const UI = {
   },
   en: {
     label: "Sensory & Brainpower Trio",
-    next: (n: string) => `Next: ${n} →`,
-    report: "See your trio report →",
+    nextEyebrow: "NEXT UP",
+    reportEyebrow: "TRIO COMPLETE 🎉",
+    reportName: "See your combined report",
     claimTitle: "2 down! Claim your account",
     claimHint: "Save every report, unlock your space — your progress sticks for game 3.",
     emailPh: "your email",
@@ -263,13 +287,30 @@ const STYLE = `
 .trio-seg.cur { background: var(--yellow, #ffd044); color: var(--ink, #221a2b); }
 .trio-seg b { display: block; font-family: var(--font-press), monospace; font-size: 10px; }
 .trio-seg span { display: block; font-size: 14px; margin-top: 3px; }
-.trio-cta { margin-top: 12px; display: flex; flex-direction: column; gap: 8px; }
-.trio-btn { display: block; text-align: center; text-decoration: none; cursor: pointer;
-  font-family: var(--font-press), monospace; font-size: 11px; line-height: 1.3;
-  border: 3px solid var(--line, #221a2b); box-shadow: 4px 4px 0 var(--ink, #221a2b);
-  padding: 12px 14px; background: var(--teal, #12b7a6); color: #fff; }
-.trio-btn.report { background: var(--coral, #ff5f57); }
-.trio-btn:active { transform: translate(4px,4px); box-shadow: none; }
+.trio-next { display: flex; align-items: center; gap: 13px; text-decoration: none; cursor: pointer; margin-top: 12px;
+  background: #fffdf8; border: 3px solid var(--line, #221a2b); box-shadow: 6px 6px 0 var(--ink, #221a2b);
+  padding: 13px; color: var(--ink, #221a2b); position: relative; overflow: hidden;
+  transition: transform .07s, box-shadow .07s; }
+.trio-next::after { content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(110deg, transparent 40%, rgba(255,255,255,0.5) 50%, transparent 60%);
+  transform: translateX(-120%); animation: trio-shine 2.6s ease-in-out infinite; }
+.trio-next.report { background: var(--yellow, #ffd044); }
+.trio-next:hover { transform: translate(-2px,-2px); box-shadow: 8px 8px 0 var(--ink, #221a2b); }
+.trio-next:active { transform: translate(4px,4px); box-shadow: none; }
+.trio-next-icon { flex: none; width: 56px; height: 56px; display: flex; align-items: center; justify-content: center;
+  font-size: 30px; border: 3px solid var(--line, #221a2b); box-shadow: 3px 3px 0 var(--ink, #221a2b);
+  animation: trio-bob 1.8s ease-in-out infinite; }
+.trio-next-body { flex: 1; min-width: 0; }
+.trio-next-label { display: block; font-family: var(--font-press), monospace; font-size: 9px; letter-spacing: 1px; color: var(--coral, #ff5f57); }
+.trio-next.report .trio-next-label { color: var(--ink, #221a2b); }
+.trio-next-name { display: block; font-size: 23px; line-height: 1.1; margin: 3px 0; }
+.trio-next-teaser { display: block; font-size: 15px; color: var(--ink-soft, #5f5368); }
+.trio-next-arrow { flex: none; font-family: var(--font-press), monospace; font-size: 16px; color: var(--coral, #ff5f57);
+  animation: trio-slide 1s ease-in-out infinite; }
+.trio-next.report .trio-next-arrow { color: var(--ink, #221a2b); }
+@keyframes trio-bob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+@keyframes trio-slide { 0%,100% { transform: translateX(0); } 50% { transform: translateX(5px); } }
+@keyframes trio-shine { 0%,55% { transform: translateX(-120%); } 80%,100% { transform: translateX(120%); } }
 .trio-claim { margin-top: 12px; border: 3px dashed var(--line, #221a2b); padding: 12px; background: #fff7e7; }
 .trio-claim h4 { margin: 0 0 4px; font-family: var(--font-press), monospace; font-size: 12px; }
 .trio-claim p { margin: 0 0 10px; font-size: 16px; color: var(--ink-soft, #5f5368); }
@@ -328,17 +369,31 @@ export function TrioFooter({ game, lang, run }: { game: TrioGame; lang: Lang; ru
         })}
       </div>
 
-      {progress && (
-        <div className="trio-cta">
-          {progress.allDone ? (
-            <a className="trio-btn report" href={TRIO_REPORT_URL + langQ}>{u.report}</a>
-          ) : progress.nextGame ? (
-            <a className="trio-btn" href={GAME_URL[progress.nextGame] + langQ}>
-              {u.next(GAME_NAME[lang][progress.nextGame])}
-            </a>
-          ) : null}
-        </div>
-      )}
+      {progress &&
+        (progress.allDone ? (
+          <a className="trio-next report" href={TRIO_REPORT_URL + langQ}>
+            <span className="trio-next-icon" style={{ background: "var(--yellow, #ffd044)" }}>🏆</span>
+            <span className="trio-next-body">
+              <span className="trio-next-label">{u.reportEyebrow}</span>
+              <b className="trio-next-name">{u.reportName}</b>
+            </span>
+            <span className="trio-next-arrow">▶▶</span>
+          </a>
+        ) : progress.nextGame ? (
+          <a className="trio-next" href={GAME_URL[progress.nextGame] + langQ}>
+            <span className="trio-next-icon" style={{ background: GAME_COLOR[progress.nextGame] }}>
+              {GAME_EMOJI[progress.nextGame]}
+            </span>
+            <span className="trio-next-body">
+              <span className="trio-next-label">
+                {u.nextEyebrow} · {GAME_SENSE[lang][progress.nextGame]}
+              </span>
+              <b className="trio-next-name">{GAME_NAME[lang][progress.nextGame]}</b>
+              <span className="trio-next-teaser">{GAME_TEASER[lang][progress.nextGame]}</span>
+            </span>
+            <span className="trio-next-arrow">▶▶</span>
+          </a>
+        ) : null)}
 
       {progress && progress.isAnonymous && progress.done >= 2 && (
         <div className="trio-claim">

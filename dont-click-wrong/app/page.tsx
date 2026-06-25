@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { toPng } from "html-to-image";
 import { QRCodeSVG } from "qrcode.react";
-import { TrioFooter, ensureSession } from "./dx3xb-trio";
+import { TrioFooter, ensureSession, getProfileHandle } from "./dx3xb-trio";
 
 type Shape = "circle" | "square" | "triangle";
 type ColorCode = "#e74c3c" | "#3498db" | "#2ecc71" | "#f1c40f";
@@ -263,10 +263,14 @@ export default function DontClickWrong() {
   const [challengerName, setChallengerName] = useState("");
 
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const knownNameRef = useRef("");
 
   useEffect(() => {
     setLang(getInitialLang());
     void ensureSession(); // 首访即建匿名会话（跨子域 cookie）
+    getProfileHandle().then((h) => {
+      if (h) knownNameRef.current = h.replace(/[ -<>]/g, "").slice(0, 10);
+    });
     const params = new URLSearchParams(window.location.search);
     setChallengeScore(Number(params.get("score") || 0));
     setChallengerName((params.get("from") || "").replace(/[ -<>]/g, "").slice(0, 16));
@@ -384,6 +388,7 @@ export default function DontClickWrong() {
   };
 
   const endGame = () => {
+    if (knownNameRef.current) setPlayerName(knownNameRef.current); // 已有称呼则自动预填
     setPhase("naming");
     // 确定性百分位：同样分数永远同样结果，挑战才公平
     const pct = score === 0 ? 3 : Math.min(99, Math.round(12 + score * 1.7));
