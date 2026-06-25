@@ -166,6 +166,8 @@ const COPY = {
     pingDup: "😗 你已经在名单里啦。",
     pingErr: "出错了，稍后再试。",
     gbTitle: "留个爪印",
+    trioNav: "三件套",
+    meNav: "我的空间",
     gbSub: "路过盖个章，说点啥都行。",
     namePh: "名字（可留空）",
     msgPh: "说点什么...",
@@ -202,6 +204,8 @@ const COPY = {
     pingDup: "😗 You're already on the list.",
     pingErr: "Something broke, try again.",
     gbTitle: "GUESTBOOK",
+    trioNav: "TRIO",
+    meNav: "MY SPACE",
     gbSub: "Leave a paw print, say anything.",
     namePh: "name (optional)",
     msgPh: "say something...",
@@ -355,6 +359,8 @@ export default function Home() {
           <button className="navbtn" onClick={() => scrollToId("toys")}>{t.toyTitle}</button>
           <button className="navbtn" onClick={() => scrollToId("ping")}>{t.pingTitle}</button>
           <button className="navbtn" onClick={() => scrollToId("guestbook")}>{t.gbTitle}</button>
+          <a className="navbtn" href="/trio" style={{ textDecoration: "none" }}>{t.trioNav}</a>
+          <a className="navbtn" href="/me" style={{ textDecoration: "none" }}>{t.meNav}</a>
           <button className="navlang" onClick={toggleLang} aria-label="switch language">{t.langBtn}</button>
         </div>
       </nav>

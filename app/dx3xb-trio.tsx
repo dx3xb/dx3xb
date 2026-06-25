@@ -193,6 +193,33 @@ export async function getProfileHandle(): Promise<string | null> {
   }
 }
 
+export type MyRun = { game: TrioGame; score: number; pct: number; title: string; created_at: string };
+export async function getMyRuns(limit = 40): Promise<MyRun[]> {
+  try {
+    const c = dx3xb();
+    await ensureSession();
+    const { data } = await c
+      .from("dx3xb_runs")
+      .select("game,score,pct,title,created_at")
+      .order("created_at", { ascending: false })
+      .limit(limit);
+    return (data ?? []) as MyRun[];
+  } catch {
+    return [];
+  }
+}
+
+export async function getEmail(): Promise<string | null> {
+  try {
+    const c = dx3xb();
+    await ensureSession();
+    const { data } = await c.auth.getUser();
+    return data.user?.email ?? null;
+  } catch {
+    return null;
+  }
+}
+
 /* ---------- UI 文案 ---------- */
 const UI = {
   zh: {
