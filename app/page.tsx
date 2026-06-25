@@ -154,6 +154,12 @@ const COPY = {
       "更多玩具正在一像素一像素地敲出来。⛏️",
     ],
     toyTitle: "玩具墙",
+    trioTag: "★ 招牌挑战",
+    trioName: "感官与脑力三件套",
+    trioDims: ["👁 感官", "⚡ 反应", "🧠 记忆"],
+    trioDesc: "三关连测你的感官辨别、反应控制、短时记忆——集齐解锁专属综合脑力报告，还能叫朋友来比。",
+    trioStart: "开始挑战 →",
+    trioReport: "我的总报告",
     toySub: "点亮的卡片直接玩；砌着像素砖墙的还在施工中 🚧",
     soon: "施工中 🚧",
     open: "去玩 →",
@@ -192,6 +198,12 @@ const COPY = {
       "More toys are being hammered together, pixel by pixel. ⛏️",
     ],
     toyTitle: "TOY WALL",
+    trioTag: "★ SIGNATURE CHALLENGE",
+    trioName: "Sensory & Brainpower Trio",
+    trioDims: ["👁 SENSE", "⚡ REACT", "🧠 MEMORY"],
+    trioDesc: "Three games test your sense, reaction and memory — finish all three to unlock your combined brain report, then dare your friends.",
+    trioStart: "START →",
+    trioReport: "My report",
     toySub: "Lit cards are playable; the ones behind a pixel brick wall are still under construction 🚧",
     soon: "BUILDING 🚧",
     open: "OPEN →",
@@ -394,6 +406,24 @@ export default function Home() {
                 {p}
               </p>
             ))}
+          </div>
+        </section>
+
+        {/* TRIO 招牌挑战 */}
+        <section className="section">
+          <div className="triohero">
+            <span className="triotag pixel">{t.trioTag}</span>
+            <h2 className="pixel trioname">{t.trioName}</h2>
+            <div className="triodims">
+              {t.trioDims.map((d, i) => (
+                <span key={i}>{d}</span>
+              ))}
+            </div>
+            <p className="triodesc">{t.trioDesc}</p>
+            <div className="trioactions">
+              <a className="btn" href={`https://color-hunter.dx3xb.com/?lang=${lang}`}>{t.trioStart}</a>
+              <a className="btn ghost" href={`/trio?lang=${lang}`}>{t.trioReport}</a>
+            </div>
           </div>
         </section>
 

@@ -376,3 +376,70 @@ html { scroll-behavior: smooth; }
   font-size: 26px;
   color: var(--ink);
 }
+
+/* ---------- 三件套招牌挑战 banner ---------- */
+.triohero {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(135deg, #fff6e6 0%, #ffeccf 100%);
+  border: 3px solid var(--line);
+  box-shadow: var(--shadow-lg);
+  padding: 22px;
+}
+.triohero::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 7px;
+  background: repeating-linear-gradient(90deg, var(--coral) 0 18px, var(--teal) 18px 36px, var(--blue) 36px 54px);
+}
+.triotag {
+  display: inline-block;
+  font-size: 10px;
+  letter-spacing: 1px;
+  background: var(--ink);
+  color: var(--cream);
+  border: 2px solid var(--line);
+  padding: 5px 9px;
+  margin-top: 4px;
+}
+.trioname {
+  margin: 12px 0 10px;
+  font-size: clamp(24px, 7vw, 40px);
+  line-height: 1.08;
+}
+.triodims {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+.triodims span {
+  font-family: var(--font-press), "FpxCJK", monospace;
+  font-size: 11px;
+  background: #fff;
+  border: 3px solid var(--line);
+  box-shadow: 3px 3px 0 var(--ink);
+  padding: 8px 10px;
+}
+.triodesc {
+  font-size: 18px;
+  color: var(--ink-soft);
+  margin: 0 0 16px;
+  max-width: 42em;
+}
+.trioactions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.trioactions .btn {
+  text-decoration: none;
+  display: inline-block;
+}
+.trioactions .btn.ghost {
+  background: #fff;
+  color: var(--ink);
+}
