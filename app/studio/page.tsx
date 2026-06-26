@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getMyMicroapps, createMicroapp, type Microapp } from "../dx3xb-apps";
+import { getMyMicroapps, createMicroapp, emptyQuiz, TEMPLATE_META, type Microapp } from "../dx3xb-apps";
+import { totEmpty } from "../_mt/thisorthat";
 
 type Lang = "zh" | "en";
 function initialLang(): Lang {
@@ -56,10 +57,11 @@ export default function StudioPage() {
     })();
   }, []);
 
-  async function newQuiz() {
+  async function newApp(template: string) {
     if (creating) return;
     setCreating(true);
-    const r = await createMicroapp();
+    const config = template === "thisorthat" ? totEmpty() : emptyQuiz();
+    const r = await createMicroapp(template, config);
     if (r) window.location.href = `/studio/${r.id}?lang=${lang}`;
     else setCreating(false);
   }
@@ -75,7 +77,15 @@ export default function StudioPage() {
         <p className="skick">{t.kicker}</p>
         <h1 className="pixel stitle">{t.title}</h1>
         <p className="sdesc">{t.desc}</p>
-        <button className="sbig coral" onClick={newQuiz} disabled={creating}>{creating ? t.creating : t.newQuiz}</button>
+        <div className="spick">
+          {TEMPLATE_META.map((m) => (
+            <button key={m.id} className="spickcard" onClick={() => newApp(m.id)} disabled={creating}>
+              <span className="spickemoji">{m.emoji}</span>
+              <b>{m.name[lang]}</b>
+              <span className="spicktag">{m.tagline[lang]}</span>
+            </button>
+          ))}
+        </div>
       </section>
 
       {loaded && apps.length === 0 ? (
@@ -127,4 +137,13 @@ const STYLE = `
 .stag.hidden { background: var(--coral); color: #fff; }
 .sinfo em { font-style: normal; font-size: 14px; color: var(--ink-soft); }
 .sactions { display: flex; gap: 8px; }
+.spick { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
+.spickcard { text-align: left; cursor: pointer; background: #fff; border: 3px solid var(--line); box-shadow: var(--shadow);
+  padding: 16px; display: grid; gap: 6px; }
+.spickcard:hover { transform: translate(-2px,-2px); box-shadow: 6px 6px 0 var(--ink); }
+.spickcard:active { transform: translate(4px,4px); box-shadow: none; }
+.spickcard:disabled { opacity: .5; cursor: wait; }
+.spickemoji { font-size: 32px; }
+.spickcard b { font-size: 19px; }
+.spicktag { font-size: 15px; color: var(--ink-soft); }
 `;

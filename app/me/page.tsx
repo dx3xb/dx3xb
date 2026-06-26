@@ -278,7 +278,7 @@ export default function MePage() {
               <ul className="mhist">
                 {myApps.map((a) => (
                   <li key={a.id}>
-                    <span className="mbadge" style={{ background: "var(--blue)" }}>QUIZ</span>
+                    <span className="mbadge" style={{ background: "var(--blue)" }}>{a.template === "thisorthat" ? "VS" : "QUIZ"}</span>
                     <a className="mgame" href={`/studio/${a.id}?lang=${lang}`} style={{ textDecoration: "none", color: "var(--ink)" }}>
                       {a.title || "(untitled)"}
                     </a>

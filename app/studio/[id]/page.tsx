@@ -2,15 +2,16 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { QuizPlayer } from "../../quiz-player";
+import { QuizPlayer, QuizEditor } from "../../quiz-player";
+import { ThisOrThatPlayer, ThisOrThatEditor, totValidate, totPublishable, totEmpty } from "../../_mt/thisorthat";
 import {
   getMicroapp,
   updateMicroapp,
   deleteMicroapp,
   quizIsPublishable,
   validateQuizConfig,
+  emptyQuiz,
   type Microapp,
-  type QuizConfig,
   type MicroStatus,
 } from "../../dx3xb-apps";
 import { getEmail } from "../../dx3xb-trio";
@@ -24,68 +25,30 @@ function initialLang(): Lang {
   return s === "zh" ? "zh" : "en";
 }
 
+function validateFor(template: string, c: unknown): unknown {
+  return template === "thisorthat" ? totValidate(c) : validateQuizConfig(c);
+}
+function publishableFor(template: string, c: unknown): boolean {
+  return template === "thisorthat" ? totPublishable(totValidate(c)) : quizIsPublishable(validateQuizConfig(c));
+}
+function emptyFor(template: string): unknown {
+  return template === "thisorthat" ? totEmpty() : emptyQuiz();
+}
+
 const C = {
   zh: {
-    back: "← 我的微应用",
-    edit: "编辑",
-    preview: "预览",
-    titlePh: "测验标题（如：你是哪种猫？）",
-    introPh: "一句话介绍（可选）",
-    results: "结果（2–8 个）",
-    addResult: "+ 加一个结果",
-    emojiPh: "😺",
-    resTitlePh: "结果名（如：懒猫）",
-    resDescPh: "结果描述（可选）",
-    questions: "题目（1–12 题）",
-    addQuestion: "+ 加一题",
-    qPh: "题目（如：周末你更想…）",
-    optPh: "选项",
-    addOption: "+ 选项",
-    scoreHint: "点结果表情给该选项加权（0→1→2）：",
-    save: "保存草稿",
-    saved: "已保存 ✓",
-    saving: "保存中…",
-    makeLink: "生成分享链接",
-    submit: "提交到社区墙",
-    submitted: "已提交审核 ✓",
-    del: "删除",
-    delConfirm: "确定删除这个微应用？",
-    shareLabel: "分享链接：",
-    needPublishable: "结果和题目都填好（结果≥2、每题选项≥2）才能发布。",
-    needEmail: "提交到社区墙需要先注册认领账号。",
-    goClaim: "去 /me 注册 →",
-    notfound: "找不到这个微应用。",
+    back: "← 我的微应用", edit: "编辑", preview: "预览", titlePh: "标题（如：你是哪种猫？）",
+    save: "保存草稿", saved: "已保存 ✓", saving: "保存中…", makeLink: "生成分享链接", submit: "提交到社区墙",
+    submitted: "已提交审核 ✓", del: "删除", delConfirm: "确定删除这个微应用？", shareLabel: "分享链接：",
+    needPublishable: "内容填好后才能发布（按各模板的最少要求）。", needEmail: "提交到社区墙需要先注册认领账号。",
+    goClaim: "去 /me 注册 →", notfound: "找不到这个微应用。",
   },
   en: {
-    back: "← My Micro-apps",
-    edit: "EDIT",
-    preview: "PREVIEW",
-    titlePh: "Quiz title (e.g. Which cat are you?)",
-    introPh: "One-line intro (optional)",
-    results: "Results (2–8)",
-    addResult: "+ Add result",
-    emojiPh: "😺",
-    resTitlePh: "Result name (e.g. Lazy Cat)",
-    resDescPh: "Result description (optional)",
-    questions: "Questions (1–12)",
-    addQuestion: "+ Add question",
-    qPh: "Question (e.g. On weekends you'd rather…)",
-    optPh: "Option",
-    addOption: "+ Option",
-    scoreHint: "Tap a result emoji to weight this option (0→1→2):",
-    save: "Save draft",
-    saved: "Saved ✓",
-    saving: "Saving…",
-    makeLink: "Make share link",
-    submit: "Submit to gallery",
-    submitted: "Submitted ✓",
-    del: "Delete",
-    delConfirm: "Delete this micro-app?",
-    shareLabel: "Share link:",
-    needPublishable: "Fill results & questions (≥2 results, ≥2 options each) before publishing.",
-    needEmail: "Submitting to the gallery needs a claimed account.",
-    goClaim: "Register at /me →",
-    notfound: "Micro-app not found.",
+    back: "← My Micro-apps", edit: "EDIT", preview: "PREVIEW", titlePh: "Title (e.g. Which cat are you?)",
+    save: "Save draft", saved: "Saved ✓", saving: "Saving…", makeLink: "Make share link", submit: "Submit to gallery",
+    submitted: "Submitted ✓", del: "Delete", delConfirm: "Delete this micro-app?", shareLabel: "Share link:",
+    needPublishable: "Fill in the content before publishing (per template's minimum).", needEmail: "Submitting to the gallery needs a claimed account.",
+    goClaim: "Register at /me →", notfound: "Micro-app not found.",
   },
 };
 
@@ -97,9 +60,10 @@ export default function EditorPage() {
   const [loaded, setLoaded] = useState(false);
   const [tab, setTab] = useState<"edit" | "preview">("edit");
   const [title, setTitle] = useState("");
-  const [cfg, setCfg] = useState<QuizConfig | null>(null);
+  const [cfg, setCfg] = useState<unknown>(null);
   const [status, setStatus] = useState<MicroStatus>("draft");
   const [slug, setSlug] = useState("");
+  const [tpl, setTpl] = useState("quiz");
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved">("idle");
   const [email, setEmail] = useState<string | null>(null);
   const t = C[lang];
@@ -111,7 +75,8 @@ export default function EditorPage() {
       if (a) {
         setApp(a);
         setTitle(a.title);
-        setCfg(validateQuizConfig(a.config));
+        setTpl(a.template);
+        setCfg(validateFor(a.template, a.config));
         setStatus(a.status);
         setSlug(a.slug);
       }
@@ -120,81 +85,14 @@ export default function EditorPage() {
     })();
   }, [id]);
 
-  function patchCfg(p: Partial<QuizConfig>) {
-    setCfg((c) => (c ? { ...c, ...p } : c));
+  function onCfg(c: unknown) {
+    setCfg(c);
     setSaveState("idle");
   }
-  function setResult(i: number, p: Partial<{ emoji: string; title: string; desc: string }>) {
-    if (!cfg) return;
-    const results = cfg.results.map((r, j) => (j === i ? { ...r, ...p } : r));
-    patchCfg({ results });
-  }
-  function addResult() {
-    if (!cfg || cfg.results.length >= 8) return;
-    const k = "r" + Math.random().toString(36).slice(2, 5);
-    patchCfg({ results: [...cfg.results, { key: k, emoji: "✨", title: "", desc: "" }] });
-  }
-  function removeResult(i: number) {
-    if (!cfg || cfg.results.length <= 1) return;
-    patchCfg({ results: cfg.results.filter((_, j) => j !== i) });
-  }
-  function setQ(i: number, p: Partial<{ q: string }>) {
-    if (!cfg) return;
-    patchCfg({ questions: cfg.questions.map((q, j) => (j === i ? { ...q, ...p } : q)) });
-  }
-  function addQuestion() {
-    if (!cfg || cfg.questions.length >= 12) return;
-    patchCfg({ questions: [...cfg.questions, { q: "", options: [{ label: "", scores: {} }, { label: "", scores: {} }] }] });
-  }
-  function removeQuestion(i: number) {
-    if (!cfg || cfg.questions.length <= 1) return;
-    patchCfg({ questions: cfg.questions.filter((_, j) => j !== i) });
-  }
-  function setOpt(qi: number, oi: number, label: string) {
-    if (!cfg) return;
-    const questions = cfg.questions.map((q, j) =>
-      j === qi ? { ...q, options: q.options.map((o, k) => (k === oi ? { ...o, label } : o)) } : q,
-    );
-    patchCfg({ questions });
-  }
-  function addOption(qi: number) {
-    if (!cfg) return;
-    const questions = cfg.questions.map((q, j) =>
-      j === qi && q.options.length < 6 ? { ...q, options: [...q.options, { label: "", scores: {} }] } : q,
-    );
-    patchCfg({ questions });
-  }
-  function removeOption(qi: number, oi: number) {
-    if (!cfg) return;
-    const questions = cfg.questions.map((q, j) =>
-      j === qi && q.options.length > 2 ? { ...q, options: q.options.filter((_, k) => k !== oi) } : q,
-    );
-    patchCfg({ questions });
-  }
-  function cycleScore(qi: number, oi: number, key: string) {
-    if (!cfg) return;
-    const questions = cfg.questions.map((q, j) => {
-      if (j !== qi) return q;
-      return {
-        ...q,
-        options: q.options.map((o, k) => {
-          if (k !== oi) return o;
-          const cur = o.scores[key] ?? 0;
-          const next = cur >= 2 ? 0 : cur + 1;
-          const scores = { ...o.scores };
-          if (next === 0) delete scores[key];
-          else scores[key] = next;
-          return { ...o, scores };
-        }),
-      };
-    });
-    patchCfg({ questions });
-  }
-
   async function save(newStatus?: MicroStatus) {
-    if (!cfg) return;
+    if (cfg == null) return;
     setSaveState("saving");
-    const ok = await updateMicroapp(id, { title, config: cfg, status: newStatus });
+    const ok = await updateMicroapp(id, { title, config: validateFor(tpl, cfg), status: newStatus });
     if (ok && newStatus) setStatus(newStatus);
     setSaveState(ok ? "saved" : "idle");
   }
@@ -205,9 +103,10 @@ export default function EditorPage() {
   }
 
   if (!loaded) return <main className="wrap"><style dangerouslySetInnerHTML={{ __html: STYLE }} /><p className="enote">…</p></main>;
-  if (!app || !cfg) return <main className="wrap"><style dangerouslySetInnerHTML={{ __html: STYLE }} /><p className="enote">{t.notfound}</p></main>;
+  if (!app || cfg == null) return <main className="wrap"><style dangerouslySetInnerHTML={{ __html: STYLE }} /><p className="enote">{t.notfound}</p></main>;
 
-  const publishable = quizIsPublishable(validateQuizConfig(cfg));
+  const publishable = publishableFor(tpl, cfg);
+  const validCfg = validateFor(tpl, cfg);
   const shareUrl = `https://dx3xb.com/u/${slug}`;
 
   return (
@@ -222,55 +121,19 @@ export default function EditorPage() {
       </div>
 
       {tab === "preview" ? (
-        <QuizPlayer config={validateQuizConfig(cfg)} title={title} lang={lang} preview />
+        tpl === "thisorthat" ? (
+          <ThisOrThatPlayer config={validCfg as never} title={title} lang={lang} preview />
+        ) : (
+          <QuizPlayer config={validCfg} title={title} lang={lang} preview />
+        )
       ) : (
         <div className="eform">
           <input className="ein big" placeholder={t.titlePh} value={title} maxLength={60} onChange={(e) => { setTitle(e.target.value); setSaveState("idle"); }} />
-          <input className="ein" placeholder={t.introPh} value={cfg.intro} maxLength={200} onChange={(e) => patchCfg({ intro: e.target.value })} />
-
-          <h3 className="ehead">{t.results}</h3>
-          {cfg.results.map((r, i) => (
-            <div key={i} className="ecard">
-              <div className="erow">
-                <input className="ein emoji" value={r.emoji} maxLength={6} onChange={(e) => setResult(i, { emoji: e.target.value })} placeholder={t.emojiPh} />
-                <input className="ein grow" value={r.title} maxLength={40} onChange={(e) => setResult(i, { title: e.target.value })} placeholder={t.resTitlePh} />
-                <button className="ex" onClick={() => removeResult(i)} disabled={cfg.results.length <= 1}>✕</button>
-              </div>
-              <input className="ein" value={r.desc} maxLength={200} onChange={(e) => setResult(i, { desc: e.target.value })} placeholder={t.resDescPh} />
-            </div>
-          ))}
-          {cfg.results.length < 8 && <button className="eadd" onClick={addResult}>{t.addResult}</button>}
-
-          <h3 className="ehead">{t.questions}</h3>
-          {cfg.questions.map((q, qi) => (
-            <div key={qi} className="ecard">
-              <div className="erow">
-                <input className="ein grow" value={q.q} maxLength={120} onChange={(e) => setQ(qi, { q: e.target.value })} placeholder={t.qPh} />
-                <button className="ex" onClick={() => removeQuestion(qi)} disabled={cfg.questions.length <= 1}>✕</button>
-              </div>
-              {q.options.map((o, oi) => (
-                <div key={oi} className="eopt">
-                  <div className="erow">
-                    <input className="ein grow" value={o.label} maxLength={60} onChange={(e) => setOpt(qi, oi, e.target.value)} placeholder={`${t.optPh} ${oi + 1}`} />
-                    <button className="ex" onClick={() => removeOption(qi, oi)} disabled={q.options.length <= 2}>✕</button>
-                  </div>
-                  <div className="escore">
-                    <span className="ehint">{t.scoreHint}</span>
-                    {cfg.results.map((r) => {
-                      const w = o.scores[r.key] ?? 0;
-                      return (
-                        <button key={r.key} className={`echip w${w}`} onClick={() => cycleScore(qi, oi, r.key)} title={r.title}>
-                          {r.emoji || "?"}{w > 0 ? `+${w}` : ""}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              ))}
-              {q.options.length < 6 && <button className="eadd small" onClick={() => addOption(qi)}>{t.addOption}</button>}
-            </div>
-          ))}
-          {cfg.questions.length < 12 && <button className="eadd" onClick={addQuestion}>{t.addQuestion}</button>}
+          {tpl === "thisorthat" ? (
+            <ThisOrThatEditor config={validCfg as never} onChange={onCfg} lang={lang} />
+          ) : (
+            <QuizEditor config={validCfg as never} onChange={onCfg} lang={lang} />
+          )}
 
           <div className="esave">
             <button className="ebig" onClick={() => save()}>{saveState === "saving" ? t.saving : saveState === "saved" ? t.saved : t.save}</button>

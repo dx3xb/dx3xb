@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import QRCode from "qrcode";
 import { toPng } from "html-to-image";
-import { scoreQuiz, type QuizConfig } from "./dx3xb-apps";
+import { scoreQuiz, validateQuizConfig, type QuizConfig } from "./dx3xb-apps";
 
 type Lang = "zh" | "en";
 
@@ -41,19 +41,20 @@ const T = {
 } as const;
 
 export function QuizPlayer({
-  config,
+  config: rawConfig,
   title,
   slug,
   lang,
   preview = false,
 }: {
-  config: QuizConfig;
+  config: unknown;
   title: string;
   slug?: string;
   lang: Lang;
   preview?: boolean;
 }) {
   const t = T[lang];
+  const config = useMemo(() => validateQuizConfig(rawConfig), [rawConfig]);
   const [phase, setPhase] = useState<"intro" | "play" | "result">("intro");
   const [idx, setIdx] = useState(0);
   const [picks, setPicks] = useState<number[]>([]);
@@ -259,3 +260,83 @@ const QP_STYLE = `
 .qp-btn.ghost { background: #fff; color: var(--ink); }
 .qp-btn:active { transform: translate(4px,4px); box-shadow: none; }
 `;
+
+// ===== 编辑器（在 /studio/[id] 宿主里渲染，复用其 .eform/.ein 等样式）=====
+const QE = {
+  zh: { introPh: "一句话介绍（可选）", results: "结果（2–8 个）", addResult: "+ 加一个结果", emojiPh: "😺",
+    resTitlePh: "结果名（如：懒猫）", resDescPh: "结果描述（可选）", questions: "题目（1–12 题）", addQuestion: "+ 加一题",
+    qPh: "题目（如：周末你更想…）", optPh: "选项", addOption: "+ 选项", scoreHint: "点结果表情给该选项加权（0→1→2）：" },
+  en: { introPh: "One-line intro (optional)", results: "Results (2–8)", addResult: "+ Add result", emojiPh: "😺",
+    resTitlePh: "Result name (e.g. Lazy Cat)", resDescPh: "Result description (optional)", questions: "Questions (1–12)", addQuestion: "+ Add question",
+    qPh: "Question (e.g. On weekends you'd rather…)", optPh: "Option", addOption: "+ Option", scoreHint: "Tap a result emoji to weight this option (0→1→2):" },
+} as const;
+
+export function QuizEditor({ config, onChange, lang }: { config: QuizConfig; onChange: (c: QuizConfig) => void; lang: Lang }) {
+  const t = QE[lang];
+  const c = config;
+  const setResult = (i: number, p: Partial<{ emoji: string; title: string; desc: string }>) =>
+    onChange({ ...c, results: c.results.map((r, j) => (j === i ? { ...r, ...p } : r)) });
+  const setQ = (i: number, q: string) => onChange({ ...c, questions: c.questions.map((x, j) => (j === i ? { ...x, q } : x)) });
+  const setOpt = (qi: number, oi: number, label: string) =>
+    onChange({ ...c, questions: c.questions.map((x, j) => (j === qi ? { ...x, options: x.options.map((o, k) => (k === oi ? { ...o, label } : o)) } : x)) });
+  const cycleScore = (qi: number, oi: number, key: string) =>
+    onChange({
+      ...c,
+      questions: c.questions.map((x, j) =>
+        j !== qi ? x : { ...x, options: x.options.map((o, k) => {
+          if (k !== oi) return o;
+          const cur = o.scores[key] ?? 0; const next = cur >= 2 ? 0 : cur + 1; const scores = { ...o.scores };
+          if (next === 0) delete scores[key]; else scores[key] = next; return { ...o, scores };
+        }) },
+      ),
+    });
+  return (
+    <div className="eform">
+      <input className="ein" placeholder={t.introPh} value={c.intro} maxLength={200} onChange={(e) => onChange({ ...c, intro: e.target.value })} />
+      <h3 className="ehead">{t.results}</h3>
+      {c.results.map((r, i) => (
+        <div key={i} className="ecard">
+          <div className="erow">
+            <input className="ein emoji" value={r.emoji} maxLength={6} placeholder={t.emojiPh} onChange={(e) => setResult(i, { emoji: e.target.value })} />
+            <input className="ein grow" value={r.title} maxLength={40} placeholder={t.resTitlePh} onChange={(e) => setResult(i, { title: e.target.value })} />
+            <button className="ex" onClick={() => onChange({ ...c, results: c.results.filter((_, j) => j !== i) })} disabled={c.results.length <= 1}>✕</button>
+          </div>
+          <input className="ein" value={r.desc} maxLength={200} placeholder={t.resDescPh} onChange={(e) => setResult(i, { desc: e.target.value })} />
+        </div>
+      ))}
+      {c.results.length < 8 && (
+        <button className="eadd" onClick={() => onChange({ ...c, results: [...c.results, { key: "r" + Math.random().toString(36).slice(2, 5), emoji: "✨", title: "", desc: "" }] })}>{t.addResult}</button>
+      )}
+      <h3 className="ehead">{t.questions}</h3>
+      {c.questions.map((q, qi) => (
+        <div key={qi} className="ecard">
+          <div className="erow">
+            <input className="ein grow" value={q.q} maxLength={120} placeholder={t.qPh} onChange={(e) => setQ(qi, e.target.value)} />
+            <button className="ex" onClick={() => onChange({ ...c, questions: c.questions.filter((_, j) => j !== qi) })} disabled={c.questions.length <= 1}>✕</button>
+          </div>
+          {q.options.map((o, oi) => (
+            <div key={oi} className="eopt">
+              <div className="erow">
+                <input className="ein grow" value={o.label} maxLength={60} placeholder={`${t.optPh} ${oi + 1}`} onChange={(e) => setOpt(qi, oi, e.target.value)} />
+                <button className="ex" onClick={() => onChange({ ...c, questions: c.questions.map((x, j) => (j === qi ? { ...x, options: x.options.filter((_, k) => k !== oi) } : x)) })} disabled={q.options.length <= 2}>✕</button>
+              </div>
+              <div className="escore">
+                <span className="ehint">{t.scoreHint}</span>
+                {c.results.map((r) => {
+                  const w = o.scores[r.key] ?? 0;
+                  return <button key={r.key} className={`echip w${w}`} onClick={() => cycleScore(qi, oi, r.key)} title={r.title}>{r.emoji || "?"}{w > 0 ? `+${w}` : ""}</button>;
+                })}
+              </div>
+            </div>
+          ))}
+          {q.options.length < 6 && (
+            <button className="eadd small" onClick={() => onChange({ ...c, questions: c.questions.map((x, j) => (j === qi ? { ...x, options: [...x.options, { label: "", scores: {} }] } : x)) })}>{t.addOption}</button>
+          )}
+        </div>
+      ))}
+      {c.questions.length < 12 && (
+        <button className="eadd" onClick={() => onChange({ ...c, questions: [...c.questions, { q: "", options: [{ label: "", scores: {} }, { label: "", scores: {} }] }] })}>{t.addQuestion}</button>
+      )}
+    </div>
+  );
+}
