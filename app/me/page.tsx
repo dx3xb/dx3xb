@@ -15,6 +15,7 @@ import {
   type TrioProgress,
   type MyRun,
 } from "../dx3xb-trio";
+import { getMyMicroapps, type Microapp } from "../dx3xb-apps";
 
 type Lang = "zh" | "en";
 
@@ -50,7 +51,10 @@ const COPY = {
     beat: (p: number) => `击败 ${p}%`,
     microTitle: "我的微应用 / 玩具",
     microSoon: "施工中 🚧",
-    microDesc: "在这里搭建并发布你自己的小玩具——即将开放。",
+    microDesc: "做一个属于你的小测验，生成可分享的结果海报。",
+    microStudio: "打开微应用工厂 →",
+    microEmpty: "还没做过微应用，去工厂做一个吧。",
+    microStatus: { draft: "草稿", unlisted: "仅链接", pending: "审核中", public: "已公开", hidden: "已下架" } as Record<string, string>,
     trainTitle: "思维训练程序",
     trainSoon: "敬请期待",
     trainDesc: "进阶付费训练，系统提升感官与脑力。",
@@ -80,7 +84,10 @@ const COPY = {
     beat: (p: number) => `beat ${p}%`,
     microTitle: "My Micro-apps / Toys",
     microSoon: "UNDER BUILD 🚧",
-    microDesc: "Build and publish your own little toys here — coming soon.",
+    microDesc: "Make your own little quiz and generate a shareable result poster.",
+    microStudio: "Open the studio →",
+    microEmpty: "No micro-apps yet — go make one.",
+    microStatus: { draft: "DRAFT", unlisted: "UNLISTED", pending: "IN REVIEW", public: "PUBLIC", hidden: "REMOVED" } as Record<string, string>,
     trainTitle: "Mind-Training Program",
     trainSoon: "COMING SOON",
     trainDesc: "Advanced paid training to systematically sharpen sense & brain.",
@@ -118,6 +125,7 @@ export default function MePage() {
   const [handle, setHandle] = useState("");
   const [email, setEmail] = useState<string | null>(null);
   const [runs, setRuns] = useState<MyRun[]>([]);
+  const [myApps, setMyApps] = useState<Microapp[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [claimEmail, setClaimEmail] = useState("");
   const [claim, setClaim] = useState<"idle" | "sending" | "sent" | "error">("idle");
@@ -127,11 +135,18 @@ export default function MePage() {
     setLang(getInitialLang());
     void ensureSession();
     (async () => {
-      const [prog, h, e, r] = await Promise.all([getTrioProgress(), getProfileHandle(), getEmail(), getMyRuns()]);
+      const [prog, h, e, r, apps] = await Promise.all([
+        getTrioProgress(),
+        getProfileHandle(),
+        getEmail(),
+        getMyRuns(),
+        getMyMicroapps(),
+      ]);
       setProgress(prog);
       if (h) setHandle(h);
       setEmail(e);
       setRuns(r);
+      setMyApps(apps);
       setLoaded(true);
     })();
   }, []);
@@ -250,11 +265,29 @@ export default function MePage() {
             )}
           </section>
 
-          {/* 我的微应用（施工中） */}
-          <section className="panel mcard mconstruct">
-            <h2 className="pixel mctitle">{t.microTitle}</h2>
+          {/* 我的微应用 */}
+          <section className="panel mcard">
+            <div className="mcardhead">
+              <h2 className="pixel mctitle">{t.microTitle}</h2>
+              <a className="mlink" href={`/studio?lang=${lang}`}>{t.microStudio}</a>
+            </div>
             <p className="mdesc">{t.microDesc}</p>
-            <div className="mwall"><span className="mwallsign">{t.microSoon}</span></div>
+            {myApps.length === 0 ? (
+              <p className="mdesc">{t.microEmpty}</p>
+            ) : (
+              <ul className="mhist">
+                {myApps.map((a) => (
+                  <li key={a.id}>
+                    <span className="mbadge" style={{ background: "var(--blue)" }}>QUIZ</span>
+                    <a className="mgame" href={`/studio/${a.id}?lang=${lang}`} style={{ textDecoration: "none", color: "var(--ink)" }}>
+                      {a.title || "(untitled)"}
+                    </a>
+                    <span className="mbeat">{t.microStatus[a.status] || a.status}</span>
+                    <span className="mdate">{a.plays}▶</span>
+                  </li>
+                ))}
+              </ul>
+            )}
           </section>
 
           {/* 思维训练入口（占位） */}
