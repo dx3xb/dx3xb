@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 
 type Msg = { id: number; name: string; message: string; created_at: string; parent_id: number | null };
 type Lang = "zh" | "en";
+type WallApp = { slug: string; title: string; template: string; plays: number };
+const TPL_EMOJI: Record<string, string> = { quiz: "🐱", knowme: "💘", thisorthat: "⚔️", higherlower: "📈", madlibs: "📖", escape: "🔐" };
 type Toy = {
   slug: string;
   title_zh: string;
@@ -161,6 +163,10 @@ const COPY = {
     trioStart: "开始挑战 →",
     trioReport: "我的总报告",
     toySub: "点亮的卡片直接玩；砌着像素砖墙的还在施工中 🚧",
+    wallTitle: "玩家做的玩具",
+    wallSub: "社区里大家自己做的小测验和小游戏，点开就玩。",
+    wallEmpty: "还没有人上墙，",
+    wallMake: "来做第一个 →",
     soon: "施工中 🚧",
     open: "去玩 →",
     maint: "维护中",
@@ -209,6 +215,10 @@ const COPY = {
     trioStart: "START →",
     trioReport: "My report",
     toySub: "Lit cards are playable; the ones behind a pixel brick wall are still under construction 🚧",
+    wallTitle: "MADE BY PLAYERS",
+    wallSub: "Quizzes & games the community built — tap to play.",
+    wallEmpty: "Nothing here yet,",
+    wallMake: "make the first →",
     soon: "BUILDING 🚧",
     open: "OPEN →",
     maint: "MAINTENANCE",
@@ -268,6 +278,7 @@ export default function Home() {
   const [message, setMessage] = useState("");
   const [gbState, setGbState] = useState<"idle" | "loading" | "err">("idle");
   const [messages, setMessages] = useState<Msg[]>([]);
+  const [community, setCommunity] = useState<WallApp[]>([]);
   const [replyTo, setReplyTo] = useState<number | null>(null);
   const [replyName, setReplyName] = useState("");
   const [replyMsg, setReplyMsg] = useState("");
@@ -319,8 +330,19 @@ export default function Home() {
     }
   }
 
+  async function loadWall() {
+    try {
+      const res = await fetch("/api/wall", { cache: "no-store" });
+      const d = await res.json();
+      setCommunity(d.apps ?? []);
+    } catch {
+      /* ignore */
+    }
+  }
+
   useEffect(() => {
     loadGuestbook();
+    loadWall();
   }, []);
 
   async function subscribe(e: React.FormEvent) {
@@ -506,6 +528,25 @@ export default function Home() {
               })
             )}
           </div>
+        </section>
+
+        {/* 玩家做的玩具（社区墙） */}
+        <section className="section">
+          <h2 className="h2">{t.wallTitle}</h2>
+          <p className="sub">{t.wallSub}</p>
+          {community.length === 0 ? (
+            <p className="note">{t.wallEmpty} <a href={`/studio?lang=${lang}`}>{t.wallMake}</a></p>
+          ) : (
+            <div className="grid">
+              {community.map((a) => (
+                <a className="toy live" href={`/u/${a.slug}?lang=${lang}`} key={a.slug}>
+                  <div className="emoji">{TPL_EMOJI[a.template] || "🎲"}</div>
+                  <div className="pixel" style={{ fontSize: 15 }}>{a.title || "(untitled)"}</div>
+                  <div className="soon">▶ {a.plays}</div>
+                </a>
+              ))}
+            </div>
+          )}
         </section>
 
         {/* SUBSCRIBE */}
