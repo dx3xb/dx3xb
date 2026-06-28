@@ -9,7 +9,17 @@ export type HlItem = { label: string; value: number };
 export type HlConfig = { intro: string; unit: string; items: HlItem[] };
 
 export function hlEmpty(): HlConfig {
-  return { intro: "", unit: "", items: [{ label: "", value: 0 }, { label: "", value: 0 }, { label: "", value: 0 }, { label: "", value: 0 }] };
+  return {
+    intro: "猜猜哪个更贵（这是示例，改成你自己的）",
+    unit: "元",
+    items: [
+      { label: "一杯奶茶", value: 18 },
+      { label: "一张电影票", value: 45 },
+      { label: "一双球鞋", value: 599 },
+      { label: "一部手机", value: 4999 },
+      { label: "一台笔记本", value: 8999 },
+    ],
+  };
 }
 export function hlValidate(input: unknown): HlConfig {
   const o = (input ?? {}) as Record<string, unknown>;

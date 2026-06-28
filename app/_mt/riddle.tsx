@@ -9,7 +9,13 @@ export type Riddle = { q: string; answer: string; hint: string };
 export type RdConfig = { intro: string; riddles: Riddle[] };
 
 export function rdEmpty(): RdConfig {
-  return { intro: "", riddles: [{ q: "", answer: "", hint: "" }, { q: "", answer: "", hint: "" }] };
+  return {
+    intro: "能逃出我的脑洞吗（这是示例，改成你自己的）",
+    riddles: [
+      { q: "什么东西越洗越脏？", answer: "水", hint: "它能洗别的" },
+      { q: "什么门永远关不上？", answer: "球门", hint: "和运动有关" },
+    ],
+  };
 }
 export function rdValidate(input: unknown): RdConfig {
   const o = (input ?? {}) as Record<string, unknown>;

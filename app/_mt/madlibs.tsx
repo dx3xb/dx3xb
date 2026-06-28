@@ -8,7 +8,10 @@ import { clean, type Lang } from "./types";
 export type MlConfig = { intro: string; story: string };
 
 export function mlEmpty(): MlConfig {
-  return { intro: "", story: "" };
+  return {
+    intro: "乱填出一个爆笑故事（这是示例，改成你自己的）",
+    story: "今天我在{地点}遇到一只{形容词}的{动物}，它突然对我说「{一句话}」，我吓得{动作}。",
+  };
 }
 export function mlValidate(input: unknown): MlConfig {
   const o = (input ?? {}) as Record<string, unknown>;

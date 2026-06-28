@@ -10,11 +10,11 @@ export type KmConfig = { intro: string; questions: KmQuestion[] };
 
 export function kmEmpty(): KmConfig {
   return {
-    intro: "",
+    intro: "测测你有多懂我（这是示例，改成关于你自己的）",
     questions: [
-      { q: "", options: ["", ""], correct: 0 },
-      { q: "", options: ["", ""], correct: 0 },
-      { q: "", options: ["", ""], correct: 0 },
+      { q: "我最爱的食物是？", options: ["火锅", "寿司", "沙拉"], correct: 0 },
+      { q: "我周末更可能在…", options: ["睡觉", "打游戏", "逛街"], correct: 1 },
+      { q: "我最受不了的是？", options: ["蟑螂", "加班", "没网"], correct: 2 },
     ],
   };
 }

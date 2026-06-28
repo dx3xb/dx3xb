@@ -9,7 +9,14 @@ export type TotPair = { a: string; b: string; mine: 0 | 1 };
 export type TotConfig = { intro: string; pairs: TotPair[] };
 
 export function totEmpty(): TotConfig {
-  return { intro: "", pairs: [{ a: "", b: "", mine: 0 }, { a: "", b: "", mine: 0 }, { a: "", b: "", mine: 0 }] };
+  return {
+    intro: "看我们口味合不合（这是示例，改成你自己的）",
+    pairs: [
+      { a: "咖啡", b: "奶茶", mine: 0 },
+      { a: "猫", b: "狗", mine: 1 },
+      { a: "早睡", b: "熬夜", mine: 1 },
+    ],
+  };
 }
 export function totValidate(input: unknown): TotConfig {
   const o = (input ?? {}) as Record<string, unknown>;

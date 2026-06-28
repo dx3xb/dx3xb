@@ -167,6 +167,7 @@ const COPY = {
     wallSub: "社区里大家自己做的小测验和小游戏，点开就玩。",
     wallEmpty: "还没有人上墙，",
     wallMake: "来做第一个 →",
+    wallMakeBtn: "+ 做个自己的玩具 →",
     soon: "施工中 🚧",
     open: "去玩 →",
     maint: "维护中",
@@ -219,6 +220,7 @@ const COPY = {
     wallSub: "Quizzes & games the community built — tap to play.",
     wallEmpty: "Nothing here yet,",
     wallMake: "make the first →",
+    wallMakeBtn: "+ Make your own →",
     soon: "BUILDING 🚧",
     open: "OPEN →",
     maint: "MAINTENANCE",
@@ -537,15 +539,20 @@ export default function Home() {
           {community.length === 0 ? (
             <p className="note">{t.wallEmpty} <a href={`/studio?lang=${lang}`}>{t.wallMake}</a></p>
           ) : (
-            <div className="grid">
-              {community.map((a) => (
-                <a className="toy live" href={`/u/${a.slug}?lang=${lang}`} key={a.slug}>
-                  <div className="emoji">{TPL_EMOJI[a.template] || "🎲"}</div>
-                  <div className="pixel" style={{ fontSize: 15 }}>{a.title || "(untitled)"}</div>
-                  <div className="soon">▶ {a.plays}</div>
-                </a>
-              ))}
-            </div>
+            <>
+              <div className="grid">
+                {community.map((a) => (
+                  <a className="toy live" href={`/u/${a.slug}?lang=${lang}`} key={a.slug}>
+                    <div className="emoji">{TPL_EMOJI[a.template] || "🎲"}</div>
+                    <div className="pixel" style={{ fontSize: 15 }}>{a.title || "(untitled)"}</div>
+                    <div className="soon">▶ {a.plays}</div>
+                  </a>
+                ))}
+              </div>
+              <div style={{ marginTop: 14 }}>
+                <a className="btn" href={`/studio?lang=${lang}`} style={{ textDecoration: "none", display: "inline-block" }}>{t.wallMakeBtn}</a>
+              </div>
+            </>
           )}
         </section>
 
