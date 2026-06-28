@@ -2,18 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { QuizPlayer, QuizEditor } from "../../quiz-player";
-import { ThisOrThatPlayer, ThisOrThatEditor, totValidate, totPublishable, totEmpty } from "../../_mt/thisorthat";
-import {
-  getMicroapp,
-  updateMicroapp,
-  deleteMicroapp,
-  quizIsPublishable,
-  validateQuizConfig,
-  emptyQuiz,
-  type Microapp,
-  type MicroStatus,
-} from "../../dx3xb-apps";
+import { regFor } from "../../_mt/registry";
+import { getMicroapp, updateMicroapp, deleteMicroapp, type Microapp, type MicroStatus } from "../../dx3xb-apps";
 import { getEmail } from "../../dx3xb-trio";
 
 type Lang = "zh" | "en";
@@ -23,16 +13,6 @@ function initialLang(): Lang {
   if (u === "zh" || u === "en") return u;
   const s = window.localStorage.getItem("dx3xb_lang");
   return s === "zh" ? "zh" : "en";
-}
-
-function validateFor(template: string, c: unknown): unknown {
-  return template === "thisorthat" ? totValidate(c) : validateQuizConfig(c);
-}
-function publishableFor(template: string, c: unknown): boolean {
-  return template === "thisorthat" ? totPublishable(totValidate(c)) : quizIsPublishable(validateQuizConfig(c));
-}
-function emptyFor(template: string): unknown {
-  return template === "thisorthat" ? totEmpty() : emptyQuiz();
 }
 
 const C = {
@@ -76,7 +56,7 @@ export default function EditorPage() {
         setApp(a);
         setTitle(a.title);
         setTpl(a.template);
-        setCfg(validateFor(a.template, a.config));
+        setCfg(regFor(a.template).validate(a.config));
         setStatus(a.status);
         setSlug(a.slug);
       }
@@ -92,7 +72,7 @@ export default function EditorPage() {
   async function save(newStatus?: MicroStatus) {
     if (cfg == null) return;
     setSaveState("saving");
-    const ok = await updateMicroapp(id, { title, config: validateFor(tpl, cfg), status: newStatus });
+    const ok = await updateMicroapp(id, { title, config: regFor(tpl).validate(cfg), status: newStatus });
     if (ok && newStatus) setStatus(newStatus);
     setSaveState(ok ? "saved" : "idle");
   }
@@ -105,8 +85,11 @@ export default function EditorPage() {
   if (!loaded) return <main className="wrap"><style dangerouslySetInnerHTML={{ __html: STYLE }} /><p className="enote">…</p></main>;
   if (!app || cfg == null) return <main className="wrap"><style dangerouslySetInnerHTML={{ __html: STYLE }} /><p className="enote">{t.notfound}</p></main>;
 
-  const publishable = publishableFor(tpl, cfg);
-  const validCfg = validateFor(tpl, cfg);
+  const reg = regFor(tpl);
+  const validCfg = reg.validate(cfg);
+  const publishable = reg.publishable(cfg);
+  const Player = reg.Player;
+  const Editor = reg.Editor;
   const shareUrl = `https://dx3xb.com/u/${slug}`;
 
   return (
@@ -121,19 +104,11 @@ export default function EditorPage() {
       </div>
 
       {tab === "preview" ? (
-        tpl === "thisorthat" ? (
-          <ThisOrThatPlayer config={validCfg as never} title={title} lang={lang} preview />
-        ) : (
-          <QuizPlayer config={validCfg} title={title} lang={lang} preview />
-        )
+        <Player config={validCfg} title={title} lang={lang} preview />
       ) : (
         <div className="eform">
           <input className="ein big" placeholder={t.titlePh} value={title} maxLength={60} onChange={(e) => { setTitle(e.target.value); setSaveState("idle"); }} />
-          {tpl === "thisorthat" ? (
-            <ThisOrThatEditor config={validCfg as never} onChange={onCfg} lang={lang} />
-          ) : (
-            <QuizEditor config={validCfg as never} onChange={onCfg} lang={lang} />
-          )}
+          <Editor config={validCfg} onChange={onCfg} lang={lang} />
 
           <div className="esave">
             <button className="ebig" onClick={() => save()}>{saveState === "saving" ? t.saving : saveState === "saved" ? t.saved : t.save}</button>

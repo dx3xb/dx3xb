@@ -2,8 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { QuizPlayer } from "../../quiz-player";
-import { ThisOrThatPlayer } from "../../_mt/thisorthat";
+import { regFor } from "../../_mt/registry";
 import { getMicroappBySlug, bumpPlay, reportMicroapp, type Microapp } from "../../dx3xb-apps";
 
 type Lang = "zh" | "en";
@@ -56,11 +55,10 @@ export default function RunnerPage() {
         </div>
       ) : (
         <>
-          {app.template === "thisorthat" ? (
-            <ThisOrThatPlayer config={app.config as never} title={app.title} slug={app.slug} lang={lang} />
-          ) : (
-            <QuizPlayer config={app.config} title={app.title} slug={app.slug} lang={lang} />
-          )}
+          {(() => {
+            const Player = regFor(app.template).Player;
+            return <Player config={app.config} title={app.title} slug={app.slug} lang={lang} />;
+          })()}
           <div className="ufoot">
             <button
               className="ulink"

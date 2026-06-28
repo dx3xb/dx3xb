@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getMyMicroapps, createMicroapp, emptyQuiz, TEMPLATE_META, type Microapp } from "../dx3xb-apps";
-import { totEmpty } from "../_mt/thisorthat";
+import { getMyMicroapps, createMicroapp, TEMPLATE_META, type Microapp } from "../dx3xb-apps";
+import { regFor } from "../_mt/registry";
 
 type Lang = "zh" | "en";
 function initialLang(): Lang {
@@ -60,7 +60,7 @@ export default function StudioPage() {
   async function newApp(template: string) {
     if (creating) return;
     setCreating(true);
-    const config = template === "thisorthat" ? totEmpty() : emptyQuiz();
+    const config = regFor(template).empty();
     const r = await createMicroapp(template, config);
     if (r) window.location.href = `/studio/${r.id}?lang=${lang}`;
     else setCreating(false);
