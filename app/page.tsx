@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-type Msg = { name: string; message: string; created_at: string };
+type Msg = { id: number; name: string; message: string; created_at: string; parent_id: number | null };
 type Lang = "zh" | "en";
 type Toy = {
   slug: string;
@@ -180,6 +180,10 @@ const COPY = {
     stamp: "盖章",
     gbErr: "没发出去，再试一次。",
     gbEmpty: "还没有人留爪印，来当第一个吧～",
+    reply: "回复",
+    replyPh: "回复点什么…",
+    sendReply: "发送",
+    cancel: "取消",
     anon: "匿名小可爱",
     footNote: "用像素和好奇心拼起来的",
     navHome: "回顶",
@@ -224,6 +228,10 @@ const COPY = {
     stamp: "STAMP",
     gbErr: "Failed to send, try again.",
     gbEmpty: "No paw prints yet — be the first!",
+    reply: "Reply",
+    replyPh: "Write a reply…",
+    sendReply: "Send",
+    cancel: "Cancel",
     anon: "Anonymous Cutie",
     footNote: "hammered together with pixels & curiosity",
     navHome: "TOP",
@@ -260,6 +268,10 @@ export default function Home() {
   const [message, setMessage] = useState("");
   const [gbState, setGbState] = useState<"idle" | "loading" | "err">("idle");
   const [messages, setMessages] = useState<Msg[]>([]);
+  const [replyTo, setReplyTo] = useState<number | null>(null);
+  const [replyName, setReplyName] = useState("");
+  const [replyMsg, setReplyMsg] = useState("");
+  const [replyBusy, setReplyBusy] = useState(false);
 
   const t = COPY[lang];
 
@@ -352,6 +364,34 @@ export default function Home() {
       }
     } catch {
       setGbState("err");
+    }
+  }
+
+  function openReply(topId: number, atName: string) {
+    setReplyTo(topId);
+    setReplyName("");
+    setReplyMsg(atName ? `@${atName} ` : "");
+  }
+  async function submitReply() {
+    if (!replyMsg.trim() || replyTo == null || replyBusy) return;
+    setReplyBusy(true);
+    try {
+      const res = await fetch("/api/guestbook", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: replyName, message: replyMsg, parent_id: replyTo }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        setReplyTo(null);
+        setReplyMsg("");
+        setReplyName("");
+        loadGuestbook();
+      }
+    } catch {
+      /* ignore */
+    } finally {
+      setReplyBusy(false);
     }
   }
 
@@ -529,13 +569,39 @@ export default function Home() {
             {messages.length === 0 ? (
               <p className="note">{t.gbEmpty}</p>
             ) : (
-              messages.map((m, i) => (
-                <div className="msg" key={i}>
-                  <span className="when">{timeAgo(m.created_at, lang)}</span>
-                  <span className="who">{m.name || t.anon}</span>
-                  <div className="what">{m.message}</div>
-                </div>
-              ))
+              messages
+                .filter((m) => !m.parent_id)
+                .map((top) => {
+                  const replies = messages.filter((m) => m.parent_id === top.id);
+                  return (
+                    <div className="thread" key={top.id}>
+                      <div className="msg">
+                        <span className="when">{timeAgo(top.created_at, lang)}</span>
+                        <span className="who">{top.name || t.anon}</span>
+                        <div className="what">{top.message}</div>
+                        <button className="replybtn" onClick={() => openReply(top.id, "")}>↩ {t.reply}</button>
+                      </div>
+                      {replies.map((rep) => (
+                        <div className="msg reply" key={rep.id}>
+                          <span className="when">{timeAgo(rep.created_at, lang)}</span>
+                          <span className="who">{rep.name || t.anon}</span>
+                          <div className="what">{rep.message}</div>
+                          <button className="replybtn" onClick={() => openReply(top.id, rep.name || t.anon)}>↩ {t.reply}</button>
+                        </div>
+                      ))}
+                      {replyTo === top.id && (
+                        <div className="msg reply replyform">
+                          <input className="input" type="text" maxLength={24} placeholder={t.namePh} value={replyName} onChange={(e) => setReplyName(e.target.value)} style={{ marginBottom: 8 }} />
+                          <textarea className="textarea" maxLength={280} placeholder={t.replyPh} value={replyMsg} onChange={(e) => setReplyMsg(e.target.value)} />
+                          <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                            <button className="btn teal" onClick={submitReply} disabled={replyBusy || !replyMsg.trim()}>{t.sendReply}</button>
+                            <button className="btn" style={{ background: "#fff", color: "var(--ink)" }} onClick={() => setReplyTo(null)}>{t.cancel}</button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
             )}
           </div>
         </section>
