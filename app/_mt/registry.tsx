@@ -6,6 +6,8 @@ import { validateQuizConfig, quizIsPublishable, emptyQuiz } from "../dx3xb-apps"
 import { ThisOrThatPlayer, ThisOrThatEditor, totValidate, totPublishable, totEmpty } from "./thisorthat";
 import { KnowMePlayer, KnowMeEditor, kmValidate, kmPublishable, kmEmpty } from "./knowme";
 import { HigherLowerPlayer, HigherLowerEditor, hlValidate, hlPublishable, hlEmpty } from "./higherlower";
+import { MadLibsPlayer, MadLibsEditor, mlValidate, mlPublishable, mlEmpty } from "./madlibs";
+import { RiddleEscapePlayer, RiddleEscapeEditor, rdValidate, rdPublishable, rdEmpty } from "./riddle";
 import type { Lang } from "./types";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -47,6 +49,20 @@ export const REG: Record<string, Reg> = {
     publishable: (c) => hlPublishable(hlValidate(c)),
     Player: HigherLowerPlayer as PlayerC,
     Editor: HigherLowerEditor as EditorC,
+  },
+  madlibs: {
+    empty: mlEmpty,
+    validate: mlValidate,
+    publishable: (c) => mlPublishable(mlValidate(c)),
+    Player: MadLibsPlayer as PlayerC,
+    Editor: MadLibsEditor as EditorC,
+  },
+  escape: {
+    empty: rdEmpty,
+    validate: rdValidate,
+    publishable: (c) => rdPublishable(rdValidate(c)),
+    Player: RiddleEscapePlayer as PlayerC,
+    Editor: RiddleEscapeEditor as EditorC,
   },
 };
 
