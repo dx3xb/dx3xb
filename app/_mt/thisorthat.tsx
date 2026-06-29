@@ -283,7 +283,8 @@ const TOT_STYLE = `
 .tot-step { font-family: var(--font-press), monospace; font-size: 10px; color: var(--ink-soft); margin: 0 0 14px; text-align: center; }
 .tot-vs { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 10px; }
 .tot-side { font-family: inherit; font-size: 22px; min-height: 110px; background: var(--cream); color: var(--ink); border: 3px solid var(--line);
-  box-shadow: 4px 4px 0 var(--ink); cursor: pointer; padding: 12px; transition: transform .06s, box-shadow .06s, background .1s; }
+  box-shadow: 4px 4px 0 var(--ink); cursor: pointer; padding: 12px; word-break: break-word; transition: transform .06s, box-shadow .06s, background .1s; }
+@media (max-width: 430px) { .tot-vs { gap: 6px; } .tot-side { font-size: 18px; min-height: 92px; padding: 9px 6px; } }
 .tot-side.b { background: #eaf6ff; }
 .tot-side:hover { transform: translate(-1px,-1px); box-shadow: 6px 6px 0 var(--ink); }
 .tot-side:active { transform: translate(3px,3px); box-shadow: none; }

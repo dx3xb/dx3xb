@@ -323,8 +323,13 @@ const HL_STYLE = `
 .hl-item.next.ok { background: #e8f8f1; }
 .hl-item.next.no { background: #ffeaea; }
 .hl-tag { font-family: var(--font-press), monospace; font-size: 8px; color: var(--ink-soft); }
-.hl-label { font-size: 21px; line-height: 1.2; }
+.hl-label { font-size: 21px; line-height: 1.2; word-break: break-word; }
 .hl-val { font-family: var(--font-press), monospace; font-size: 17px; }
+@media (max-width: 430px) {
+  .hl-arena { gap: 6px; }
+  .hl-item { min-height: 108px; padding: 10px 6px; }
+  .hl-label { font-size: 17px; }
+}
 .hl-or { align-self: center; font-family: var(--font-press), monospace; font-size: 11px; color: var(--coral); }
 .hl-guess { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .hl-fb { text-align: center; font-family: var(--font-press), monospace; font-size: 16px; margin: 8px 0 0; }

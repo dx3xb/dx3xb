@@ -77,11 +77,11 @@ const COPY = {
     qrTitle: "扫码挑战三件套",
     qrCta: "把这张图发给朋友，看谁的综合脑力更高。",
     claimTitle: "注册认领你的账号",
-    claimHint: "保存全部战报、解锁你的空间，换设备也能找回。",
+    claimHint: "保存全部战报、解锁你的空间，换设备也能找回。填邮箱→收信→用同一浏览器点开链接即可认领。",
     emailPh: "你的邮箱",
     send: "发送登录链接",
     sending: "发送中…",
-    sent: "登录链接已发到邮箱 ✉️ 去收信点开即可",
+    sent: "登录链接已发到邮箱 ✉️ 用同一浏览器点开就认领好了",
     err: "发送失败，换个邮箱再试",
     challenger: (name: string, s: number) => `${name} 的三件套综合分 ${s}，敢不敢超过 ta？`,
     shareText: (name: string, s: number, title: string, roast: string, url: string) =>
@@ -114,11 +114,11 @@ const COPY = {
     qrTitle: "SCAN FOR THE TRIO",
     qrCta: "Send this card to a friend — see whose brain ranks higher.",
     claimTitle: "Claim your account",
-    claimHint: "Save every report, unlock your space, recover it on any device.",
+    claimHint: "Save every report, unlock your space, recover it on any device. Enter email → check inbox → open the link in the same browser.",
     emailPh: "your email",
     send: "Send login link",
     sending: "Sending…",
-    sent: "Magic link sent ✉️ check your inbox",
+    sent: "Magic link sent ✉️ open it in this same browser to finish",
     err: "Failed — try another email",
     challenger: (name: string, s: number) => `${name} scored ${s} on the trio. Can you beat them?`,
     shareText: (name: string, s: number, title: string, roast: string, url: string) =>
@@ -436,7 +436,7 @@ const STYLE = `
 .tdesc { font-size: 20px; line-height: 1.45; margin: 0 0 14px; }
 .tprog { font-family: var(--font-press), monospace; font-size: 11px; color: var(--ink-soft); margin: 0 0 14px; }
 .tchallenger { background: var(--yellow); border: 3px solid var(--line); box-shadow: 3px 3px 0 var(--ink); padding: 11px 13px; margin-bottom: 16px; font-size: 18px; }
-.tgames { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.tgames { display: grid; grid-template-columns: repeat(auto-fit, minmax(92px, 1fr)); gap: 10px; }
 .tgame { text-decoration: none; color: var(--ink); background: #fff; border: 3px solid var(--line); box-shadow: 3px 3px 0 var(--ink);
   padding: 12px 8px; text-align: center; display: block; }
 .tgame.done { background: var(--cream-2); }
@@ -453,7 +453,7 @@ const STYLE = `
 .rbody { padding: 20px; text-align: center; }
 .rissued { font-size: 16px; color: var(--ink-soft); margin: 0 0 2px; }
 .rname { font-family: var(--font-press), monospace; font-size: 17px; margin: 0; }
-.rtitle { font-size: clamp(22px, 7vw, 38px); color: var(--coral); margin: 12px 0 8px; line-height: 1.12; }
+.rtitle { font-size: clamp(22px, 7vw, 38px); color: var(--coral); margin: 12px 0 8px; line-height: 1.12; word-break: break-word; }
 .rroast { font-size: 18px; color: var(--ink-soft); margin: 0 0 14px; }
 .rpct { background: var(--cream-2); border: 3px solid var(--line); padding: 12px; margin: 12px 0 14px; }
 .rpctnum { font-family: var(--font-press), monospace; font-size: clamp(36px, 14vw, 60px); line-height: 1; }

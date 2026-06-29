@@ -276,7 +276,7 @@ const ML_STYLE = `
 .ml-pname { font-size: 18px; }
 .ml-pbody { padding: 22px 20px; }
 .ml-yr { font-family: var(--font-press), monospace; font-size: 9px; letter-spacing: 1px; color: var(--ink-soft); margin: 0 0 10px; }
-.ml-story { font-size: 22px; line-height: 1.6; margin: 0; }
+.ml-story { font-size: 22px; line-height: 1.6; margin: 0; word-break: break-word; }
 .ml-fill { color: var(--coral); border-bottom: 3px solid var(--coral); font-weight: bold; }
 .ml-qr { display: flex; align-items: center; gap: 12px; border-top: 3px dashed rgba(43,34,51,.35); padding-top: 14px; margin-top: 16px; }
 .ml-qrframe { border: 4px solid var(--line); background: #fff; padding: 4px; box-shadow: var(--shadow); flex: none; line-height: 0; }
