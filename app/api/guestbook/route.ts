@@ -59,6 +59,10 @@ export async function POST(request: NextRequest) {
   if (!message) {
     return NextResponse.json({ ok: false, error: "empty_message" }, { status: 400 });
   }
+  // 链接刷屏拦截
+  if ((message.match(/https?:\/\/|www\./gi) || []).length >= 3) {
+    return NextResponse.json({ ok: false, error: "spam" }, { status: 400 });
+  }
 
   try {
     const { country, region, city } = geoOf(request);
@@ -75,6 +79,8 @@ export async function POST(request: NextRequest) {
     if (error) throw error;
     return NextResponse.json({ ok: true });
   } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error);
+    if (msg.includes("rate_limited")) return NextResponse.json({ ok: false, error: "rate_limited" }, { status: 429 });
     console.error("guestbook write failed", error);
     return NextResponse.json({ ok: false, error: "server_error" }, { status: 500 });
   }
