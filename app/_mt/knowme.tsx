@@ -8,7 +8,16 @@ import { clean, type Lang } from "./types";
 export type KmQuestion = { q: string; options: string[]; correct: number };
 export type KmConfig = { intro: string; questions: KmQuestion[] };
 
-export function kmEmpty(): KmConfig {
+export function kmEmpty(lang: Lang = "zh"): KmConfig {
+  if (lang === "en")
+    return {
+      intro: "How well do you know me? (sample — make it about you)",
+      questions: [
+        { q: "My favorite food is?", options: ["Hotpot", "Sushi", "Salad"], correct: 0 },
+        { q: "On weekends I'm probably…", options: ["Sleeping", "Gaming", "Shopping"], correct: 1 },
+        { q: "I can't stand?", options: ["Cockroaches", "Overtime", "No wifi"], correct: 2 },
+      ],
+    };
   return {
     intro: "测测你有多懂我（这是示例，改成关于你自己的）",
     questions: [

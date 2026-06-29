@@ -17,14 +17,14 @@ function initialLang(): Lang {
 
 const C = {
   zh: {
-    back: "← 我的微应用", edit: "编辑", preview: "预览", titlePh: "标题（如：你是哪种猫？）",
+    back: "← 我的微应用", edit: "编辑", preview: "预览", langBtn: "EN", titlePh: "标题（如：你是哪种猫？）",
     save: "保存草稿", saved: "已保存 ✓", saving: "保存中…", makeLink: "生成分享链接", submit: "提交到社区墙",
     submitted: "已提交审核 ✓", del: "删除", delConfirm: "确定删除这个微应用？", shareLabel: "分享链接：",
     needPublishable: "内容填好后才能发布（按各模板的最少要求）。", needEmail: "提交到社区墙需要先注册认领账号。",
     goClaim: "去 /me 注册 →", notfound: "找不到这个微应用。",
   },
   en: {
-    back: "← My Micro-apps", edit: "EDIT", preview: "PREVIEW", titlePh: "Title (e.g. Which cat are you?)",
+    back: "← My Micro-apps", edit: "EDIT", preview: "PREVIEW", langBtn: "中", titlePh: "Title (e.g. Which cat are you?)",
     save: "Save draft", saved: "Saved ✓", saving: "Saving…", makeLink: "Make share link", submit: "Submit to gallery",
     submitted: "Submitted ✓", del: "Delete", delConfirm: "Delete this micro-app?", shareLabel: "Share link:",
     needPublishable: "Fill in the content before publishing (per template's minimum).", needEmail: "Submitting to the gallery needs a claimed account.",
@@ -65,6 +65,16 @@ export default function EditorPage() {
     })();
   }, [id]);
 
+  function toggleLang() {
+    setLang((prev) => {
+      const next: Lang = prev === "zh" ? "en" : "zh";
+      window.localStorage.setItem("dx3xb_lang", next);
+      const url = new URL(window.location.href);
+      url.searchParams.set("lang", next);
+      window.history.replaceState(null, "", url.toString());
+      return next;
+    });
+  }
   function onCfg(c: unknown) {
     setCfg(c);
     setSaveState("idle");
@@ -97,9 +107,12 @@ export default function EditorPage() {
       <style dangerouslySetInnerHTML={{ __html: STYLE }} />
       <div className="ebar">
         <a className="ebtn" href={`/studio?lang=${lang}`}>{t.back}</a>
-        <div className="etabs">
-          <button className={`etab ${tab === "edit" ? "on" : ""}`} onClick={() => setTab("edit")}>{t.edit}</button>
-          <button className={`etab ${tab === "preview" ? "on" : ""}`} onClick={() => setTab("preview")}>{t.preview}</button>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button className="ebtn" onClick={toggleLang} style={{ cursor: "pointer", background: "var(--yellow)" }} aria-label="switch language">{t.langBtn}</button>
+          <div className="etabs">
+            <button className={`etab ${tab === "edit" ? "on" : ""}`} onClick={() => setTab("edit")}>{t.edit}</button>
+            <button className={`etab ${tab === "preview" ? "on" : ""}`} onClick={() => setTab("preview")}>{t.preview}</button>
+          </div>
         </div>
       </div>
 

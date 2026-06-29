@@ -14,8 +14,8 @@ function initialLang(): Lang {
 }
 
 const C = {
-  zh: { back: "← dx3xb", loading: "加载中…", notfound: "这个微应用不存在或已下架。", explore: "去 dx3xb 玩玩", report: "举报", reported: "已举报，谢谢", make: "我也做一个 →" },
-  en: { back: "← dx3xb", loading: "Loading…", notfound: "This micro-app doesn't exist or was removed.", explore: "Explore dx3xb", report: "Report", reported: "Reported, thanks", make: "Make your own →" },
+  zh: { back: "← dx3xb", langBtn: "EN", loading: "加载中…", notfound: "这个微应用不存在或已下架。", explore: "去 dx3xb 玩玩", report: "举报", reported: "已举报，谢谢", make: "我也做一个 →" },
+  en: { back: "← dx3xb", langBtn: "中", loading: "Loading…", notfound: "This micro-app doesn't exist or was removed.", explore: "Explore dx3xb", report: "Report", reported: "Reported, thanks", make: "Make your own →" },
 };
 
 export function RunnerClient({ slug }: { slug: string }) {
@@ -24,6 +24,17 @@ export function RunnerClient({ slug }: { slug: string }) {
   const [loaded, setLoaded] = useState(false);
   const [reported, setReported] = useState(false);
   const t = C[lang];
+
+  function toggleLang() {
+    setLang((prev) => {
+      const next: Lang = prev === "zh" ? "en" : "zh";
+      window.localStorage.setItem("dx3xb_lang", next);
+      const url = new URL(window.location.href);
+      url.searchParams.set("lang", next);
+      window.history.replaceState(null, "", url.toString());
+      return next;
+    });
+  }
 
   useEffect(() => {
     setLang(initialLang());
@@ -39,8 +50,11 @@ export function RunnerClient({ slug }: { slug: string }) {
     <main className="wrap">
       <style dangerouslySetInnerHTML={{ __html: STYLE }} />
       <div className="ubar">
-        <a className="ubtn" href="https://dx3xb.com">{t.back}</a>
-        <a className="ubtn coral" href={`/studio?lang=${lang}`}>{t.make}</a>
+        <a className="ubtn" href={`https://dx3xb.com/?lang=${lang}`}>{t.back}</a>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button className="ubtn" onClick={toggleLang} style={{ cursor: "pointer", background: "var(--yellow)" }} aria-label="switch language">{t.langBtn}</button>
+          <a className="ubtn coral" href={`/studio?lang=${lang}`}>{t.make}</a>
+        </div>
       </div>
 
       {!loaded ? (

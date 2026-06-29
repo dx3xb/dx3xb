@@ -8,7 +8,19 @@ import { clean, type Lang } from "./types";
 export type HlItem = { label: string; value: number };
 export type HlConfig = { intro: string; unit: string; items: HlItem[] };
 
-export function hlEmpty(): HlConfig {
+export function hlEmpty(lang: Lang = "zh"): HlConfig {
+  if (lang === "en")
+    return {
+      intro: "Guess which costs more (sample — edit it)",
+      unit: "$",
+      items: [
+        { label: "A bubble tea", value: 5 },
+        { label: "A movie ticket", value: 14 },
+        { label: "A pair of sneakers", value: 90 },
+        { label: "A phone", value: 799 },
+        { label: "A laptop", value: 1299 },
+      ],
+    };
   return {
     intro: "猜猜哪个更贵（这是示例，改成你自己的）",
     unit: "元",

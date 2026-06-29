@@ -8,7 +8,16 @@ import { clean, type Lang } from "./types";
 export type TotPair = { a: string; b: string; mine: 0 | 1 };
 export type TotConfig = { intro: string; pairs: TotPair[] };
 
-export function totEmpty(): TotConfig {
+export function totEmpty(lang: Lang = "zh"): TotConfig {
+  if (lang === "en")
+    return {
+      intro: "See if our tastes match (sample — edit it)",
+      pairs: [
+        { a: "Coffee", b: "Tea", mine: 0 },
+        { a: "Cats", b: "Dogs", mine: 1 },
+        { a: "Early bird", b: "Night owl", mine: 1 },
+      ],
+    };
   return {
     intro: "看我们口味合不合（这是示例，改成你自己的）",
     pairs: [

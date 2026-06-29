@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getMyMicroapps, createMicroapp, TEMPLATE_META, type Microapp } from "../dx3xb-apps";
+import { getMyMicroapps, createMicroapp, deleteMicroapp, TEMPLATE_META, type Microapp } from "../dx3xb-apps";
 import { regFor } from "../_mt/registry";
 
 type Lang = "zh" | "en";
@@ -24,6 +24,9 @@ const C = {
     empty: "还没有微应用，新建一个吧。",
     edit: "编辑",
     open: "打开",
+    del: "删除",
+    delConfirm: "确定删除这个微应用？",
+    langBtn: "EN",
     plays: (n: number) => `${n} 次游玩`,
     status: { draft: "草稿", unlisted: "仅链接", pending: "审核中", public: "已公开", hidden: "已下架" } as Record<string, string>,
   },
@@ -37,6 +40,9 @@ const C = {
     empty: "No micro-apps yet — make one.",
     edit: "Edit",
     open: "Open",
+    del: "Delete",
+    delConfirm: "Delete this micro-app?",
+    langBtn: "中",
     plays: (n: number) => `${n} plays`,
     status: { draft: "DRAFT", unlisted: "UNLISTED", pending: "IN REVIEW", public: "PUBLIC", hidden: "REMOVED" } as Record<string, string>,
   },
@@ -57,21 +63,41 @@ export default function StudioPage() {
     })();
   }, []);
 
+  function toggleLang() {
+    setLang((prev) => {
+      const next: Lang = prev === "zh" ? "en" : "zh";
+      window.localStorage.setItem("dx3xb_lang", next);
+      const url = new URL(window.location.href);
+      url.searchParams.set("lang", next);
+      window.history.replaceState(null, "", url.toString());
+      return next;
+    });
+  }
+
   async function newApp(template: string) {
     if (creating) return;
     setCreating(true);
-    const config = regFor(template).empty();
+    const config = regFor(template).empty(lang);
     const r = await createMicroapp(template, config);
     if (r) window.location.href = `/studio/${r.id}?lang=${lang}`;
     else setCreating(false);
+  }
+
+  async function del(id: string) {
+    if (!window.confirm(t.delConfirm)) return;
+    await deleteMicroapp(id);
+    setApps(await getMyMicroapps());
   }
 
   return (
     <main className="wrap">
       <style dangerouslySetInnerHTML={{ __html: STYLE }} />
       <div className="sbar">
-        <a className="sbtn" href="https://dx3xb.com">{t.back}</a>
-        <a className="sbtn" href={`/me?lang=${lang}`}>/me</a>
+        <a className="sbtn" href={`https://dx3xb.com/?lang=${lang}`}>{t.back}</a>
+        <div style={{ display: "flex", gap: 8 }}>
+          <a className="sbtn" href={`/me?lang=${lang}`}>/me</a>
+          <button className="sbtn yellow" onClick={toggleLang} aria-label="switch language">{t.langBtn}</button>
+        </div>
       </div>
       <section className="shead">
         <p className="skick">{t.kicker}</p>
@@ -102,6 +128,7 @@ export default function StudioPage() {
               <div className="sactions">
                 <a className="sbtn" href={`/studio/${a.id}?lang=${lang}`}>{t.edit}</a>
                 {a.status !== "draft" && <a className="sbtn coral" href={`/u/${a.slug}?lang=${lang}`}>{t.open}</a>}
+                <button className="sbtn del" onClick={() => del(a.id)}>{t.del}</button>
               </div>
             </li>
           ))}
@@ -117,6 +144,9 @@ const STYLE = `
 .sbtn { display: inline-block; text-decoration: none; font-family: var(--font-press), monospace; font-size: 11px;
   background: #fff; color: var(--ink); border: 3px solid var(--line); box-shadow: 3px 3px 0 var(--ink); padding: 9px 12px; }
 .sbtn.coral { background: var(--coral); color: #fff; }
+.sbtn.yellow { background: var(--yellow); cursor: pointer; }
+.sbtn.del { cursor: pointer; color: var(--ink-soft); }
+.sbtn.del:hover { background: var(--coral); color: #fff; }
 .sbtn:active { transform: translate(3px,3px); box-shadow: none; }
 .shead { margin-bottom: 22px; }
 .skick { font-family: var(--font-press), monospace; font-size: 10px; letter-spacing: 1px; color: var(--ink-soft); margin: 0 0 8px; }

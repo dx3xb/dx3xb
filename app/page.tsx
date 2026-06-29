@@ -435,8 +435,8 @@ export default function Home() {
           <button className="navbtn" onClick={() => scrollToId("toys")}>{t.toyTitle}</button>
           <button className="navbtn" onClick={() => scrollToId("ping")}>{t.pingTitle}</button>
           <button className="navbtn" onClick={() => scrollToId("guestbook")}>{t.gbTitle}</button>
-          <a className="navbtn" href="/trio" style={{ textDecoration: "none" }}>{t.trioNav}</a>
-          <a className="navbtn" href="/me" style={{ textDecoration: "none" }}>{t.meNav}</a>
+          <a className="navbtn" href={`/trio?lang=${lang}`} style={{ textDecoration: "none" }}>{t.trioNav}</a>
+          <a className="navbtn" href={`/me?lang=${lang}`} style={{ textDecoration: "none" }}>{t.meNav}</a>
           <button className="navlang" onClick={toggleLang} aria-label="switch language">{t.langBtn}</button>
         </div>
       </nav>

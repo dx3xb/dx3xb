@@ -14,7 +14,7 @@ import type { Lang } from "./types";
 type PlayerC = ComponentType<{ config: any; title: string; slug?: string; lang: Lang; preview?: boolean }>;
 type EditorC = ComponentType<{ config: any; onChange: (c: any) => void; lang: Lang }>;
 type Reg = {
-  empty: () => unknown;
+  empty: (lang?: Lang) => unknown;
   validate: (c: unknown) => unknown;
   publishable: (c: unknown) => boolean;
   Player: PlayerC;

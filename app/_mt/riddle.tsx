@@ -8,7 +8,15 @@ import { clean, type Lang } from "./types";
 export type Riddle = { q: string; answer: string; hint: string };
 export type RdConfig = { intro: string; riddles: Riddle[] };
 
-export function rdEmpty(): RdConfig {
+export function rdEmpty(lang: Lang = "zh"): RdConfig {
+  if (lang === "en")
+    return {
+      intro: "Can you escape my brain? (sample — edit it)",
+      riddles: [
+        { q: "What gets dirtier the more it cleans?", answer: "water", hint: "it cleans other things" },
+        { q: "What kind of door can never be closed?", answer: "goal|a goal", hint: "sports-related" },
+      ],
+    };
   return {
     intro: "能逃出我的脑洞吗（这是示例，改成你自己的）",
     riddles: [

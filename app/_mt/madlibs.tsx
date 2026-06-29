@@ -7,7 +7,12 @@ import { clean, type Lang } from "./types";
 
 export type MlConfig = { intro: string; story: string };
 
-export function mlEmpty(): MlConfig {
+export function mlEmpty(lang: Lang = "zh"): MlConfig {
+  if (lang === "en")
+    return {
+      intro: "Fill in a hilarious story (sample — edit it)",
+      story: 'Today at the {place} I met a {adjective} {animal} who suddenly said "{quote}", and I {action}.',
+    };
   return {
     intro: "乱填出一个爆笑故事（这是示例，改成你自己的）",
     story: "今天我在{地点}遇到一只{形容词}的{动物}，它突然对我说「{一句话}」，我吓得{动作}。",
