@@ -201,10 +201,9 @@ export async function getTrioProgress(): Promise<TrioProgress> {
 export async function claimAccount(email: string, redirectTo: string) {
   const c = dx3xb();
   await ensureSession();
-  const res = await c.auth.updateUser({ email }, { emailRedirectTo: redirectTo });
-  if (!res.error) return res;
-  // 邮箱已注册/无法绑定到匿名账号时，退而发送登录链接（登录到该邮箱已有账号）
-  return c.auth.signInWithOtp({ email, options: { emailRedirectTo: redirectTo, shouldCreateUser: true } });
+  // 原地升级匿名账号为正式账号：同一个 user id，完整保留访客期的全部数据（战报 / 微应用）。
+  // 邮箱已被占用时返回 error，不静默切到别的账号，以免丢失访客数据（合并已存在账号的功能另做）。
+  return c.auth.updateUser({ email }, { emailRedirectTo: redirectTo });
 }
 
 export async function getProfileHandle(): Promise<string | null> {
