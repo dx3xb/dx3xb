@@ -6,7 +6,8 @@ import { toPng } from "html-to-image";
 import { clean, type Lang } from "./types";
 
 export type KmQuestion = { q: string; options: string[]; correct: number };
-export type KmConfig = { intro: string; questions: KmQuestion[] };
+export type KmBand = { min: number; label: string; desc: string };
+export type KmConfig = { intro: string; questions: KmQuestion[]; results: KmBand[] };
 
 export function kmEmpty(lang: Lang = "zh"): KmConfig {
   if (lang === "en")
@@ -17,6 +18,7 @@ export function kmEmpty(lang: Lang = "zh"): KmConfig {
         { q: "On weekends I'm probably…", options: ["Sleeping", "Gaming", "Shopping"], correct: 1 },
         { q: "I can't stand?", options: ["Cockroaches", "Overtime", "No wifi"], correct: 2 },
       ],
+      results: defaultBands("en"),
     };
   return {
     intro: "测测你有多懂我（这是示例，改成关于你自己的）",
@@ -25,11 +27,13 @@ export function kmEmpty(lang: Lang = "zh"): KmConfig {
       { q: "我周末更可能在…", options: ["睡觉", "打游戏", "逛街"], correct: 1 },
       { q: "我最受不了的是？", options: ["蟑螂", "加班", "没网"], correct: 2 },
     ],
+    results: defaultBands("zh"),
   };
 }
 export function kmValidate(input: unknown): KmConfig {
   const o = (input ?? {}) as Record<string, unknown>;
   const qs = (Array.isArray(o.questions) ? o.questions.slice(0, 12) : []) as Record<string, unknown>[];
+  const rs = (Array.isArray(o.results) ? o.results.slice(0, 8) : []) as Record<string, unknown>[];
   return {
     intro: clean(o.intro, 200),
     questions: qs.map((q) => {
@@ -37,6 +41,12 @@ export function kmValidate(input: unknown): KmConfig {
       let correct = Number(q?.correct) || 0;
       if (correct < 0 || correct >= options.length) correct = 0;
       return { q: clean(q?.q, 120), options, correct };
+    }),
+    results: rs.map((b) => {
+      let min = Math.round(Number(b?.min));
+      if (!Number.isFinite(min)) min = 0;
+      min = Math.max(0, Math.min(100, min));
+      return { min, label: clean(b?.label, 40), desc: clean(b?.desc, 120) };
     }),
   };
 }
@@ -47,17 +57,20 @@ export function kmPublishable(c: KmConfig): boolean {
   );
 }
 
-const TIERS: { min: number; zh: string; en: string }[] = [
-  { min: 95, zh: "灵魂伴侣", en: "Soulmate" },
-  { min: 80, zh: "头号铁粉", en: "Ride or Die" },
-  { min: 60, zh: "懂行的朋友", en: "Close Friend" },
-  { min: 40, zh: "点头之交", en: "Acquaintance" },
-  { min: 20, zh: "塑料朋友", en: "Plastic Pal" },
-  { min: 0, zh: "最熟悉的陌生人", en: "Familiar Stranger" },
+const TIERS: { min: number; zh: string; en: string; dzh: string; den: string }[] = [
+  { min: 95, zh: "灵魂伴侣", en: "Soulmate", dzh: "这懂得程度，离谱地准。我们大概是一个人。", den: "Scary accurate. We might be the same person." },
+  { min: 80, zh: "头号铁粉", en: "Ride or Die", dzh: "你是真的把我放心上的那种朋友。", den: "You actually pay attention. Ride or die." },
+  { min: 60, zh: "懂行的朋友", en: "Close Friend", dzh: "懂我大半，剩下的留点神秘感也好。", den: "You get most of me — the rest stays a mystery." },
+  { min: 40, zh: "点头之交", en: "Acquaintance", dzh: "见面点头那种，再多聊几次会更懂。", den: "We've met — a few more chats and you'll get there." },
+  { min: 20, zh: "塑料朋友", en: "Plastic Pal", dzh: "塑料情谊，禁不起细问。", den: "Plastic friendship — doesn't survive a quiz." },
+  { min: 0, zh: "最熟悉的陌生人", en: "Familiar Stranger", dzh: "最熟悉的陌生人，从头认识一下我吧。", den: "A familiar stranger. Get to know me from scratch." },
 ];
-function tierFor(pct: number, lang: Lang) {
-  const tr = TIERS.find((x) => pct >= x.min) ?? TIERS[TIERS.length - 1];
-  return lang === "zh" ? tr.zh : tr.en;
+function defaultBands(lang: Lang): KmBand[] {
+  return TIERS.map((t) => ({ min: t.min, label: lang === "zh" ? t.zh : t.en, desc: lang === "zh" ? t.dzh : t.den }));
+}
+function bandFor(pct: number, bands: KmBand[], lang: Lang): KmBand {
+  const list = (bands.length ? bands : defaultBands(lang)).slice().sort((a, b) => b.min - a.min);
+  return list.find((b) => pct >= b.min) ?? list[list.length - 1];
 }
 
 const T = {
@@ -131,7 +144,8 @@ export function KnowMePlayer({
     });
     return Math.round((m / cfg.questions.length) * 100);
   }, [phase, picks, cfg]);
-  const tier = tierFor(pct, lang);
+  const band = bandFor(pct, cfg.results, lang);
+  const tier = band.label;
 
   useEffect(() => {
     if (phase !== "result" || preview || !slug) {
@@ -228,6 +242,7 @@ export function KnowMePlayer({
               <p className="km-yr">{t.youKnow}</p>
               <div className="km-pct">{pct}<span>%</span></div>
               <h2 className="pixel km-tier">{tier}</h2>
+              {band.desc && <p className="km-tierdesc">{band.desc}</p>}
               {!preview && slug && (
                 <div className="km-qr">
                   <div className="km-qrframe">
@@ -263,9 +278,10 @@ export function KnowMeEditor({ config, onChange, lang }: { config: KmConfig; onC
   const c = config;
   const t =
     lang === "zh"
-      ? { intro: "一句话介绍（如：你真的懂我吗？）", qs: "题目（关于你自己，3–12 题）", qPh: "题目（如：我最爱的食物是？）", opt: "选项", correct: "标为正确答案", add: "+ 加一题", addOpt: "+ 选项", hint: "每题点一个选项右边的 ✓ 设为关于你的正确答案" }
-      : { intro: "Intro (e.g. Do you really know me?)", qs: "Questions about you (3–12)", qPh: "Question (e.g. My favorite food is?)", opt: "Option", correct: "mark correct", add: "+ Add question", addOpt: "+ Option", hint: "Tap the ✓ next to the true answer about you" };
+      ? { intro: "一句话介绍（如：你真的懂我吗？）", qs: "题目（关于你自己，3–12 题）", qPh: "题目（如：我最爱的食物是？）", opt: "选项", correct: "标为正确答案", add: "+ 加一题", addOpt: "+ 选项", hint: "每题点一个选项右边的 ✓ 设为关于你的正确答案", resHead: "结果文案（朋友测完看到的）", resHint: "按懂你指数从高到低设置，懂你指数会命中第一个满足「≥X%」的档；标题和描述都可自由编辑", resLabelPh: "结果标题（如：灵魂伴侣）", resDescPh: "一句话描述（可留空）", addBand: "+ 加一档结果", seedBands: "载入默认结果文案" }
+      : { intro: "Intro (e.g. Do you really know me?)", qs: "Questions about you (3–12)", qPh: "Question (e.g. My favorite food is?)", opt: "Option", correct: "mark correct", add: "+ Add question", addOpt: "+ Option", hint: "Tap the ✓ next to the true answer about you", resHead: "Result copy (what friends see)", resHint: "Set bands high→low; the score lands on the first '≥X%' it meets. Both title and blurb are fully editable.", resLabelPh: "Result title (e.g. Soulmate)", resDescPh: "One-line blurb (optional)", addBand: "+ Add result band", seedBands: "Load default results" };
   const setQ = (i: number, p: Partial<KmQuestion>) => onChange({ ...c, questions: c.questions.map((q, j) => (j === i ? { ...q, ...p } : q)) });
+  const setBand = (i: number, p: Partial<KmBand>) => onChange({ ...c, results: c.results.map((b, j) => (j === i ? { ...b, ...p } : b)) });
   return (
     <div className="eform">
       <input className="ein" placeholder={t.intro} value={c.intro} maxLength={200} onChange={(e) => onChange({ ...c, intro: e.target.value })} />
@@ -290,6 +306,33 @@ export function KnowMeEditor({ config, onChange, lang }: { config: KmConfig; onC
         </div>
       ))}
       {c.questions.length < 12 && <button className="eadd" onClick={() => onChange({ ...c, questions: [...c.questions, { q: "", options: ["", ""], correct: 0 }] })}>{t.add}</button>}
+
+      <h3 className="ehead">{t.resHead}</h3>
+      <p className="ewarn" style={{ marginTop: 0 }}>{t.resHint}</p>
+      {c.results.map((b, bi) => (
+        <div key={bi} className="ecard">
+          <div className="erow">
+            <span style={{ fontFamily: "var(--font-press), monospace", fontSize: 10 }}>≥</span>
+            <input
+              className="ein"
+              type="number"
+              min={0}
+              max={100}
+              value={b.min}
+              style={{ width: 72, flex: "none" }}
+              onChange={(e) => setBand(bi, { min: Math.max(0, Math.min(100, Math.round(Number(e.target.value) || 0))) })}
+            />
+            <span style={{ fontFamily: "var(--font-press), monospace", fontSize: 10 }}>%</span>
+            <input className="ein grow" placeholder={t.resLabelPh} value={b.label} maxLength={40} onChange={(e) => setBand(bi, { label: e.target.value })} />
+            <button className="ex" onClick={() => onChange({ ...c, results: c.results.filter((_, j) => j !== bi) })} disabled={c.results.length <= 1}>✕</button>
+          </div>
+          <input className="ein" placeholder={t.resDescPh} value={b.desc} maxLength={120} onChange={(e) => setBand(bi, { desc: e.target.value })} />
+        </div>
+      ))}
+      {c.results.length === 0 && <button className="eadd" onClick={() => onChange({ ...c, results: defaultBands(lang) })}>{t.seedBands}</button>}
+      {c.results.length > 0 && c.results.length < 8 && (
+        <button className="eadd" onClick={() => onChange({ ...c, results: [...c.results, { min: 0, label: "", desc: "" }] })}>{t.addBand}</button>
+      )}
     </div>
   );
 }
@@ -318,7 +361,8 @@ const KM_STYLE = `
 .km-yr { font-family: var(--font-press), monospace; font-size: 9px; letter-spacing: 1px; color: var(--ink-soft); margin: 0; }
 .km-pct { font-family: var(--font-press), monospace; font-size: clamp(40px, 16vw, 66px); line-height: 1; margin: 6px 0 4px; }
 .km-pct span { color: var(--coral); }
-.km-tier { font-size: clamp(22px, 7vw, 36px); color: var(--coral); margin: 4px 0 14px; }
+.km-tier { font-size: clamp(22px, 7vw, 36px); color: var(--coral); margin: 4px 0 6px; }
+.km-tierdesc { font-size: 18px; color: var(--ink-soft); margin: 0 0 14px; line-height: 1.35; }
 .km-qr { display: flex; align-items: center; gap: 12px; border-top: 3px dashed rgba(43,34,51,.35); padding-top: 14px; text-align: left; }
 .km-qrframe { border: 4px solid var(--line); background: #fff; padding: 4px; box-shadow: var(--shadow); flex: none; line-height: 0; }
 .km-qrcta { font-size: 16px; color: var(--ink-soft); margin: 0; }

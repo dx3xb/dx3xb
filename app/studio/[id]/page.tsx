@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { regFor } from "../../_mt/registry";
+import { SharePoster } from "../../_mt/share-poster";
 import { getMicroapp, updateMicroapp, deleteMicroapp, type Microapp, type MicroStatus } from "../../dx3xb-apps";
 import { getEmail } from "../../dx3xb-trio";
 
@@ -136,7 +137,10 @@ export default function EditorPage() {
             <p className="ewarn">{t.needEmail} <a href={`/me?lang=${lang}`}>{t.goClaim}</a></p>
           )}
           {status !== "draft" && (
-            <p className="eshare">{t.shareLabel} <a href={`/u/${slug}?lang=${lang}`}>{shareUrl}</a></p>
+            <>
+              <p className="eshare">{t.shareLabel} <a href={`/u/${slug}?lang=${lang}`}>{shareUrl}</a></p>
+              <SharePoster title={title} template={tpl} slug={slug} lang={lang} />
+            </>
           )}
         </div>
       )}

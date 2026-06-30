@@ -201,7 +201,10 @@ export async function getTrioProgress(): Promise<TrioProgress> {
 export async function claimAccount(email: string, redirectTo: string) {
   const c = dx3xb();
   await ensureSession();
-  return c.auth.updateUser({ email }, { emailRedirectTo: redirectTo });
+  const res = await c.auth.updateUser({ email }, { emailRedirectTo: redirectTo });
+  if (!res.error) return res;
+  // 邮箱已注册/无法绑定到匿名账号时，退而发送登录链接（登录到该邮箱已有账号）
+  return c.auth.signInWithOtp({ email, options: { emailRedirectTo: redirectTo, shouldCreateUser: true } });
 }
 
 export async function getProfileHandle(): Promise<string | null> {
