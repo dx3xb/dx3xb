@@ -50,7 +50,7 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ ok: false, error: "bad_request" }, { status: 400 });
   try {
     const supabase = getServiceClient();
-    const { error } = await supabase.from("dx3xb_microapps").update({ status } as never).eq("id", id);
+    const { error } = await supabase.from("dx3xb_microapps").update({ status }).eq("id", id);
     if (error) throw error;
     return NextResponse.json({ ok: true });
   } catch (e) {

@@ -79,7 +79,7 @@ export async function POST(request: NextRequest) {
       country,
       region,
       city: cleanText(city, 64),
-    } as never);
+    });
     if (error) throw error;
     return NextResponse.json({ ok: true });
   } catch (error) {

@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { authed } from "@/lib/admin-auth";
 import { cleanText, readJson } from "@/lib/request-guards";
 import { getServiceClient } from "@/lib/supabase";
+import type { Database } from "@/lib/database.types";
+
+type GuestbookUpdate = Database["public"]["Tables"]["dx3xb_guestbook"]["Update"];
 
 export const runtime = "nodejs";
 
@@ -29,14 +32,14 @@ export async function PATCH(req: NextRequest) {
   const body = parsed.value;
   const id = body.id;
   if (typeof id !== "number" || !Number.isInteger(id)) return NextResponse.json({ ok: false, error: "bad_id" }, { status: 400 });
-  const patch: Record<string, unknown> = {};
+  const patch: GuestbookUpdate = {};
   if (body.name !== undefined) patch.name = cleanText(body.name, 24);
   if (body.message !== undefined) patch.message = cleanText(body.message, 280);
   if (body.hidden !== undefined) patch.hidden = !!body.hidden;
   if (Object.keys(patch).length === 0) return NextResponse.json({ ok: false, error: "empty_patch" }, { status: 400 });
   try {
     const supabase = getServiceClient();
-    const { error } = await supabase.from("dx3xb_guestbook").update(patch as never).eq("id", id);
+    const { error } = await supabase.from("dx3xb_guestbook").update(patch).eq("id", id);
     if (error) throw error;
     return NextResponse.json({ ok: true });
   } catch (e) {

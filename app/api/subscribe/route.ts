@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const supabase = getServiceClient();
-    const { error } = await supabase.from("dx3xb_subscribers").insert({ email } as never);
+    const { error } = await supabase.from("dx3xb_subscribers").insert({ email });
 
     if (error) {
       // 唯一索引冲突 = 已订阅，当作成功的友好提示
