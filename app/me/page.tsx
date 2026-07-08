@@ -64,7 +64,9 @@ const COPY = {
     send: "发送登录链接",
     sending: "发送中…",
     sent: "登录链接已发到邮箱 ✉️ 用同一浏览器点开就认领好了",
+    existingSent: "这个邮箱已有账号，已发送登录链接。打开后会登录已有空间；当前匿名空间不会自动合并。",
     err: "发送失败，换个邮箱再试",
+    errPrefix: "发送失败：",
     loading: "正在读取你的空间…",
   },
   en: {
@@ -97,7 +99,9 @@ const COPY = {
     send: "Send login link",
     sending: "Sending…",
     sent: "Magic link sent ✉️ open it in this same browser to finish",
+    existingSent: "This email already has an account. I sent a login link for that space; the current guest space will not merge automatically.",
     err: "Failed — try another email",
+    errPrefix: "Failed: ",
     loading: "Loading your space…",
   },
 } as const;
@@ -128,7 +132,8 @@ export default function MePage() {
   const [myApps, setMyApps] = useState<Microapp[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [claimEmail, setClaimEmail] = useState("");
-  const [claim, setClaim] = useState<"idle" | "sending" | "sent" | "error">("idle");
+  const [claim, setClaim] = useState<"idle" | "sending" | "sent" | "existing" | "error">("idle");
+  const [claimError, setClaimError] = useState("");
   const t = COPY[lang];
 
   useEffect(() => {
@@ -170,13 +175,21 @@ export default function MePage() {
 
   async function sendLink() {
     const e = claimEmail.trim();
+    setClaimError("");
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)) {
+      setClaimError(lang === "zh" ? "邮箱格式不对" : "invalid email");
       setClaim("error");
       return;
     }
     setClaim("sending");
-    const { error } = await claimAccount(e, "https://dx3xb.com/me" + `?lang=${lang}`);
-    setClaim(error ? "error" : "sent");
+    const res = await claimAccount(e, "https://dx3xb.com/me", { allowExistingLogin: true });
+    if (res.error) {
+      console.warn("dx3xb claim failed", res.error);
+      setClaimError(res.error.message || String(res.error));
+      setClaim("error");
+      return;
+    }
+    setClaim(res.mode === "existing_login" ? "existing" : "sent");
   }
 
   const langQ = `?lang=${lang}`;
@@ -230,15 +243,15 @@ export default function MePage() {
             <section className="panel mcard mclaim">
               <h2 className="pixel mctitle">{t.claimTitle}</h2>
               <p className="mdesc">{t.claimHint}</p>
-              {claim === "sent" ? (
-                <p className="msent">{t.sent}</p>
+              {claim === "sent" || claim === "existing" ? (
+                <p className="msent">{claim === "existing" ? t.existingSent : t.sent}</p>
               ) : (
                 <>
                   <div className="mrow">
                     <input type="email" inputMode="email" placeholder={t.emailPh} value={claimEmail} onChange={(e) => setClaimEmail(e.target.value)} onKeyDown={(e) => e.key === "Enter" && sendLink()} />
                     <button onClick={sendLink} disabled={claim === "sending"}>{claim === "sending" ? t.sending : t.send}</button>
                   </div>
-                  {claim === "error" && <p className="msent">{t.err}</p>}
+                  {claim === "error" && <p className="msent">{claimError ? `${t.errPrefix}${claimError}` : t.err}</p>}
                 </>
               )}
             </section>

@@ -198,12 +198,36 @@ export async function getTrioProgress(): Promise<TrioProgress> {
   }
 }
 
-export async function claimAccount(email: string, redirectTo: string) {
+type ClaimOptions = {
+  allowExistingLogin?: boolean;
+};
+
+export type ClaimAccountResult = {
+  error: { message: string } | null;
+  mode?: "claim" | "existing_login";
+};
+
+function isExistingEmailError(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error ?? "");
+  return /already|registered|exists|user.*found/i.test(message);
+}
+
+export async function claimAccount(email: string, redirectTo: string, options: ClaimOptions = {}): Promise<ClaimAccountResult> {
   const c = dx3xb();
   await ensureSession();
   // 原地升级匿名账号为正式账号：同一个 user id，完整保留访客期的全部数据（战报 / 微应用）。
-  // 邮箱已被占用时返回 error，不静默切到别的账号，以免丢失访客数据（合并已存在账号的功能另做）。
-  return c.auth.updateUser({ email }, { emailRedirectTo: redirectTo });
+  const claim = await c.auth.updateUser({ email }, { emailRedirectTo: redirectTo });
+  if (!claim.error) return { ...claim, mode: "claim" };
+
+  if (!options.allowExistingLogin || !isExistingEmailError(claim.error)) return claim;
+
+  // 邮箱已存在时，/me 可以显式退回到已有账号登录链接；打开后进入已有账号，不自动合并当前匿名数据。
+  const login = await c.auth.signInWithOtp({
+    email,
+    options: { emailRedirectTo: redirectTo, shouldCreateUser: false },
+  });
+  if (login.error) return claim;
+  return { error: null, mode: "existing_login" };
 }
 
 export async function getProfileHandle(): Promise<string | null> {
