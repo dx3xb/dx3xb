@@ -6,9 +6,11 @@ import {
   getProfileHandle,
   getMyRuns,
   getEmail,
-  claimAccount,
+  completeClaimAccount,
+  dx3xb,
   ensureSession,
   GAME_URL,
+  startClaimAccount,
   TRIO_GAMES,
   TRIO_REPORT_URL,
   type TrioGame,
@@ -59,12 +61,14 @@ const COPY = {
     trainSoon: "敬请期待",
     trainDesc: "进阶付费训练，系统提升感官与脑力。",
     claimTitle: "注册认领你的账号",
-    claimHint: "保存全部战报、跨设备找回你的空间。填邮箱→收信→用同一浏览器点开链接即可认领。",
+    claimHint: "设置用户名/空间名，填邮箱收登录链接。点开后会把当前战报和微应用绑定到这个邮箱。",
+    handlePh: "用户名 / 空间名",
     emailPh: "你的邮箱",
     send: "发送登录链接",
     sending: "发送中…",
-    sent: "登录链接已发到邮箱 ✉️ 用同一浏览器点开就认领好了",
-    existingSent: "这个邮箱已有账号，已发送登录链接。打开后会登录已有空间；当前匿名空间不会自动合并。",
+    sent: "登录链接已发到邮箱 ✉️ 点开后会自动认领当前空间",
+    existingSent: "这个邮箱已有账号，已发送登录链接。点开后会把当前匿名空间合并到该邮箱账号。",
+    claimed: "认领完成，当前空间已绑定邮箱。",
     err: "发送失败，换个邮箱再试",
     errPrefix: "发送失败：",
     loading: "正在读取你的空间…",
@@ -94,12 +98,14 @@ const COPY = {
     trainSoon: "COMING SOON",
     trainDesc: "Advanced paid training to systematically sharpen sense & brain.",
     claimTitle: "Claim your account",
-    claimHint: "Save every report and recover your space on any device. Enter email → check inbox → open the link in the same browser.",
+    claimHint: "Choose a username/space name, enter your email, then open the login link to bind this space.",
+    handlePh: "username / space name",
     emailPh: "your email",
     send: "Send login link",
     sending: "Sending…",
-    sent: "Magic link sent ✉️ open it in this same browser to finish",
-    existingSent: "This email already has an account. I sent a login link for that space; the current guest space will not merge automatically.",
+    sent: "Magic link sent ✉️ open it to claim this space",
+    existingSent: "This email already has an account. I sent a login link and will merge this guest space into it.",
+    claimed: "Claim complete. This space is now bound to your email.",
     err: "Failed — try another email",
     errPrefix: "Failed: ",
     loading: "Loading your space…",
@@ -123,6 +129,16 @@ function fmtDate(iso: string) {
   }
 }
 
+async function waitForEmailLinkSession() {
+  const client = dx3xb();
+  for (let i = 0; i < 10; i += 1) {
+    const { data } = await client.auth.getSession();
+    if (data.session) return true;
+    await new Promise((resolve) => setTimeout(resolve, 150));
+  }
+  return false;
+}
+
 export default function MePage() {
   const [lang, setLang] = useState<Lang>("en");
   const [progress, setProgress] = useState<TrioProgress | null>(null);
@@ -132,14 +148,30 @@ export default function MePage() {
   const [myApps, setMyApps] = useState<Microapp[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [claimEmail, setClaimEmail] = useState("");
-  const [claim, setClaim] = useState<"idle" | "sending" | "sent" | "existing" | "error">("idle");
+  const [claimHandle, setClaimHandle] = useState("");
+  const [claim, setClaim] = useState<"idle" | "sending" | "sent" | "existing" | "completed" | "error">("idle");
   const [claimError, setClaimError] = useState("");
   const t = COPY[lang];
 
   useEffect(() => {
     setLang(getInitialLang());
-    void ensureSession();
     (async () => {
+      const claimToken = new URLSearchParams(window.location.search).get("claim");
+      if (claimToken) {
+        const hasEmailSession = await waitForEmailLinkSession();
+        const completed = hasEmailSession ? await completeClaimAccount(claimToken) : { ok: false, error: "missing_email_session" };
+        const url = new URL(window.location.href);
+        url.searchParams.delete("claim");
+        window.history.replaceState(null, "", url.toString());
+        if (completed.ok) {
+          setClaim("completed");
+        } else {
+          setClaimError(completed.error || "claim_complete_failed");
+          setClaim("error");
+        }
+      } else {
+        await ensureSession();
+      }
       const [prog, h, e, r, apps] = await Promise.all([
         getTrioProgress(),
         getProfileHandle(),
@@ -148,7 +180,10 @@ export default function MePage() {
         getMyMicroapps(),
       ]);
       setProgress(prog);
-      if (h) setHandle(h);
+      if (h) {
+        setHandle(h);
+        setClaimHandle(h);
+      }
       setEmail(e);
       setRuns(r);
       setMyApps(apps);
@@ -175,21 +210,27 @@ export default function MePage() {
 
   async function sendLink() {
     const e = claimEmail.trim();
+    const h = claimHandle.trim();
     setClaimError("");
+    if (!h) {
+      setClaimError(lang === "zh" ? "请先填写用户名/空间名" : "choose a username / space name");
+      setClaim("error");
+      return;
+    }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)) {
       setClaimError(lang === "zh" ? "邮箱格式不对" : "invalid email");
       setClaim("error");
       return;
     }
     setClaim("sending");
-    const res = await claimAccount(e, "https://dx3xb.com/me", { allowExistingLogin: true });
+    const res = await startClaimAccount(e, h);
     if (res.error) {
       console.warn("dx3xb claim failed", res.error);
       setClaimError(res.error.message || String(res.error));
       setClaim("error");
       return;
     }
-    setClaim(res.mode === "existing_login" ? "existing" : "sent");
+    setClaim(res.mode === "existing_merge_login" ? "existing" : "sent");
   }
 
   const langQ = `?lang=${lang}`;
@@ -243,10 +284,11 @@ export default function MePage() {
             <section className="panel mcard mclaim">
               <h2 className="pixel mctitle">{t.claimTitle}</h2>
               <p className="mdesc">{t.claimHint}</p>
-              {claim === "sent" || claim === "existing" ? (
-                <p className="msent">{claim === "existing" ? t.existingSent : t.sent}</p>
+              {claim === "sent" || claim === "existing" || claim === "completed" ? (
+                <p className="msent">{claim === "completed" ? t.claimed : claim === "existing" ? t.existingSent : t.sent}</p>
               ) : (
                 <>
+                  <input type="text" placeholder={t.handlePh} value={claimHandle} onChange={(e) => setClaimHandle(e.target.value)} maxLength={24} />
                   <div className="mrow">
                     <input type="email" inputMode="email" placeholder={t.emailPh} value={claimEmail} onChange={(e) => setClaimEmail(e.target.value)} onKeyDown={(e) => e.key === "Enter" && sendLink()} />
                     <button onClick={sendLink} disabled={claim === "sending"}>{claim === "sending" ? t.sending : t.send}</button>
@@ -371,6 +413,7 @@ const STYLE = `
 .msoon { flex: none; font-family: var(--font-press), monospace; font-size: 10px; color: var(--ink-soft);
   background: var(--cream-2); border: 2px solid var(--line); padding: 6px 9px; }
 .mclaim { background: var(--cream); }
+.mclaim > input { width: 100%; border: 3px solid var(--line); padding: 10px; font-family: inherit; font-size: 18px; background: #fff; outline: none; margin-bottom: 8px; }
 .mrow { display: flex; gap: 8px; flex-wrap: wrap; }
 .mrow input { flex: 1 1 160px; min-width: 0; border: 3px solid var(--line); padding: 10px; font-family: inherit; font-size: 18px; background: #fff; outline: none; }
 .mrow button { font-family: var(--font-press), monospace; font-size: 11px; cursor: pointer; border: 3px solid var(--line);

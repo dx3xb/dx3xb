@@ -204,7 +204,7 @@ type ClaimOptions = {
 
 export type ClaimAccountResult = {
   error: { message: string } | null;
-  mode?: "claim" | "existing_login";
+  mode?: "claim" | "existing_login" | "existing_merge_login";
 };
 
 function isExistingEmailError(error: unknown) {
@@ -228,6 +228,58 @@ export async function claimAccount(email: string, redirectTo: string, options: C
   });
   if (login.error) return claim;
   return { error: null, mode: "existing_login" };
+}
+
+export async function startClaimAccount(email: string, handle: string): Promise<ClaimAccountResult> {
+  const c = dx3xb();
+  await ensureSession();
+  const { data: sessionData } = await c.auth.getSession();
+  const accessToken = sessionData.session?.access_token;
+  if (!accessToken) return { error: { message: "missing_session" } };
+
+  const prepared = await fetch("/api/claim/prepare", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ email, handle }),
+  });
+  const body = await prepared.json().catch(() => null);
+  if (!prepared.ok || !body?.redirectTo) {
+    return { error: { message: body?.error || "claim_prepare_failed" } };
+  }
+
+  const claim = await c.auth.updateUser({ email }, { emailRedirectTo: body.redirectTo });
+  if (!claim.error) return { error: null, mode: "claim" };
+
+  if (!isExistingEmailError(claim.error)) return claim;
+
+  const login = await c.auth.signInWithOtp({
+    email,
+    options: { emailRedirectTo: body.redirectTo, shouldCreateUser: false },
+  });
+  if (login.error) return claim;
+  return { error: null, mode: "existing_merge_login" };
+}
+
+export async function completeClaimAccount(claim: string): Promise<{ ok: boolean; error?: string; movedRuns?: number; movedApps?: number }> {
+  const c = dx3xb();
+  const { data } = await c.auth.getSession();
+  const accessToken = data.session?.access_token;
+  if (!accessToken) return { ok: false, error: "missing_session" };
+
+  const res = await fetch("/api/claim/complete", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ claim }),
+  });
+  const body = await res.json().catch(() => null);
+  if (!res.ok || !body?.ok) return { ok: false, error: body?.error || "claim_complete_failed" };
+  return body;
 }
 
 export async function getProfileHandle(): Promise<string | null> {
