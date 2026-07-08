@@ -19,6 +19,7 @@ const vt = VT323({
 const faviconVersion = "emoji-transparent-20260624";
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://dx3xb.com"),
   title: "dx3xb — 网络趣味工具铺 / a shop of web curiosities",
   description:
     "后 Web3 · AI 时代的网络趣味玩具铺。dx3xb 是一张噘嘴的小脸 (d ears, x eyes, 3 mouth)。A toy shop of fun web tools for the post-Web3 / AI age.",

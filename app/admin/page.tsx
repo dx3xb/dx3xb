@@ -25,6 +25,8 @@ type App = {
   reports: number;
 };
 
+const ADMIN_STORAGE_KEY = "dx3xb_admin";
+
 function bjTime(iso: string) {
   try {
     return new Date(iso).toLocaleString("zh-CN", { timeZone: "Asia/Shanghai", hour12: false });
@@ -44,7 +46,7 @@ export default function AdminPage() {
   const [edit, setEdit] = useState<Record<number, { name: string; message: string }>>({});
 
   useEffect(() => {
-    const saved = localStorage.getItem("dx3xb_admin");
+    const saved = sessionStorage.getItem(ADMIN_STORAGE_KEY);
     if (saved) {
       setToken(saved);
       void load(saved);
@@ -57,27 +59,45 @@ export default function AdminPage() {
     if (res.status === 401) {
       setAuthed(false);
       setErr("密码错误");
-      localStorage.removeItem("dx3xb_admin");
+      sessionStorage.removeItem(ADMIN_STORAGE_KEY);
+      return;
+    }
+    if (!res.ok) {
+      setErr("读取失败");
       return;
     }
     const data = await res.json();
     setRows(data.messages || []);
     setAuthed(true);
-    localStorage.setItem("dx3xb_admin", tk);
+    sessionStorage.setItem(ADMIN_STORAGE_KEY, tk);
     setToken(tk);
     void loadApps(tk);
   }
   async function loadApps(tk: string) {
     const res = await fetch("/api/admin/microapps", { headers: { Authorization: `Bearer ${tk}` }, cache: "no-store" });
-    if (res.ok) setApps((await res.json()).apps || []);
+    if (res.ok) {
+      setApps((await res.json()).apps || []);
+    } else {
+      setErr("读取微应用失败");
+    }
   }
 
   async function actGb(method: string, payload: Record<string, unknown>) {
-    await fetch("/api/admin/guestbook", { method, headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+    setErr("");
+    const res = await fetch("/api/admin/guestbook", { method, headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+    if (!res.ok) {
+      setErr("留言操作失败");
+      return;
+    }
     await load(token);
   }
   async function actMa(id: string, status: string) {
-    await fetch("/api/admin/microapps", { method: "PATCH", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, body: JSON.stringify({ id, status }) });
+    setErr("");
+    const res = await fetch("/api/admin/microapps", { method: "PATCH", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, body: JSON.stringify({ id, status }) });
+    if (!res.ok) {
+      setErr("微应用操作失败");
+      return;
+    }
     await loadApps(token);
   }
 
@@ -105,8 +125,9 @@ export default function AdminPage() {
           <button className={`atab ${tab === "gb" ? "on" : ""}`} onClick={() => setTab("gb")}>留言 {rows.length}</button>
           <button className={`atab ${tab === "ma" ? "on" : ""}`} onClick={() => setTab("ma")}>微应用{pending ? ` · ${pending}待审` : ""}</button>
         </div>
-        <button className="abtn" onClick={() => { localStorage.removeItem("dx3xb_admin"); setAuthed(false); }}>退出</button>
+        <button className="abtn" onClick={() => { sessionStorage.removeItem(ADMIN_STORAGE_KEY); setAuthed(false); }}>退出</button>
       </div>
+      {err && <p className="aerr">{err}</p>}
 
       {tab === "gb" && (
         <div className="alist">

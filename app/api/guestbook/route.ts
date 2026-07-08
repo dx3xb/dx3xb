@@ -1,17 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServiceClient } from "@/lib/supabase";
+import { cleanText, clientIp, readJson, tooManyRequests } from "@/lib/request-guards";
 
 export const runtime = "nodejs";
 
-function clean(value: unknown, max: number) {
-  return String(value ?? "").trim().slice(0, max);
-}
-
-function ipOf(req: NextRequest) {
-  const fwd = req.headers.get("x-forwarded-for");
-  if (fwd) return fwd.split(",")[0].trim();
-  return req.headers.get("x-real-ip") || "";
-}
 function geoOf(req: NextRequest) {
   let city = req.headers.get("x-vercel-ip-city") || "";
   try {
@@ -45,15 +37,16 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
-  let body: { name?: string; message?: string; parent_id?: number };
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ ok: false, error: "bad_request" }, { status: 400 });
+  if (tooManyRequests(request, "guestbook:write", 6, 60_000)) {
+    return NextResponse.json({ ok: false, error: "rate_limited" }, { status: 429 });
   }
 
-  const name = clean(body.name, 24);
-  const message = clean(body.message, 280);
+  const parsed = await readJson<{ name?: string; message?: string; parent_id?: number }>(request);
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.value;
+
+  const name = cleanText(body.name, 24);
+  const message = cleanText(body.message, 280);
   const parent_id = Number.isInteger(body.parent_id) && Number(body.parent_id) > 0 ? Number(body.parent_id) : null;
 
   if (!message) {
@@ -67,15 +60,26 @@ export async function POST(request: NextRequest) {
   try {
     const { country, region, city } = geoOf(request);
     const supabase = getServiceClient();
+    if (parent_id) {
+      const { data: parent, error: parentError } = await supabase
+        .from("dx3xb_guestbook")
+        .select("id")
+        .eq("id", parent_id)
+        .is("parent_id", null)
+        .eq("hidden", false)
+        .maybeSingle();
+      if (parentError) throw parentError;
+      if (!parent) return NextResponse.json({ ok: false, error: "bad_parent" }, { status: 400 });
+    }
     const { error } = await supabase.from("dx3xb_guestbook").insert({
       name,
       message,
       parent_id,
-      ip: ipOf(request).slice(0, 64),
+      ip: clientIp(request),
       country,
       region,
-      city: clean(city, 64),
-    });
+      city: cleanText(city, 64),
+    } as never);
     if (error) throw error;
     return NextResponse.json({ ok: true });
   } catch (error) {

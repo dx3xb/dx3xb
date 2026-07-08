@@ -1,16 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
+import { authed } from "@/lib/admin-auth";
+import { cleanText, readJson } from "@/lib/request-guards";
 import { getServiceClient } from "@/lib/supabase";
 
 export const runtime = "nodejs";
-
-function authed(req: NextRequest) {
-  const token = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
-  const admin = process.env.ADMIN_TOKEN || "";
-  return admin.length > 0 && token === admin;
-}
-function clean(value: unknown, max: number) {
-  return String(value ?? "").trim().slice(0, max);
-}
 
 export async function GET(req: NextRequest) {
   if (!authed(req)) return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
@@ -31,20 +24,19 @@ export async function GET(req: NextRequest) {
 
 export async function PATCH(req: NextRequest) {
   if (!authed(req)) return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
-  let body: { id?: number; name?: string; message?: string; hidden?: boolean };
-  try {
-    body = await req.json();
-  } catch {
-    return NextResponse.json({ ok: false, error: "bad_request" }, { status: 400 });
-  }
-  if (!Number.isInteger(body.id)) return NextResponse.json({ ok: false, error: "bad_id" }, { status: 400 });
+  const parsed = await readJson<{ id?: number; name?: string; message?: string; hidden?: boolean }>(req);
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.value;
+  const id = body.id;
+  if (typeof id !== "number" || !Number.isInteger(id)) return NextResponse.json({ ok: false, error: "bad_id" }, { status: 400 });
   const patch: Record<string, unknown> = {};
-  if (body.name !== undefined) patch.name = clean(body.name, 24);
-  if (body.message !== undefined) patch.message = clean(body.message, 280);
+  if (body.name !== undefined) patch.name = cleanText(body.name, 24);
+  if (body.message !== undefined) patch.message = cleanText(body.message, 280);
   if (body.hidden !== undefined) patch.hidden = !!body.hidden;
+  if (Object.keys(patch).length === 0) return NextResponse.json({ ok: false, error: "empty_patch" }, { status: 400 });
   try {
     const supabase = getServiceClient();
-    const { error } = await supabase.from("dx3xb_guestbook").update(patch).eq("id", body.id);
+    const { error } = await supabase.from("dx3xb_guestbook").update(patch as never).eq("id", id);
     if (error) throw error;
     return NextResponse.json({ ok: true });
   } catch (e) {
@@ -55,18 +47,17 @@ export async function PATCH(req: NextRequest) {
 
 export async function DELETE(req: NextRequest) {
   if (!authed(req)) return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
-  let body: { id?: number };
-  try {
-    body = await req.json();
-  } catch {
-    return NextResponse.json({ ok: false, error: "bad_request" }, { status: 400 });
-  }
-  if (!Number.isInteger(body.id)) return NextResponse.json({ ok: false, error: "bad_id" }, { status: 400 });
+  const parsed = await readJson<{ id?: number }>(req, 1024);
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.value;
+  const id = body.id;
+  if (typeof id !== "number" || !Number.isInteger(id)) return NextResponse.json({ ok: false, error: "bad_id" }, { status: 400 });
   try {
     const supabase = getServiceClient();
     // 删除该留言及其所有回复
-    await supabase.from("dx3xb_guestbook").delete().eq("parent_id", body.id);
-    const { error } = await supabase.from("dx3xb_guestbook").delete().eq("id", body.id);
+    const { error: childError } = await supabase.from("dx3xb_guestbook").delete().eq("parent_id", id);
+    if (childError) throw childError;
+    const { error } = await supabase.from("dx3xb_guestbook").delete().eq("id", id);
     if (error) throw error;
     return NextResponse.json({ ok: true });
   } catch (e) {
