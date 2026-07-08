@@ -55,6 +55,17 @@ export async function POST(req: NextRequest) {
     const { data, error } = await supabase.auth.getUser(token);
     if (error || !data.user) return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
 
+    const { data: existingHandle, error: handleError } = await supabase
+      .from("dx3xb_profiles")
+      .select("user_id")
+      .ilike("handle", handle)
+      .neq("user_id", data.user.id)
+      .maybeSingle();
+    if (handleError) throw handleError;
+    if (existingHandle) {
+      return NextResponse.json({ ok: false, error: "handle_taken" }, { status: 409 });
+    }
+
     const claim = makeClaimToken({
       anonId: data.user.id,
       email,

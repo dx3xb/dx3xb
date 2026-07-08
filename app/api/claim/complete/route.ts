@@ -66,6 +66,17 @@ export async function POST(req: NextRequest) {
     let movedRuns = 0;
     let movedApps = 0;
 
+    const { data: existingHandle, error: handleError } = await supabase
+      .from("dx3xb_profiles")
+      .select("user_id")
+      .ilike("handle", claim.handle)
+      .neq("user_id", targetId)
+      .maybeSingle();
+    if (handleError) throw handleError;
+    if (existingHandle) {
+      return NextResponse.json({ ok: false, error: "handle_taken" }, { status: 409 });
+    }
+
     if (sourceId !== targetId) {
       const { data: runs, error: runsError } = await supabase
         .from("dx3xb_runs")

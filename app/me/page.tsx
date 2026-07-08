@@ -67,7 +67,7 @@ const COPY = {
     send: "发送登录链接",
     sending: "发送中…",
     sent: "登录链接已发到邮箱 ✉️ 点开后会自动认领当前空间",
-    existingSent: "这个邮箱已有账号，已发送登录链接。点开后会把当前匿名空间合并到该邮箱账号。",
+    existingSent: "这个邮箱已有账号，已发送登录链接。点开后会登录已有账号；当前匿名空间不会自动合并。",
     claimed: "认领完成，当前空间已绑定邮箱。",
     err: "发送失败，换个邮箱再试",
     errPrefix: "发送失败：",
@@ -104,7 +104,7 @@ const COPY = {
     send: "Send login link",
     sending: "Sending…",
     sent: "Magic link sent ✉️ open it to claim this space",
-    existingSent: "This email already has an account. I sent a login link and will merge this guest space into it.",
+    existingSent: "This email already has an account. I sent a login link for it; this guest space will not be merged automatically.",
     claimed: "Claim complete. This space is now bound to your email.",
     err: "Failed — try another email",
     errPrefix: "Failed: ",
@@ -127,6 +127,28 @@ function fmtDate(iso: string) {
   } catch {
     return "";
   }
+}
+
+function claimErrorText(code: string, lang: Lang) {
+  const zh: Record<string, string> = {
+    handle_taken: "这个空间名已经被使用，请换一个",
+    missing_handle: "请先填写用户名/空间名",
+    invalid_email: "邮箱格式不对",
+    missing_session: "当前会话失效，请刷新后重试",
+    missing_email_session: "邮箱链接没有完成登录，请重新打开邮件链接",
+    bad_or_expired_claim: "认领链接已失效，请重新发送登录链接",
+    email_mismatch: "当前登录邮箱和认领邮箱不一致",
+  };
+  const en: Record<string, string> = {
+    handle_taken: "This space name is already taken",
+    missing_handle: "Choose a username / space name first",
+    invalid_email: "Invalid email",
+    missing_session: "Session expired. Refresh and try again",
+    missing_email_session: "The email link did not finish sign-in. Open the link again",
+    bad_or_expired_claim: "Claim link expired. Send a new login link",
+    email_mismatch: "The signed-in email does not match this claim",
+  };
+  return (lang === "zh" ? zh : en)[code] ?? code;
 }
 
 async function waitForEmailLinkSession() {
@@ -166,7 +188,7 @@ export default function MePage() {
         if (completed.ok) {
           setClaim("completed");
         } else {
-          setClaimError(completed.error || "claim_complete_failed");
+          setClaimError(claimErrorText(completed.error || "claim_complete_failed", getInitialLang()));
           setClaim("error");
         }
       } else {
@@ -226,11 +248,11 @@ export default function MePage() {
     const res = await startClaimAccount(e, h);
     if (res.error) {
       console.warn("dx3xb claim failed", res.error);
-      setClaimError(res.error.message || String(res.error));
+      setClaimError(claimErrorText(res.error.message || String(res.error), lang));
       setClaim("error");
       return;
     }
-    setClaim(res.mode === "existing_merge_login" ? "existing" : "sent");
+    setClaim(res.mode === "existing_login" ? "existing" : "sent");
   }
 
   const langQ = `?lang=${lang}`;

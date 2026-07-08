@@ -257,10 +257,10 @@ export async function startClaimAccount(email: string, handle: string): Promise<
 
   const login = await c.auth.signInWithOtp({
     email,
-    options: { emailRedirectTo: body.redirectTo, shouldCreateUser: false },
+    options: { emailRedirectTo: "https://dx3xb.com/me", shouldCreateUser: false },
   });
   if (login.error) return claim;
-  return { error: null, mode: "existing_merge_login" };
+  return { error: null, mode: "existing_login" };
 }
 
 export async function completeClaimAccount(claim: string): Promise<{ ok: boolean; error?: string; movedRuns?: number; movedApps?: number }> {
