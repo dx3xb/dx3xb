@@ -174,6 +174,7 @@ function claimErrorText(code: string, lang: Lang) {
     missing_email_session: "邮箱链接没有完成登录，请重新打开邮件链接",
     bad_or_expired_claim: "认领链接已失效，请重新发送登录链接",
     email_mismatch: "当前登录邮箱和认领邮箱不一致",
+    profile_save_failed: "账号已创建，但空间名保存失败，请刷新后重试",
     "Invalid login credentials": "邮箱或密码不对",
   };
   const en: Record<string, string> = {
@@ -185,6 +186,7 @@ function claimErrorText(code: string, lang: Lang) {
     missing_email_session: "The email link did not finish sign-in. Open the link again",
     bad_or_expired_claim: "Claim link expired. Send a new login link",
     email_mismatch: "The signed-in email does not match this claim",
+    profile_save_failed: "Account created, but saving the space name failed. Refresh and try again",
     "Invalid login credentials": "Invalid email or password",
   };
   return (lang === "zh" ? zh : en)[code] ?? code;
@@ -324,6 +326,7 @@ export default function MePage() {
       return;
     }
     setClaim("sent");
+    await refreshSpace();
   }
 
   async function loginAccount() {

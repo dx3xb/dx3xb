@@ -284,7 +284,19 @@ export async function startPasswordSignup(email: string, handle: string, passwor
   }
 
   const signup = await c.auth.updateUser({ email, password }, { emailRedirectTo: body.redirectTo });
-  if (!signup.error) return { error: null, mode: "claim" };
+  if (!signup.error) {
+    const saved = await fetch("/api/profile/handle", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ handle }),
+    });
+    const savedBody = await saved.json().catch(() => null);
+    if (!saved.ok) return { error: { message: savedBody?.error || "profile_save_failed" } };
+    return { error: null, mode: "claim" };
+  }
   if (isExistingEmailError(signup.error)) return { error: { message: "email_exists" } };
   return signup;
 }
@@ -333,8 +345,9 @@ export async function completeClaimAccount(claim: string): Promise<{ ok: boolean
 export async function getProfileHandle(): Promise<string | null> {
   try {
     const c = dx3xb();
-    await ensureSession();
-    const { data } = await c.from("dx3xb_profiles").select("handle").maybeSingle();
+    const id = await ensureSession();
+    if (!id) return null;
+    const { data } = await c.from("dx3xb_profiles").select("handle").eq("user_id", id).maybeSingle();
     return data?.handle ?? null;
   } catch {
     return null;

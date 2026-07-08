@@ -207,8 +207,9 @@ export async function claimAccount(email: string, redirectTo: string) {
 export async function getProfileHandle(): Promise<string | null> {
   try {
     const c = dx3xb();
-    await ensureSession();
-    const { data } = await c.from("dx3xb_profiles").select("handle").maybeSingle();
+    const id = await ensureSession();
+    if (!id) return null;
+    const { data } = await c.from("dx3xb_profiles").select("handle").eq("user_id", id).maybeSingle();
     return data?.handle ?? null;
   } catch {
     return null;
