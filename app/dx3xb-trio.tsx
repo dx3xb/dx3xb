@@ -263,6 +263,54 @@ export async function startClaimAccount(email: string, handle: string): Promise<
   return { error: null, mode: "existing_login" };
 }
 
+export async function startPasswordSignup(email: string, handle: string, password: string): Promise<ClaimAccountResult> {
+  const c = dx3xb();
+  await ensureSession();
+  const { data: sessionData } = await c.auth.getSession();
+  const accessToken = sessionData.session?.access_token;
+  if (!accessToken) return { error: { message: "missing_session" } };
+
+  const prepared = await fetch("/api/claim/prepare", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ email, handle }),
+  });
+  const body = await prepared.json().catch(() => null);
+  if (!prepared.ok || !body?.redirectTo) {
+    return { error: { message: body?.error || "claim_prepare_failed" } };
+  }
+
+  const signup = await c.auth.updateUser({ email, password }, { emailRedirectTo: body.redirectTo });
+  if (!signup.error) return { error: null, mode: "claim" };
+  if (isExistingEmailError(signup.error)) return { error: { message: "email_exists" } };
+  return signup;
+}
+
+export async function signInAccount(email: string, password: string): Promise<ClaimAccountResult> {
+  const { error } = await dx3xb().auth.signInWithPassword({ email, password });
+  return { error: error ? { message: error.message } : null, mode: "existing_login" };
+}
+
+export async function sendPasswordReset(email: string): Promise<ClaimAccountResult> {
+  const { error } = await dx3xb().auth.resetPasswordForEmail(email, {
+    redirectTo: "https://dx3xb.com/me?reset=1",
+  });
+  return { error: error ? { message: error.message } : null };
+}
+
+export async function updateAccountPassword(password: string): Promise<ClaimAccountResult> {
+  const { error } = await dx3xb().auth.updateUser({ password });
+  return { error: error ? { message: error.message } : null };
+}
+
+export async function signOutAccount(): Promise<ClaimAccountResult> {
+  const { error } = await dx3xb().auth.signOut();
+  return { error: error ? { message: error.message } : null };
+}
+
 export async function completeClaimAccount(claim: string): Promise<{ ok: boolean; error?: string; movedRuns?: number; movedApps?: number }> {
   const c = dx3xb();
   const { data } = await c.auth.getSession();
@@ -327,13 +375,9 @@ const UI = {
     nextEyebrow: "下一关",
     reportEyebrow: "三件套通关 🎉",
     reportName: "查看综合脑力总报告",
-    claimTitle: "已过 2 关！注册认领你的账号",
+    claimTitle: "已过 2 关！注册正式账号",
     claimHint: "保存全部战报、解锁你的空间，继续第 3 关进度也不会丢。",
-    emailPh: "你的邮箱",
-    send: "发送登录链接",
-    sending: "发送中…",
-    sent: "登录链接已发到邮箱 ✉️ 去收信点开即可",
-    err: "发送失败，换个邮箱再试",
+    accountCta: "去注册 / 登录",
     saving: "正在保存战报…",
   },
   en: {
@@ -341,13 +385,9 @@ const UI = {
     nextEyebrow: "NEXT UP",
     reportEyebrow: "TRIO COMPLETE 🎉",
     reportName: "See your combined report",
-    claimTitle: "2 down! Claim your account",
+    claimTitle: "2 down! Create an account",
     claimHint: "Save every report, unlock your space — your progress sticks for game 3.",
-    emailPh: "your email",
-    send: "Send login link",
-    sending: "Sending…",
-    sent: "Magic link sent ✉️ check your inbox",
-    err: "Failed — try another email",
+    accountCta: "Sign up / Sign in",
     saving: "Saving your run…",
   },
 } as const;
@@ -392,20 +432,15 @@ const STYLE = `
 .trio-claim { margin-top: 12px; border: 3px dashed var(--line, #221a2b); padding: 12px; background: #fff7e7; }
 .trio-claim h4 { margin: 0 0 4px; font-family: var(--font-press), monospace; font-size: 12px; }
 .trio-claim p { margin: 0 0 10px; font-size: 16px; color: var(--ink-soft, #5f5368); }
-.trio-row { display: flex; gap: 8px; flex-wrap: wrap; }
-.trio-row input { flex: 1 1 150px; min-width: 0; border: 3px solid var(--line, #221a2b); padding: 10px;
-  font-family: inherit; font-size: 18px; background: #fff; outline: none; }
-.trio-row button { font-family: var(--font-press), monospace; font-size: 11px; cursor: pointer;
+.trio-account { display: inline-block; font-family: var(--font-press), monospace; font-size: 11px; text-decoration: none;
   border: 3px solid var(--line, #221a2b); box-shadow: 3px 3px 0 var(--ink, #221a2b);
   background: var(--yellow, #ffd044); color: var(--ink, #221a2b); padding: 10px 12px; }
-.trio-sent { margin: 10px 0 0; font-size: 16px; }
+.trio-account:active { transform: translate(3px,3px); box-shadow: none; }
 `;
 
 export function TrioFooter({ game, lang, run }: { game: TrioGame; lang: Lang; run: RunPayload }) {
   const recorded = useRef(false);
   const [progress, setProgress] = useState<TrioProgress | null>(null);
-  const [email, setEmail] = useState("");
-  const [claim, setClaim] = useState<"idle" | "sending" | "sent" | "error">("idle");
   const u = UI[lang];
 
   useEffect(() => {
@@ -417,17 +452,6 @@ export function TrioFooter({ game, lang, run }: { game: TrioGame; lang: Lang; ru
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  async function sendLink() {
-    const e = email.trim();
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)) {
-      setClaim("error");
-      return;
-    }
-    setClaim("sending");
-    const { error } = await claimAccount(e, GAME_URL[game] + `?lang=${lang}`);
-    setClaim(error ? "error" : "sent");
-  }
 
   const langQ = `?lang=${lang}`;
   return (
@@ -477,26 +501,7 @@ export function TrioFooter({ game, lang, run }: { game: TrioGame; lang: Lang; ru
         <div className="trio-claim">
           <h4>{u.claimTitle}</h4>
           <p>{u.claimHint}</p>
-          {claim === "sent" ? (
-            <p className="trio-sent">{u.sent}</p>
-          ) : (
-            <>
-              <div className="trio-row">
-                <input
-                  type="email"
-                  inputMode="email"
-                  placeholder={u.emailPh}
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && sendLink()}
-                />
-                <button onClick={sendLink} disabled={claim === "sending"}>
-                  {claim === "sending" ? u.sending : u.send}
-                </button>
-              </div>
-              {claim === "error" && <p className="trio-sent">{u.err}</p>}
-            </>
-          )}
+          <a className="trio-account" href={`https://dx3xb.com/me?lang=${lang}`}>{u.accountCta}</a>
         </div>
       )}
     </section>

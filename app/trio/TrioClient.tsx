@@ -6,7 +6,6 @@ import { toPng } from "html-to-image";
 import {
   getTrioProgress,
   getProfileHandle,
-  claimAccount,
   ensureSession,
   GAME_URL,
   TRIO_GAMES,
@@ -76,13 +75,9 @@ const COPY = {
     trainingSoon: "敬请期待",
     qrTitle: "扫码挑战三件套",
     qrCta: "把这张图发给朋友，看谁的综合脑力更高。",
-    claimTitle: "注册认领你的账号",
-    claimHint: "保存全部战报、解锁你的空间，换设备也能找回。填邮箱→收信→用同一浏览器点开链接即可认领。",
-    emailPh: "你的邮箱",
-    send: "发送登录链接",
-    sending: "发送中…",
-    sent: "登录链接已发到邮箱 ✉️ 用同一浏览器点开就认领好了",
-    err: "发送失败，换个邮箱再试",
+    claimTitle: "注册正式账号",
+    claimHint: "保存全部战报、解锁你的空间，换设备也能找回。",
+    accountCta: "去注册 / 登录",
     challenger: (name: string, s: number) => `${name} 的三件套综合分 ${s}，敢不敢超过 ta？`,
     shareText: (name: string, s: number, title: string, roast: string, url: string) =>
       `我「${name}」在 dx3xb 感官与脑力三件套综合击败了 ${s}% 的人，称号「${title}」！${roast} 来比比：${url}`,
@@ -113,13 +108,9 @@ const COPY = {
     trainingSoon: "COMING SOON",
     qrTitle: "SCAN FOR THE TRIO",
     qrCta: "Send this card to a friend — see whose brain ranks higher.",
-    claimTitle: "Claim your account",
-    claimHint: "Save every report, unlock your space, recover it on any device. Enter email → check inbox → open the link in the same browser.",
-    emailPh: "your email",
-    send: "Send login link",
-    sending: "Sending…",
-    sent: "Magic link sent ✉️ open it in this same browser to finish",
-    err: "Failed — try another email",
+    claimTitle: "Create an account",
+    claimHint: "Save every report, unlock your space, and recover it on any device.",
+    accountCta: "Sign up / Sign in",
     challenger: (name: string, s: number) => `${name} scored ${s} on the trio. Can you beat them?`,
     shareText: (name: string, s: number, title: string, roast: string, url: string) =>
       `${name} out-brained ${s}% of humanity on the dx3xb Sensory & Brainpower Trio — rank "${title}"! ${roast} Beat me: ${url}`,
@@ -187,8 +178,6 @@ export function TrioClient() {
   const [qr, setQr] = useState("");
   const [copied, setCopied] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [email, setEmail] = useState("");
-  const [claim, setClaim] = useState<"idle" | "sending" | "sent" | "error">("idle");
   const [fromName, setFromName] = useState("");
   const [fromScore, setFromScore] = useState(0);
   const reportRef = useRef<HTMLDivElement>(null);
@@ -289,17 +278,6 @@ export function TrioClient() {
       setSaving(false);
     }
   }
-  async function sendLink() {
-    const e = email.trim();
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)) {
-      setClaim("error");
-      return;
-    }
-    setClaim("sending");
-    const { error } = await claimAccount(e, TRIO_REPORT_URL + `?lang=${lang}`);
-    setClaim(error ? "error" : "sent");
-  }
-
   const langQ = `?lang=${lang}`;
 
   return (
@@ -401,17 +379,7 @@ export function TrioClient() {
             <div className="tclaim">
               <h4>{t.claimTitle}</h4>
               <p>{t.claimHint}</p>
-              {claim === "sent" ? (
-                <p className="tsent">{t.sent}</p>
-              ) : (
-                <>
-                  <div className="trow">
-                    <input type="email" inputMode="email" placeholder={t.emailPh} value={email} onChange={(e) => setEmail(e.target.value)} onKeyDown={(e) => e.key === "Enter" && sendLink()} />
-                    <button onClick={sendLink} disabled={claim === "sending"}>{claim === "sending" ? t.sending : t.send}</button>
-                  </div>
-                  {claim === "error" && <p className="tsent">{t.err}</p>}
-                </>
-              )}
+              <a className="taccount" href={`/me?lang=${lang}`}>{t.accountCta}</a>
             </div>
           )}
         </>
@@ -486,9 +454,7 @@ const STYLE = `
 .tclaim { margin-top: 14px; border: 3px dashed var(--line); padding: 14px; background: var(--cream); }
 .tclaim h4 { margin: 0 0 4px; font-family: var(--font-press), monospace; font-size: 12px; }
 .tclaim p { margin: 0 0 10px; font-size: 16px; color: var(--ink-soft); }
-.trow { display: flex; gap: 8px; flex-wrap: wrap; }
-.trow input { flex: 1 1 160px; min-width: 0; border: 3px solid var(--line); padding: 10px; font-family: inherit; font-size: 18px; background: #fff; outline: none; }
-.trow button { font-family: var(--font-press), monospace; font-size: 11px; cursor: pointer; border: 3px solid var(--line);
-  box-shadow: 3px 3px 0 var(--ink); background: var(--yellow); color: var(--ink); padding: 10px 12px; }
-.tsent { margin: 10px 0 0; font-size: 16px; }
+.taccount { display: inline-block; font-family: var(--font-press), monospace; font-size: 11px; text-decoration: none;
+  border: 3px solid var(--line); box-shadow: 3px 3px 0 var(--ink); background: var(--yellow); color: var(--ink); padding: 10px 12px; }
+.taccount:active { transform: translate(3px,3px); box-shadow: none; }
 `;

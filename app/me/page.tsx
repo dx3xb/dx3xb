@@ -10,9 +10,13 @@ import {
   dx3xb,
   ensureSession,
   GAME_URL,
-  startClaimAccount,
+  sendPasswordReset,
+  signInAccount,
+  signOutAccount,
+  startPasswordSignup,
   TRIO_GAMES,
   TRIO_REPORT_URL,
+  updateAccountPassword,
   type TrioGame,
   type TrioProgress,
   type MyRun,
@@ -20,6 +24,7 @@ import {
 import { getMyMicroapps, type Microapp } from "../dx3xb-apps";
 
 type Lang = "zh" | "en";
+type AccountMode = "register" | "login" | "forgot" | "reset";
 
 const GAME_NAME: Record<Lang, Record<TrioGame, string>> = {
   zh: { "color-hunter": "色差猎人", "dont-click-wrong": "不要点错", "instant-memory": "瞬间记忆" },
@@ -60,14 +65,29 @@ const COPY = {
     trainTitle: "思维训练程序",
     trainSoon: "敬请期待",
     trainDesc: "进阶付费训练，系统提升感官与脑力。",
-    claimTitle: "注册认领你的账号",
-    claimHint: "设置用户名/空间名，填邮箱收登录链接。点开后会把当前战报和微应用绑定到这个邮箱。",
+    claimTitle: "账号",
+    claimHint: "注册正式账号会保留当前三件套战报和微应用。已有账号请直接登录。",
+    registerTab: "注册",
+    loginTab: "登录",
+    forgotTab: "找回",
     handlePh: "用户名 / 空间名",
     emailPh: "你的邮箱",
-    send: "发送登录链接",
+    passwordPh: "密码（至少 8 位）",
+    newPasswordPh: "新密码（至少 8 位）",
+    confirmPasswordPh: "确认密码",
+    register: "注册账号",
+    login: "登录",
+    forgot: "发送重置邮件",
+    savePassword: "保存新密码",
+    logout: "退出登录",
+    send: "发送确认邮件",
     sending: "发送中…",
-    sent: "登录链接已发到邮箱 ✉️ 点开后会自动认领当前空间",
-    existingSent: "这个邮箱已有账号，已发送登录链接。点开后会登录已有账号；当前匿名空间不会自动合并。",
+    sent: "确认邮件已发到邮箱。点开后会绑定当前空间。",
+    resetSent: "重置密码邮件已发送，请去邮箱打开链接。",
+    passwordUpdated: "密码已更新。",
+    loggedIn: "已登录。",
+    loggedOut: "已退出登录。",
+    existingSent: "这个邮箱已有账号，请切换到登录。",
     claimed: "认领完成，当前空间已绑定邮箱。",
     err: "发送失败，换个邮箱再试",
     errPrefix: "发送失败：",
@@ -97,14 +117,29 @@ const COPY = {
     trainTitle: "Mind-Training Program",
     trainSoon: "COMING SOON",
     trainDesc: "Advanced paid training to systematically sharpen sense & brain.",
-    claimTitle: "Claim your account",
-    claimHint: "Choose a username/space name, enter your email, then open the login link to bind this space.",
+    claimTitle: "Account",
+    claimHint: "Create an account to keep this space's reports and micro-apps. Already registered? Sign in.",
+    registerTab: "Sign up",
+    loginTab: "Sign in",
+    forgotTab: "Reset",
     handlePh: "username / space name",
     emailPh: "your email",
-    send: "Send login link",
+    passwordPh: "password (8+ chars)",
+    newPasswordPh: "new password (8+ chars)",
+    confirmPasswordPh: "confirm password",
+    register: "Create account",
+    login: "Sign in",
+    forgot: "Send reset email",
+    savePassword: "Save new password",
+    logout: "Sign out",
+    send: "Send confirmation",
     sending: "Sending…",
-    sent: "Magic link sent ✉️ open it to claim this space",
-    existingSent: "This email already has an account. I sent a login link for it; this guest space will not be merged automatically.",
+    sent: "Confirmation email sent. Open it to bind this space.",
+    resetSent: "Password reset email sent.",
+    passwordUpdated: "Password updated.",
+    loggedIn: "Signed in.",
+    loggedOut: "Signed out.",
+    existingSent: "This email already has an account. Switch to sign in.",
     claimed: "Claim complete. This space is now bound to your email.",
     err: "Failed — try another email",
     errPrefix: "Failed: ",
@@ -131,6 +166,7 @@ function fmtDate(iso: string) {
 
 function claimErrorText(code: string, lang: Lang) {
   const zh: Record<string, string> = {
+    email_exists: "这个邮箱已注册，请切换到登录",
     handle_taken: "这个空间名已经被使用，请换一个",
     missing_handle: "请先填写用户名/空间名",
     invalid_email: "邮箱格式不对",
@@ -138,8 +174,10 @@ function claimErrorText(code: string, lang: Lang) {
     missing_email_session: "邮箱链接没有完成登录，请重新打开邮件链接",
     bad_or_expired_claim: "认领链接已失效，请重新发送登录链接",
     email_mismatch: "当前登录邮箱和认领邮箱不一致",
+    "Invalid login credentials": "邮箱或密码不对",
   };
   const en: Record<string, string> = {
+    email_exists: "This email already has an account. Switch to sign in",
     handle_taken: "This space name is already taken",
     missing_handle: "Choose a username / space name first",
     invalid_email: "Invalid email",
@@ -147,6 +185,7 @@ function claimErrorText(code: string, lang: Lang) {
     missing_email_session: "The email link did not finish sign-in. Open the link again",
     bad_or_expired_claim: "Claim link expired. Send a new login link",
     email_mismatch: "The signed-in email does not match this claim",
+    "Invalid login credentials": "Invalid email or password",
   };
   return (lang === "zh" ? zh : en)[code] ?? code;
 }
@@ -171,14 +210,40 @@ export default function MePage() {
   const [loaded, setLoaded] = useState(false);
   const [claimEmail, setClaimEmail] = useState("");
   const [claimHandle, setClaimHandle] = useState("");
-  const [claim, setClaim] = useState<"idle" | "sending" | "sent" | "existing" | "completed" | "error">("idle");
+  const [accountPassword, setAccountPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [accountMode, setAccountMode] = useState<AccountMode>("register");
+  const [claim, setClaim] = useState<"idle" | "sending" | "sent" | "resetSent" | "passwordUpdated" | "loggedIn" | "loggedOut" | "completed" | "error">("idle");
   const [claimError, setClaimError] = useState("");
   const t = COPY[lang];
+
+  async function refreshSpace() {
+    const [prog, h, e, r, apps] = await Promise.all([
+      getTrioProgress(),
+      getProfileHandle(),
+      getEmail(),
+      getMyRuns(),
+      getMyMicroapps(),
+    ]);
+    setProgress(prog);
+    if (h) {
+      setHandle(h);
+      setClaimHandle(h);
+    } else {
+      setHandle("");
+    }
+    setEmail(e);
+    setRuns(r);
+    setMyApps(apps);
+    setLoaded(true);
+  }
 
   useEffect(() => {
     setLang(getInitialLang());
     (async () => {
-      const claimToken = new URLSearchParams(window.location.search).get("claim");
+      const params = new URLSearchParams(window.location.search);
+      const claimToken = params.get("claim");
+      const isReset = params.get("reset") === "1";
       if (claimToken) {
         const hasEmailSession = await waitForEmailLinkSession();
         const completed = hasEmailSession ? await completeClaimAccount(claimToken) : { ok: false, error: "missing_email_session" };
@@ -191,25 +256,15 @@ export default function MePage() {
           setClaimError(claimErrorText(completed.error || "claim_complete_failed", getInitialLang()));
           setClaim("error");
         }
+      } else if (isReset) {
+        await waitForEmailLinkSession();
       } else {
         await ensureSession();
       }
-      const [prog, h, e, r, apps] = await Promise.all([
-        getTrioProgress(),
-        getProfileHandle(),
-        getEmail(),
-        getMyRuns(),
-        getMyMicroapps(),
-      ]);
-      setProgress(prog);
-      if (h) {
-        setHandle(h);
-        setClaimHandle(h);
+      if (isReset) {
+        setAccountMode("reset");
       }
-      setEmail(e);
-      setRuns(r);
-      setMyApps(apps);
-      setLoaded(true);
+      await refreshSpace();
     })();
   }, []);
 
@@ -230,29 +285,109 @@ export default function MePage() {
     });
   }
 
-  async function sendLink() {
+  function validateEmailAndPassword(requirePassword = true) {
     const e = claimEmail.trim();
-    const h = claimHandle.trim();
     setClaimError("");
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)) {
+      setClaimError(lang === "zh" ? "邮箱格式不对" : "invalid email");
+      setClaim("error");
+      return null;
+    }
+    if (requirePassword && accountPassword.length < 8) {
+      setClaimError(lang === "zh" ? "密码至少 8 位" : "password must be at least 8 characters");
+      setClaim("error");
+      return null;
+    }
+    return e;
+  }
+
+  async function registerAccount() {
+    const e = validateEmailAndPassword(true);
+    const h = claimHandle.trim();
+    if (!e) return;
     if (!h) {
       setClaimError(lang === "zh" ? "请先填写用户名/空间名" : "choose a username / space name");
       setClaim("error");
       return;
     }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)) {
-      setClaimError(lang === "zh" ? "邮箱格式不对" : "invalid email");
+    if (accountPassword !== confirmPassword) {
+      setClaimError(lang === "zh" ? "两次输入的密码不一致" : "passwords do not match");
       setClaim("error");
       return;
     }
     setClaim("sending");
-    const res = await startClaimAccount(e, h);
+    const res = await startPasswordSignup(e, h, accountPassword);
     if (res.error) {
-      console.warn("dx3xb claim failed", res.error);
+      console.warn("dx3xb register failed", res.error);
       setClaimError(claimErrorText(res.error.message || String(res.error), lang));
       setClaim("error");
       return;
     }
-    setClaim(res.mode === "existing_login" ? "existing" : "sent");
+    setClaim("sent");
+  }
+
+  async function loginAccount() {
+    const e = validateEmailAndPassword(true);
+    if (!e) return;
+    setClaim("sending");
+    const res = await signInAccount(e, accountPassword);
+    if (res.error) {
+      setClaimError(claimErrorText(res.error.message || String(res.error), lang));
+      setClaim("error");
+      return;
+    }
+    setClaim("loggedIn");
+    await refreshSpace();
+  }
+
+  async function forgotPassword() {
+    const e = validateEmailAndPassword(false);
+    if (!e) return;
+    setClaim("sending");
+    const res = await sendPasswordReset(e);
+    if (res.error) {
+      setClaimError(claimErrorText(res.error.message || String(res.error), lang));
+      setClaim("error");
+      return;
+    }
+    setClaim("resetSent");
+  }
+
+  async function saveNewPassword() {
+    setClaimError("");
+    if (accountPassword.length < 8 || accountPassword !== confirmPassword) {
+      setClaimError(lang === "zh" ? "密码至少 8 位，且两次输入必须一致" : "password must be 8+ characters and match");
+      setClaim("error");
+      return;
+    }
+    setClaim("sending");
+    const res = await updateAccountPassword(accountPassword);
+    if (res.error) {
+      setClaimError(claimErrorText(res.error.message || String(res.error), lang));
+      setClaim("error");
+      return;
+    }
+    setClaim("passwordUpdated");
+    await refreshSpace();
+  }
+
+  async function logoutAccount() {
+    setClaimError("");
+    setClaim("sending");
+    const res = await signOutAccount();
+    if (res.error) {
+      setClaimError(claimErrorText(res.error.message || String(res.error), lang));
+      setClaim("error");
+      return;
+    }
+    setEmail(null);
+    setHandle("");
+    setRuns([]);
+    setMyApps([]);
+    setProgress(null);
+    setClaim("loggedOut");
+    await ensureSession();
+    await refreshSpace();
   }
 
   const langQ = `?lang=${lang}`;
@@ -301,25 +436,82 @@ export default function MePage() {
             </a>
           </section>
 
-          {/* 注册认领 */}
-          {isAnon && (
-            <section className="panel mcard mclaim">
-              <h2 className="pixel mctitle">{t.claimTitle}</h2>
-              <p className="mdesc">{t.claimHint}</p>
-              {claim === "sent" || claim === "existing" || claim === "completed" ? (
-                <p className="msent">{claim === "completed" ? t.claimed : claim === "existing" ? t.existingSent : t.sent}</p>
-              ) : (
-                <>
+          {/* 账号 */}
+          <section className="panel mcard mclaim">
+            <h2 className="pixel mctitle">{t.claimTitle}</h2>
+            <p className="mdesc">{isAnon ? t.claimHint : `${t.claimedTag} · ${email}`}</p>
+
+            {!isAnon && accountMode !== "reset" ? (
+              <>
+                <p className="msent">{handle || email}</p>
+                <button className="accountBtn" onClick={logoutAccount} disabled={claim === "sending"}>
+                  {claim === "sending" ? t.sending : t.logout}
+                </button>
+              </>
+            ) : accountMode === "reset" ? (
+              <>
+                <input type="password" placeholder={t.newPasswordPh} value={accountPassword} onChange={(e) => setAccountPassword(e.target.value)} />
+                <input type="password" placeholder={t.confirmPasswordPh} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
+                <button className="accountBtn" onClick={saveNewPassword} disabled={claim === "sending"}>
+                  {claim === "sending" ? t.sending : t.savePassword}
+                </button>
+              </>
+            ) : (
+              <>
+                <div className="accountTabs" role="tablist" aria-label={t.claimTitle}>
+                  <button className={accountMode === "register" ? "on" : ""} onClick={() => { setAccountMode("register"); setClaim("idle"); setClaimError(""); }} type="button">
+                    {t.registerTab}
+                  </button>
+                  <button className={accountMode === "login" ? "on" : ""} onClick={() => { setAccountMode("login"); setClaim("idle"); setClaimError(""); }} type="button">
+                    {t.loginTab}
+                  </button>
+                  <button className={accountMode === "forgot" ? "on" : ""} onClick={() => { setAccountMode("forgot"); setClaim("idle"); setClaimError(""); }} type="button">
+                    {t.forgotTab}
+                  </button>
+                </div>
+                {accountMode === "register" && (
                   <input type="text" placeholder={t.handlePh} value={claimHandle} onChange={(e) => setClaimHandle(e.target.value)} maxLength={24} />
-                  <div className="mrow">
-                    <input type="email" inputMode="email" placeholder={t.emailPh} value={claimEmail} onChange={(e) => setClaimEmail(e.target.value)} onKeyDown={(e) => e.key === "Enter" && sendLink()} />
-                    <button onClick={sendLink} disabled={claim === "sending"}>{claim === "sending" ? t.sending : t.send}</button>
-                  </div>
-                  {claim === "error" && <p className="msent">{claimError ? `${t.errPrefix}${claimError}` : t.err}</p>}
-                </>
-              )}
-            </section>
-          )}
+                )}
+                <input type="email" inputMode="email" placeholder={t.emailPh} value={claimEmail} onChange={(e) => setClaimEmail(e.target.value)} />
+                {accountMode !== "forgot" && (
+                  <input
+                    type="password"
+                    placeholder={t.passwordPh}
+                    value={accountPassword}
+                    onChange={(e) => setAccountPassword(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && (accountMode === "register" ? registerAccount() : loginAccount())}
+                  />
+                )}
+                {accountMode === "register" && (
+                  <input type="password" placeholder={t.confirmPasswordPh} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
+                )}
+                <button
+                  className="accountBtn"
+                  onClick={accountMode === "register" ? registerAccount : accountMode === "login" ? loginAccount : forgotPassword}
+                  disabled={claim === "sending"}
+                >
+                  {claim === "sending" ? t.sending : accountMode === "register" ? t.register : accountMode === "login" ? t.login : t.forgot}
+                </button>
+              </>
+            )}
+
+            {claim !== "idle" && claim !== "sending" && claim !== "error" && (
+              <p className="msent">
+                {claim === "sent"
+                  ? t.sent
+                  : claim === "resetSent"
+                    ? t.resetSent
+                    : claim === "passwordUpdated"
+                      ? t.passwordUpdated
+                      : claim === "loggedIn"
+                        ? t.loggedIn
+                        : claim === "loggedOut"
+                          ? t.loggedOut
+                          : t.claimed}
+              </p>
+            )}
+            {claim === "error" && <p className="msent">{claimError ? `${t.errPrefix}${claimError}` : t.err}</p>}
+          </section>
 
           {/* 历史战报 */}
           <section className="panel mcard">
@@ -436,6 +628,14 @@ const STYLE = `
   background: var(--cream-2); border: 2px solid var(--line); padding: 6px 9px; }
 .mclaim { background: var(--cream); }
 .mclaim > input { width: 100%; border: 3px solid var(--line); padding: 10px; font-family: inherit; font-size: 18px; background: #fff; outline: none; margin-bottom: 8px; }
+.accountTabs { display: flex; gap: 6px; margin: 0 0 10px; }
+.accountTabs button { flex: 1 1 0; min-width: 0; cursor: pointer; border: 3px solid var(--line); background: #fff; color: var(--ink);
+  font-family: var(--font-press), monospace; font-size: 10px; padding: 8px 6px; }
+.accountTabs button.on { background: var(--ink); color: var(--cream); }
+.accountBtn { display: inline-block; cursor: pointer; border: 3px solid var(--line); box-shadow: 3px 3px 0 var(--ink);
+  background: var(--yellow); color: var(--ink); font-family: var(--font-press), monospace; font-size: 11px; padding: 10px 12px; }
+.accountBtn:active { transform: translate(3px,3px); box-shadow: none; }
+.accountBtn:disabled { opacity: 0.7; cursor: wait; }
 .mrow { display: flex; gap: 8px; flex-wrap: wrap; }
 .mrow input { flex: 1 1 160px; min-width: 0; border: 3px solid var(--line); padding: 10px; font-family: inherit; font-size: 18px; background: #fff; outline: none; }
 .mrow button { font-family: var(--font-press), monospace; font-size: 11px; cursor: pointer; border: 3px solid var(--line);
