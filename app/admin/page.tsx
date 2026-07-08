@@ -24,6 +24,41 @@ type App = {
   created_at: string;
   reports: number;
 };
+type AdminUserApp = {
+  id: string;
+  slug: string;
+  title: string;
+  template: string;
+  status: string;
+  plays: number;
+  reports: number;
+  created_at: string | null;
+  updated_at: string | null;
+};
+type AdminUser = {
+  id: string;
+  email: string | null;
+  isAnonymous: boolean;
+  createdAt: string | null;
+  lastSignInAt: string | null;
+  handle: string | null;
+  runCount: number;
+  appCount: number;
+  publicAppCount: number;
+  pendingAppCount: number;
+  totalPlays: number;
+  reportCount: number;
+  apps: AdminUserApp[];
+};
+type UserSummary = {
+  users: number;
+  claimed: number;
+  anonymous: number;
+  apps: number;
+  publicApps: number;
+  totalPlays: number;
+  reports: number;
+};
 
 const ADMIN_STORAGE_KEY = "dx3xb_admin";
 
@@ -40,9 +75,11 @@ export default function AdminPage() {
   const [pwd, setPwd] = useState("");
   const [authed, setAuthed] = useState(false);
   const [err, setErr] = useState("");
-  const [tab, setTab] = useState<"gb" | "ma">("gb");
+  const [tab, setTab] = useState<"gb" | "ma" | "users">("gb");
   const [rows, setRows] = useState<Row[]>([]);
   const [apps, setApps] = useState<App[]>([]);
+  const [users, setUsers] = useState<AdminUser[]>([]);
+  const [summary, setSummary] = useState<UserSummary | null>(null);
   const [edit, setEdit] = useState<Record<number, { name: string; message: string }>>({});
 
   useEffect(() => {
@@ -72,6 +109,7 @@ export default function AdminPage() {
     sessionStorage.setItem(ADMIN_STORAGE_KEY, tk);
     setToken(tk);
     void loadApps(tk);
+    void loadUsers(tk);
   }
   async function loadApps(tk: string) {
     const res = await fetch("/api/admin/microapps", { headers: { Authorization: `Bearer ${tk}` }, cache: "no-store" });
@@ -79,6 +117,16 @@ export default function AdminPage() {
       setApps((await res.json()).apps || []);
     } else {
       setErr("读取微应用失败");
+    }
+  }
+  async function loadUsers(tk: string) {
+    const res = await fetch("/api/admin/users", { headers: { Authorization: `Bearer ${tk}` }, cache: "no-store" });
+    if (res.ok) {
+      const data = await res.json();
+      setUsers(data.users || []);
+      setSummary(data.summary || null);
+    } else {
+      setErr("读取用户失败");
     }
   }
 
@@ -116,6 +164,7 @@ export default function AdminPage() {
   }
 
   const pending = apps.filter((a) => a.status === "pending").length;
+  const claimed = summary?.claimed ?? users.filter((u) => !u.isAnonymous && u.email).length;
 
   return (
     <main className="awrap">
@@ -124,6 +173,7 @@ export default function AdminPage() {
         <div className="atabs">
           <button className={`atab ${tab === "gb" ? "on" : ""}`} onClick={() => setTab("gb")}>留言 {rows.length}</button>
           <button className={`atab ${tab === "ma" ? "on" : ""}`} onClick={() => setTab("ma")}>微应用{pending ? ` · ${pending}待审` : ""}</button>
+          <button className={`atab ${tab === "users" ? "on" : ""}`} onClick={() => setTab("users")}>用户 {claimed}/{users.length}</button>
         </div>
         <button className="abtn" onClick={() => { sessionStorage.removeItem(ADMIN_STORAGE_KEY); setAuthed(false); }}>退出</button>
       </div>
@@ -178,6 +228,54 @@ export default function AdminPage() {
           ))}
         </div>
       )}
+
+      {tab === "users" && (
+        <div className="alist">
+          {summary && (
+            <div className="agrid">
+              <div><b>{summary.users}</b><span>用户</span></div>
+              <div><b>{summary.claimed}</b><span>已注册</span></div>
+              <div><b>{summary.apps}</b><span>小游戏</span></div>
+              <div><b>{summary.totalPlays}</b><span>分享访问/游玩</span></div>
+              <div><b>{summary.reports}</b><span>举报</span></div>
+            </div>
+          )}
+          {users.length === 0 && <p className="note">还没有用户数据。</p>}
+          {users.map((u) => (
+            <div key={u.id} className="acard">
+              <div className="ameta">
+                <span className={`astatus ${u.isAnonymous ? "draft" : "public"}`}>{u.isAnonymous ? "访客" : "已注册"}</span>
+                <span>{u.email || "无邮箱"}</span>
+                {u.handle && <span>@{u.handle}</span>}
+                <span>注册 {u.createdAt ? bjTime(u.createdAt) : "—"}</span>
+                <span>最近登录 {u.lastSignInAt ? bjTime(u.lastSignInAt) : "—"}</span>
+              </div>
+              <div className="ustats">
+                <span>小游戏 {u.appCount}</span>
+                <span>公开 {u.publicAppCount}</span>
+                <span>待审 {u.pendingAppCount}</span>
+                <span>战报 {u.runCount}</span>
+                <span>分享访问/游玩 {u.totalPlays}</span>
+                {u.reportCount > 0 && <span className="ahid">举报 {u.reportCount}</span>}
+              </div>
+              <div className="uid">{u.id}</div>
+              {u.apps.length > 0 && (
+                <div className="uapps">
+                  {u.apps.map((a) => (
+                    <div key={a.id} className="uapp">
+                      <div>
+                        <b>{a.title || "(无标题)"}</b>
+                        <span>{a.template} · {a.status} · ▶ {a.plays}{a.reports ? ` · 举报 ${a.reports}` : ""}</span>
+                      </div>
+                      <a href={`/u/${a.slug}`} target="_blank" rel="noreferrer">打开</a>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
     </main>
   );
 }
@@ -202,6 +300,10 @@ const STYLE = `
 .aerr { color: var(--coral); }
 .note { color: var(--ink-soft); }
 .alist { display: grid; gap: 12px; }
+.agrid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; }
+.agrid div { background: #fff; border: 3px solid var(--line); box-shadow: 3px 3px 0 var(--ink); padding: 10px; display: grid; gap: 4px; }
+.agrid b { font-family: var(--font-press), monospace; font-size: 16px; }
+.agrid span { font-size: 13px; color: var(--ink-soft); }
 .acard { background: #fff; border: 3px solid var(--line); box-shadow: var(--shadow); padding: 12px; display: grid; gap: 8px; }
 .acard.hidden { opacity: .6; background: var(--cream-2); }
 .acard.reply { margin-left: 22px; border-left: 6px solid var(--teal); }
@@ -215,4 +317,20 @@ const STYLE = `
 .astatus.hidden { background: var(--coral); color: #fff; }
 .atitle { font-size: 19px; }
 .arow { display: flex; gap: 8px; flex-wrap: wrap; }
+.ustats { display: flex; flex-wrap: wrap; gap: 8px; }
+.ustats span { background: var(--cream-2); border: 2px solid var(--line); padding: 4px 7px; font-size: 13px; }
+.uid { font-family: monospace; font-size: 12px; color: var(--ink-soft); word-break: break-all; }
+.uapps { display: grid; gap: 7px; margin-top: 2px; }
+.uapp { display: flex; justify-content: space-between; gap: 10px; align-items: center; border-top: 2px dashed rgba(43,34,51,.18); padding-top: 7px; }
+.uapp div { display: grid; gap: 2px; }
+.uapp b { font-size: 16px; }
+.uapp span { font-size: 13px; color: var(--ink-soft); }
+.uapp a { color: var(--teal); font-weight: 700; white-space: nowrap; }
+@media (max-width: 720px) {
+  .agrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .abar { align-items: flex-start; }
+  .atabs { flex-wrap: wrap; }
+  .atab + .atab { border-left: 3px solid var(--line); margin-left: -3px; }
+  .uapp { align-items: flex-start; }
+}
 `;
