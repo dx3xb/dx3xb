@@ -14,7 +14,7 @@ import type { PlayerEvents } from "./types";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type PlayerC = ComponentType<{ config: any; title: string; slug?: string; lang: Lang; preview?: boolean } & PlayerEvents>;
-type EditorC = ComponentType<{ config: any; onChange: (c: any) => void; lang: Lang }>;
+type EditorC = ComponentType<{ config: any; onChange: (c: any) => void; lang: Lang; appId?: string; title?: string; onTitleChange?: (title: string) => void }>;
 type Reg = {
   empty: (lang?: Lang) => unknown;
   validate: (c: unknown) => unknown;

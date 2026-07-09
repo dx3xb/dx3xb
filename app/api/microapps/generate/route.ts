@@ -91,25 +91,12 @@ function localDraft(template: string, prompt: string, lang: "zh" | "en"): Draft 
     return {
       title,
       config: {
-        intro: lang === "zh" ? `一个关于「${topic}」的轻互动小游戏。` : `A light interactive mini game about ${topic}.`,
-        genre: "tap",
-        durationSec: 30,
-        targetScore: 10,
-        lives: 3,
-        heroEmoji: "🕹️",
-        heroLabel: lang === "zh" ? "玩家" : "Player",
-        collectibles: [
-          { emoji: "⭐", label: lang === "zh" ? "灵感星星" : "Idea star", points: 1 },
-          { emoji: "💎", label: lang === "zh" ? "隐藏宝石" : "Hidden gem", points: 2 },
-          { emoji: "🚀", label: lang === "zh" ? "加速道具" : "Boost", points: 3 },
-        ],
-        hazards: [
-          { emoji: "💣", label: lang === "zh" ? "捣乱陷阱" : "Trap", points: -1 },
-          { emoji: "🕳️", label: lang === "zh" ? "黑洞" : "Black hole", points: -2 },
-        ],
-        sequence: ["🕹️", "⭐", "💎", "🚀"],
-        winText: lang === "zh" ? "你通关了这个 AI 小游戏！" : "You cleared this AI mini game!",
-        loseText: lang === "zh" ? "差一点，再挑战一次。" : "So close. Try again.",
+        intro: lang === "zh" ? `一个关于「${topic}」的 Canvas 小游戏。` : `A Canvas mini game about ${topic}.`,
+        html: `<main class="game"><h1>${title}</h1><p id="score">Score: 0</p><button id="target">⭐</button><p>${lang === "zh" ? "点到 10 分获胜" : "Reach 10 points to win"}</p></main>`,
+        css: "body{margin:0;background:#101827;color:white;font-family:ui-monospace,monospace}.game{min-height:100vh;display:grid;place-items:center;align-content:center;gap:16px;text-align:center}button{font-size:64px;border:4px solid white;background:#12b7a6;padding:18px 26px;cursor:pointer}",
+        js: "let score=0;const btn=document.getElementById('target');const label=document.getElementById('score');btn.addEventListener('click',()=>{score++;label.textContent='Score: '+score;btn.style.transform=`translate(${Math.random()*100-50}px,${Math.random()*80-40}px)`;if(score>=10){label.textContent='You win!';parent.postMessage({type:'dx3xb-workshop-complete'},'*')}});",
+        turnsUsed: 0,
+        messages: [],
       },
       meta: { coverEmoji: "🕹️", accent: "#4564ff" },
       source: "local",
@@ -153,7 +140,7 @@ For thisorthat use {intro,pairs:[{a,b,mine}]}.
 For higherlower use {intro,unit,items:[{label,value}]}.
 For madlibs use {intro,story} with blanks like {地点}.
 For escape use {intro,riddles:[{q,answer,hint}]}.
-For workshop use only this controlled spec, no HTML/CSS/JS/code: {intro,genre:"tap"|"catch"|"sequence",durationSec,targetScore,lives,heroEmoji,heroLabel,collectibles:[{emoji,label,points}],hazards:[{emoji,label,points}],sequence:[emoji],winText,loseText}.`;
+For workshop return a sandboxed Canvas game config only: {intro,html,css,js}. Do not return a full document, script tags, external URLs, network calls, forms, iframe/object/embed, or code that navigates the page. The JS may use parent.postMessage({type:"dx3xb-workshop-complete"},"*") when the game is completed.`;
   const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(key)}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },

@@ -199,13 +199,13 @@ export default function EditorPage() {
       ) : (
         <div className="eform">
           <input className="ein big" placeholder={t.titlePh} value={title} maxLength={60} onChange={(e) => { setTitle(e.target.value); setSaveState("idle"); }} />
-          <div className="epanel">
+          {tpl !== "workshop" && <div className="epanel">
             <h3 className="ehead">{t.ai}</h3>
             <div className="erow">
               <textarea className="ein grow" rows={2} placeholder={t.aiPh} value={aiPrompt} maxLength={240} onChange={(e) => { setAiPrompt(e.target.value); setSaveState("idle"); }} />
               <button className="ebig teal" onClick={generateDraft} disabled={aiBusy || !aiPrompt.trim()}>{aiBusy ? t.aiBusy : t.aiBtn}</button>
             </div>
-          </div>
+          </div>}
 
           <div className="epanel">
             <h3 className="ehead">{t.style}</h3>
@@ -230,7 +230,7 @@ export default function EditorPage() {
               <label className="efield grow"><span>{t.lives}</span><input className="ein" type="number" min={1} max={9} value={meta.advanced.lives} onChange={(e) => patchMeta({ advanced: { ...meta.advanced, lives: Number(e.target.value) || 1 } })} /></label>
             </div>
           </div>
-          <Editor config={validCfg} onChange={onCfg} lang={lang} />
+          <Editor config={validCfg} onChange={onCfg} lang={lang} appId={id} title={title} onTitleChange={(next) => { setTitle(next); setSaveState("idle"); }} />
 
           <div className="esave">
             <button className="ebig" onClick={() => save()}>{saveState === "saving" ? t.saving : saveState === "saved" ? t.saved : t.save}</button>

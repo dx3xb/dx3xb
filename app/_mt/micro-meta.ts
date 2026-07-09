@@ -149,10 +149,9 @@ export function summarizeMicroConfig(template: string, config: unknown, lang: La
   }
   if (template === "escape") return lang === "zh" ? `${n("riddles")} 关谜题` : `${n("riddles")} rooms`;
   if (template === "workshop") {
-    const genre = String(c.genre ?? "tap");
-    const good = n("collectibles");
-    const bad = n("hazards");
-    return lang === "zh" ? `${genre} 玩法 / ${good} 个目标 / ${bad} 个陷阱` : `${genre} game / ${good} targets / ${bad} hazards`;
+    const html = String(c.html ?? "").length;
+    const turns = Math.max(0, Math.min(10, Math.round(Number(c.turnsUsed) || 0)));
+    return lang === "zh" ? `Canvas 游戏 / HTML ${html} 字符 / AI ${turns}/10 次` : `Canvas game / ${html} HTML chars / AI ${turns}/10`;
   }
   return lang === "zh" ? "自定义内容" : "Custom content";
 }
