@@ -58,6 +58,7 @@ const COPY = {
     goFinish: "去完成三件套 →",
     historyTitle: "历史战报",
     noHistory: "还没有战报，去玩一局吧。",
+    historyPlay: "去玩一局 →",
     beat: (p: number) => `击败 ${p}%`,
     microTitle: "我的微应用 / 玩具",
     microSoon: "施工中 🚧",
@@ -67,7 +68,7 @@ const COPY = {
     microStatus: { draft: "草稿", unlisted: "仅链接", pending: "审核中", public: "已公开", hidden: "已下架" } as Record<string, string>,
     trainTitle: "思维训练程序",
     trainSoon: "敬请期待",
-    trainDesc: "进阶付费训练，系统提升感官与脑力。",
+    trainDesc: "进阶训练，系统提升感官与脑力。",
     claimTitle: "账号",
     claimHint: "注册正式账号会保留当前三件套战报和微应用。已有账号请直接登录。",
     registerTab: "注册",
@@ -114,6 +115,7 @@ const COPY = {
     goFinish: "Finish the trio →",
     historyTitle: "Report History",
     noHistory: "No reports yet — go play a round.",
+    historyPlay: "Play a round →",
     beat: (p: number) => `beat ${p}%`,
     microTitle: "My Micro-apps / Toys",
     microSoon: "UNDER BUILD 🚧",
@@ -123,7 +125,7 @@ const COPY = {
     microStatus: { draft: "DRAFT", unlisted: "UNLISTED", pending: "IN REVIEW", public: "PUBLIC", hidden: "REMOVED" } as Record<string, string>,
     trainTitle: "Mind-Training Program",
     trainSoon: "COMING SOON",
-    trainDesc: "Advanced paid training to systematically sharpen sense & brain.",
+    trainDesc: "Advanced training to systematically sharpen sense & brain.",
     claimTitle: "Account",
     claimHint: "Create an account to keep this space's reports and micro-apps. Already registered? Sign in.",
     registerTab: "Sign up",
@@ -429,6 +431,7 @@ export default function MePage() {
 
   const langQ = `?lang=${lang}`;
   const isAnon = !email;
+  const playUrl = GAME_URL[progress?.nextGame ?? "color-hunter"] + langQ;
 
   return (
     <main className="wrap">
@@ -564,7 +567,10 @@ export default function MePage() {
 
           {/* 历史战报 */}
           <section className="panel mcard">
-            <h2 className="pixel mctitle">{t.historyTitle}</h2>
+            <div className="mcardhead">
+              <h2 className="pixel mctitle">{t.historyTitle}</h2>
+              <a className="mlink mini" href={playUrl}>{t.historyPlay}</a>
+            </div>
             {runs.length === 0 ? (
               <p className="mdesc">{t.noHistory}</p>
             ) : (
@@ -628,7 +634,7 @@ const STYLE = `
 .pixel { font-family: var(--font-press), monospace; letter-spacing: 0.5px; }
 .mbar { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 18px; }
 .mbtn { display: inline-block; text-decoration: none; cursor: pointer; font-family: var(--font-press), monospace;
-  font-size: 11px; background: #fff; color: var(--ink); border: 3px solid var(--line); box-shadow: 3px 3px 0 var(--ink); padding: 9px 12px; }
+  font-size: 12px; line-height: 1.35; background: #fff; color: var(--ink); border: 3px solid var(--line); box-shadow: 3px 3px 0 var(--ink); padding: 9px 12px; }
 .mbtn.yellow { background: var(--yellow); }
 .mbtn:active { transform: translate(3px,3px); box-shadow: none; }
 .mhead { display: flex; align-items: center; gap: 14px; margin: 6px 0 20px; }
@@ -637,39 +643,40 @@ const STYLE = `
   box-shadow: var(--shadow); display: flex; align-items: center; justify-content: center; overflow: hidden; }
 .mavatar img { width: 100%; height: 100%; object-fit: cover; display: block; image-rendering: auto; }
 .avatarUpload { max-width: 72px; cursor: pointer; user-select: none; text-align: center; font-family: var(--font-press), monospace;
-  font-size: 8px; line-height: 1.25; color: var(--ink); background: var(--yellow); border: 2px solid var(--line); box-shadow: 2px 2px 0 var(--ink);
+  font-size: 10px; line-height: 1.35; color: var(--ink); background: var(--yellow); border: 2px solid var(--line); box-shadow: 2px 2px 0 var(--ink);
   padding: 5px 4px; }
 .avatarUpload:active { transform: translate(2px,2px); box-shadow: none; }
 .avatarUpload input { display: none; }
 .avatarErr { margin: 7px 0 0; color: var(--coral); font-size: 15px; }
-.mkick { font-family: var(--font-press), monospace; font-size: 10px; letter-spacing: 1px; color: var(--ink-soft); margin: 0 0 6px; }
+.mkick { font-family: var(--font-press), monospace; font-size: 12px; line-height: 1.4; letter-spacing: 0.5px; color: var(--ink-soft); margin: 0 0 6px; }
 .mname { margin: 0 0 6px; font-size: clamp(22px, 6vw, 34px); line-height: 1.1; }
 .mtag { font-size: 14px; border: 2px solid var(--line); padding: 2px 7px; }
 .mtag.guest { background: var(--cream-2); color: var(--ink-soft); }
 .mtag.claimed { background: var(--teal); color: #fff; }
 .mcard { padding: 18px; margin-bottom: 14px; }
 .mcardhead { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.mctitle { margin: 0 0 12px; font-size: 15px; }
+.mctitle { margin: 0 0 12px; font-size: 15px; line-height: 1.5; }
 .mcardhead .mctitle { margin: 0; }
-.mctag { font-family: var(--font-press), monospace; font-size: 10px; color: var(--coral); }
+.mctag { font-family: var(--font-press), monospace; font-size: 11px; line-height: 1.45; color: var(--coral); }
 .mtrio { display: flex; align-items: center; gap: 16px; margin: 14px 0; }
 .mcombined b { display: block; font-size: 34px; color: var(--ink); }
-.mcombined span { font-family: var(--font-press), monospace; font-size: 9px; color: var(--ink-soft); }
+.mcombined span { font-family: var(--font-press), monospace; font-size: 11px; line-height: 1.45; color: var(--ink-soft); }
 .mdots { display: flex; gap: 8px; }
 .mdots span { width: 22px; height: 22px; border: 3px solid var(--line); background: #fff; }
-.mlink { display: inline-block; font-family: var(--font-press), monospace; font-size: 11px; color: var(--ink);
+.mlink { display: inline-block; font-family: var(--font-press), monospace; font-size: 12px; line-height: 1.35; color: var(--ink);
   background: var(--yellow); border: 3px solid var(--line); box-shadow: 3px 3px 0 var(--ink); padding: 10px 12px; text-decoration: none; }
+.mlink.mini { flex: none; font-size: 11px; padding: 8px 10px; }
 .mlink:active { transform: translate(3px,3px); box-shadow: none; }
-.mdesc { font-size: 17px; color: var(--ink-soft); margin: 0 0 12px; }
+.mdesc { font-size: 18px; line-height: 1.35; color: var(--ink-soft); margin: 0 0 12px; }
 .mhist { list-style: none; margin: 0; padding: 0; }
 .mhist li { display: grid; grid-template-columns: auto 1fr auto auto; align-items: center; gap: 8px;
   border-bottom: 2px dashed rgba(43,34,51,0.18); padding: 9px 0; }
-.mbadge { font-family: var(--font-press), monospace; font-size: 9px; color: #fff; border: 2px solid var(--line); padding: 4px 6px; }
-.mgame { font-size: 16px; }
+.mbadge { font-family: var(--font-press), monospace; font-size: 10px; line-height: 1.35; color: #fff; border: 2px solid var(--line); padding: 4px 6px; }
+.mgame { font-size: 18px; line-height: 1.25; }
 .mtitle { display: none; }
 .mscore { font-size: 16px; }
-.mbeat { font-size: 13px; color: var(--ink-soft); }
-.mdate { font-size: 13px; color: var(--ink-soft); }
+.mbeat { font-size: 16px; color: var(--ink-soft); }
+.mdate { font-size: 16px; color: var(--ink-soft); }
 .mconstruct .mwall { height: 90px; border: 3px solid var(--line); position: relative; overflow: hidden; image-rendering: pixelated;
   background-color: #c8814f;
   background-image: linear-gradient(0deg, #5d3a22 0 3px, transparent 3px), linear-gradient(90deg, #5d3a22 0 3px, transparent 3px);
@@ -681,22 +688,23 @@ const STYLE = `
   border: 3px solid var(--line); box-shadow: 3px 3px 0 var(--ink); padding: 8px 12px; }
 .mtrain { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .mtrain .mdesc { margin: 0; }
-.msoon { flex: none; font-family: var(--font-press), monospace; font-size: 10px; color: var(--ink-soft);
+.msoon { flex: none; font-family: var(--font-press), monospace; font-size: 11px; line-height: 1.45; color: var(--ink-soft);
   background: var(--cream-2); border: 2px solid var(--line); padding: 6px 9px; }
 .mclaim { background: var(--cream); }
 .mclaim > input { width: 100%; border: 3px solid var(--line); padding: 10px; font-family: inherit; font-size: 18px; background: #fff; outline: none; margin-bottom: 8px; }
 .accountTabs { display: flex; gap: 6px; margin: 0 0 10px; }
 .accountTabs button { flex: 1 1 0; min-width: 0; cursor: pointer; border: 3px solid var(--line); background: #fff; color: var(--ink);
-  font-family: var(--font-press), monospace; font-size: 10px; padding: 8px 6px; }
+  font-family: var(--font-press), monospace; font-size: 11px; line-height: 1.35; padding: 9px 6px; }
 .accountTabs button.on { background: var(--ink); color: var(--cream); }
 .accountBtn { display: inline-block; cursor: pointer; border: 3px solid var(--line); box-shadow: 3px 3px 0 var(--ink);
-  background: var(--yellow); color: var(--ink); font-family: var(--font-press), monospace; font-size: 11px; padding: 10px 12px; }
+  background: var(--yellow); color: var(--ink); font-family: var(--font-press), monospace; font-size: 12px; line-height: 1.35; padding: 10px 12px; }
 .accountBtn:active { transform: translate(3px,3px); box-shadow: none; }
 .accountBtn:disabled { opacity: 0.7; cursor: wait; }
 .mrow { display: flex; gap: 8px; flex-wrap: wrap; }
 .mrow input { flex: 1 1 160px; min-width: 0; border: 3px solid var(--line); padding: 10px; font-family: inherit; font-size: 18px; background: #fff; outline: none; }
-.mrow button { font-family: var(--font-press), monospace; font-size: 11px; cursor: pointer; border: 3px solid var(--line);
+.mrow button { font-family: var(--font-press), monospace; font-size: 12px; line-height: 1.35; cursor: pointer; border: 3px solid var(--line);
   box-shadow: 3px 3px 0 var(--ink); background: var(--yellow); color: var(--ink); padding: 10px 12px; }
-.msent { margin: 10px 0 0; font-size: 16px; }
-@media (min-width: 520px) { .mtitle { display: block; font-size: 14px; color: var(--ink-soft); } .mhist li { grid-template-columns: auto auto 1fr auto auto auto; } }
+.msent { margin: 10px 0 0; font-size: 18px; line-height: 1.3; }
+@media (min-width: 520px) { .mtitle { display: block; font-size: 16px; color: var(--ink-soft); } .mhist li { grid-template-columns: auto auto 1fr auto auto auto; } }
+@media (max-width: 420px) { .mcardhead { align-items: flex-start; } .mlink.mini { max-width: 140px; text-align: center; } }
 `;
