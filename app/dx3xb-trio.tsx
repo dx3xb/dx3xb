@@ -163,8 +163,13 @@ export async function recordRun(game: TrioGame, p: RunPayload): Promise<void> {
       lang: p.lang,
       stats: p.stats ?? {},
     });
-    if (p.handle && p.handle.trim()) {
-      await c.from("dx3xb_profiles").upsert({ user_id: id, handle: p.handle.trim().slice(0, 24) });
+    const handle = p.handle?.trim().slice(0, 24);
+    if (handle) {
+      const { data: auth } = await c.auth.getUser();
+      const { data: existing } = await c.from("dx3xb_profiles").select("handle").eq("user_id", id).maybeSingle();
+      if (auth.user?.is_anonymous || !existing?.handle) {
+        await c.from("dx3xb_profiles").upsert({ user_id: id, handle });
+      }
     }
   } catch {
     /* 记录失败不影响游戏体验 */

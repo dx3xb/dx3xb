@@ -161,8 +161,13 @@ export async function recordRun(game: TrioGame, p: RunPayload): Promise<void> {
       lang: p.lang,
       stats: p.stats ?? {},
     });
-    if (p.handle && p.handle.trim()) {
-      await c.from("dx3xb_profiles").upsert({ user_id: id, handle: p.handle.trim().slice(0, 24) });
+    const handle = p.handle?.trim().slice(0, 24);
+    if (handle) {
+      const { data: auth } = await c.auth.getUser();
+      const { data: existing } = await c.from("dx3xb_profiles").select("handle").eq("user_id", id).maybeSingle();
+      if (auth.user?.is_anonymous || !existing?.handle) {
+        await c.from("dx3xb_profiles").upsert({ user_id: id, handle });
+      }
     }
   } catch {
     /* 记录失败不影响游戏体验 */
@@ -247,6 +252,7 @@ export async function getEmail(): Promise<string | null> {
 const UI = {
   zh: {
     label: "感官与脑力三件套",
+    progressLabel: (done: number) => `三件套进度 ${done}/3`,
     nextEyebrow: "下一关",
     reportEyebrow: "三件套通关 🎉",
     reportName: "查看综合脑力总报告",
@@ -257,6 +263,7 @@ const UI = {
   },
   en: {
     label: "Sensory & Brainpower Trio",
+    progressLabel: (done: number) => `Trio progress ${done}/3`,
     nextEyebrow: "NEXT UP",
     reportEyebrow: "TRIO COMPLETE 🎉",
     reportName: "See your combined report",
@@ -332,7 +339,7 @@ export function TrioFooter({ game, lang, run }: { game: TrioGame; lang: Lang; ru
   return (
     <section className="trio" aria-label="trio progress">
       <style dangerouslySetInnerHTML={{ __html: STYLE }} />
-      <p className="trio-label">{u.label} · {progress ? `${progress.done}/3` : u.saving}</p>
+      <p className="trio-label">{u.label} · {progress ? u.progressLabel(progress.done) : u.saving}</p>
       <div className="trio-track">
         {TRIO_GAMES.map((g) => {
           const isDone = !!progress?.best[g];

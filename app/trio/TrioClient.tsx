@@ -73,6 +73,7 @@ const COPY = {
     copied: "已复制",
     trainingCta: "进入思维训练程序",
     trainingSoon: "敬请期待",
+    factoryCta: "用你的超级大脑开发属于你的小游戏",
     qrTitle: "扫码挑战三件套",
     qrCta: "把这张图发给朋友，看谁的综合脑力更高。",
     claimTitle: "注册正式账号",
@@ -106,6 +107,7 @@ const COPY = {
     copied: "COPIED",
     trainingCta: "ENTER MIND-TRAINING",
     trainingSoon: "COMING SOON",
+    factoryCta: "Build your own mini-game with your super brain",
     qrTitle: "SCAN FOR THE TRIO",
     qrCta: "Send this card to a friend — see whose brain ranks higher.",
     claimTitle: "Create an account",
@@ -382,6 +384,8 @@ export function TrioClient() {
               <a className="taccount" href={`/me?lang=${lang}`}>{t.accountCta}</a>
             </div>
           )}
+
+          <a className="factoryCta" href="/studio">{t.factoryCta}</a>
         </>
       )}
     </main>
@@ -414,23 +418,38 @@ const STYLE = `
 .tgame em { display: block; font-style: normal; font-family: var(--font-press), monospace; font-size: 9px; color: var(--teal); }
 .tgame.done em { color: var(--coral); }
 
-.reportCard { background: #fff; border: 4px solid var(--line); box-shadow: 10px 10px 0 var(--ink); overflow: hidden; margin-bottom: 18px; }
-.rhead { background: var(--ink); color: var(--cream); display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; }
+.reportCard { position: relative; background:
+  linear-gradient(135deg, rgba(255,208,68,.35), transparent 28%),
+  linear-gradient(225deg, rgba(18,183,166,.26), transparent 32%),
+  linear-gradient(0deg, #fffdf8, #fff7e7);
+  border: 4px solid var(--line); box-shadow: 10px 10px 0 var(--ink); overflow: hidden; margin-bottom: 18px; }
+.reportCard::before { content: ""; position: absolute; inset: 0; pointer-events: none; opacity: .18;
+  background:
+    linear-gradient(90deg, transparent 0 48%, #2b2233 48% 52%, transparent 52%) 0 0 / 30px 30px,
+    linear-gradient(0deg, transparent 0 48%, #2b2233 48% 52%, transparent 52%) 0 0 / 30px 30px; }
+.rhead { position: relative; background: repeating-linear-gradient(135deg, var(--ink) 0 14px, #3a2d46 14px 28px);
+  color: var(--cream); display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; }
 .rk { font-family: var(--font-press), monospace; font-size: 11px; letter-spacing: 1px; margin: 0; }
-.rbolt { font-size: 22px; }
-.rbody { padding: 20px; text-align: center; }
+.rbolt { display: grid; place-items: center; width: 38px; height: 38px; background: var(--yellow); color: var(--ink);
+  border: 3px solid var(--line); box-shadow: 3px 3px 0 rgba(0,0,0,.45); font-size: 22px; }
+.rbody { position: relative; padding: 20px; text-align: center; }
 .rissued { font-size: 16px; color: var(--ink-soft); margin: 0 0 2px; }
 .rname { font-family: var(--font-press), monospace; font-size: 17px; margin: 0; }
-.rtitle { font-size: clamp(22px, 7vw, 38px); color: var(--coral); margin: 12px 0 8px; line-height: 1.12; word-break: break-word; }
+.rtitle { font-size: clamp(22px, 7vw, 38px); color: var(--coral); margin: 12px 0 8px; line-height: 1.12; word-break: break-word;
+  text-shadow: 2px 2px 0 #ffd044; }
 .rroast { font-size: 18px; color: var(--ink-soft); margin: 0 0 14px; }
-.rpct { background: var(--cream-2); border: 3px solid var(--line); padding: 12px; margin: 12px 0 14px; }
+.rpct { background: linear-gradient(135deg, #ffd044 0 52%, #ff8ab3 52% 100%); border: 3px solid var(--line); padding: 12px; margin: 12px 0 14px;
+  box-shadow: 5px 5px 0 var(--ink); }
 .rpctnum { font-family: var(--font-press), monospace; font-size: clamp(36px, 14vw, 60px); line-height: 1; }
-.rpctnum span { color: var(--coral); }
-.rpctcap { font-size: 15px; color: var(--ink-soft); margin: 8px 0 10px; }
+.rpctnum span { color: #fff; text-shadow: 2px 2px 0 var(--ink); }
+.rpctcap { font-size: 15px; color: var(--ink); margin: 8px 0 10px; }
 .rbar { height: 16px; border: 3px solid var(--line); background: #fff; overflow: hidden; }
 .rbar i { display: block; height: 100%; background: repeating-linear-gradient(45deg, var(--coral) 0 8px, #ffa3a3 8px 16px); }
 .rdims { display: flex; gap: 8px; margin-bottom: 14px; }
-.rdims div { flex: 1; background: var(--cream); border: 3px solid var(--line); padding: 8px 4px; }
+.rdims div { flex: 1; background: var(--cream); border: 3px solid var(--line); padding: 8px 4px; box-shadow: 3px 3px 0 rgba(43,34,51,.18); }
+.rdims div:nth-child(1) { background: #ffe6ef; }
+.rdims div:nth-child(2) { background: #dff8f3; }
+.rdims div:nth-child(3) { background: #fff3b6; }
 .rdims span { display: block; font-size: 12px; color: var(--ink-soft); }
 .rdims b { display: block; font-size: 17px; margin: 2px 0; }
 .rdims em { font-style: normal; font-size: 13px; color: var(--ink-soft); }
@@ -457,4 +476,9 @@ const STYLE = `
 .taccount { display: inline-block; font-family: var(--font-press), monospace; font-size: 11px; text-decoration: none;
   border: 3px solid var(--line); box-shadow: 3px 3px 0 var(--ink); background: var(--yellow); color: var(--ink); padding: 10px 12px; }
 .taccount:active { transform: translate(3px,3px); box-shadow: none; }
+.factoryCta { display: block; margin-top: 14px; text-align: center; text-decoration: none; font-family: var(--font-press), monospace;
+  font-size: 12px; line-height: 1.45; color: var(--ink); background: #61c96f; border: 4px solid var(--line); box-shadow: 6px 6px 0 var(--ink);
+  padding: 14px 12px; }
+.factoryCta:hover { transform: translate(-1px,-1px); box-shadow: 7px 7px 0 var(--ink); }
+.factoryCta:active { transform: translate(6px,6px); box-shadow: none; }
 `;
