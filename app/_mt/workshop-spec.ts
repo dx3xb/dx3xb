@@ -115,7 +115,10 @@ export function buildWorkshopSrcDoc(config: WorkshopConfig) {
     "form-action 'none'",
     "base-uri 'none'",
   ].join("; ");
-  return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1"><meta http-equiv="Content-Security-Policy" content="${csp}"><style>html,body{min-height:100%;touch-action:manipulation;}*,*::before,*::after{box-sizing:border-box;}button,[role=button]{touch-action:manipulation;}</style><style>${cfg.css}</style></head><body>${cfg.html}<script>
+  // 注入基线：游戏充满整个画框（height:100%），无双滚动条，深色兜底底，触控友好。
+  // 游戏自己的 CSS 在这之后加载，可完全覆盖这些默认值。
+  const base = `html,body{height:100%;margin:0;padding:0;overflow:hidden;background:#0d1220;color:#f4f6ff;touch-action:manipulation;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;}*,*::before,*::after{box-sizing:border-box;}img{max-width:100%;}button,[role=button]{touch-action:manipulation;cursor:pointer;}`;
+  return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover"><meta http-equiv="Content-Security-Policy" content="${csp}"><style>${base}</style><style>${cfg.css}</style></head><body>${cfg.html}<script>
 window.fetch=undefined;window.XMLHttpRequest=undefined;window.WebSocket=undefined;window.EventSource=undefined;window.open=undefined;window.alert=undefined;window.prompt=undefined;window.confirm=undefined;
 try{${cfg.js}}catch(e){document.body.insertAdjacentHTML('beforeend','<pre style="white-space:pre-wrap;color:#ff5f57;background:#fff;padding:8px;border:2px solid #ff5f57">JS error: '+String(e).replace(/[<>&]/g,'')+'</pre>')}
 </script></body></html>`;

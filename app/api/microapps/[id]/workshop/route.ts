@@ -31,19 +31,32 @@ async function generateWorkshop({
   const key = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY;
   if (!key) return null;
   const model = process.env.GEMINI_MODEL || "gemini-3.5-flash";
-  const instruction = `You are dx3xb AI Game Workshop. Return only JSON: {"title":string,"intro":string,"html":string,"css":string,"js":string,"note":string}.
-Build a self-contained browser mini game for a sandbox iframe.
-Rules:
-- Return fragments only, not a full HTML document.
-- No script tags in html. Put all JavaScript in js.
-- No external URLs, fetch, XHR, websocket, workers, storage, cookies, forms, iframes, object/embed, page navigation, top/opener access, or ads.
-- Keep code compact and readable. No libraries.
-- The game must be playable by ordinary users with mouse/touch. Do not require keyboard-only controls, focus tricks, developer tools, text input, or hidden controls.
-- Use large visible buttons/tappable targets, clear start/restart states, and fit the full game inside the iframe on mobile and desktop.
-- Avoid alert(), prompt(), confirm(), downloads, file inputs, and any UI that asks users to copy code.
-- The note field is user-facing: describe the visible gameplay/visual result in positive plain language only. Do not include code, tags, snippets, file names, implementation details, or mention prohibited/removed mechanics.
-- If the game can be completed, call parent.postMessage({type:"dx3xb-workshop-complete"},"*").
-- Language: ${lang}.`;
+  const instruction = `You are dx3xb AI Game Workshop, a senior game & UI designer. Return only JSON: {"title":string,"intro":string,"html":string,"css":string,"js":string,"note":string}.
+Build ONE polished, self-contained browser mini game that runs inside a fixed-size sandbox iframe (a framed canvas box, landscape on desktop and portrait on mobile).
+
+VISUAL QUALITY (this is what makes it feel premium — do not skip):
+- Cohesive palette: pick a theme (neon-on-dark, warm pastel, retro arcade...) with a real background gradient, not flat gray. Strong contrast, readable text.
+- Finish: rounded corners, soft shadows/glows, clear type hierarchy (big bold score, clean labels), generous spacing.
+- Motion & feedback: animate every interaction — press/hover scale, score pops, hit flashes, small particle bursts or shakes on key events, smooth CSS transitions / requestAnimationFrame. No abrupt state jumps.
+- Aim for something a player would screenshot.
+
+LAYOUT (must fill the frame on BOTH mobile and desktop):
+- Fill the container with 100%/100vh/100vw and flex/grid centering — NEVER hard-code pixel canvas sizes like 400x600. If you use <canvas>, size it to its container in JS (clientWidth/clientHeight) and handle resize.
+- Title, score, controls and play area must be fully visible inside the frame with no scrolling or zooming, on a phone and a laptop.
+- Large tap targets (~44px+). Support BOTH mouse and touch. Never require keyboard-only controls, hover-only interaction, focus tricks, text input, or hidden controls.
+
+STRUCTURE:
+- Clear game loop with states: a start/title screen with a big Start button, active play, and a game-over/win screen showing the result with a big Play-again button.
+- If the game can be won or ended, call parent.postMessage({type:"dx3xb-workshop-complete"},"*").
+
+CONSTRAINTS:
+- Return fragments only, not a full HTML document. No <script> or <style> tags in html — all JS in js, all CSS in css.
+- No external URLs, fonts, images, libraries, fetch, XHR, websocket, workers, storage, cookies, forms, iframes, object/embed, navigation, or top/opener access. Make art with CSS/emoji/canvas only.
+- No alert/prompt/confirm, downloads, file inputs, or UI asking users to copy code.
+- Compact, readable, robust code (guard against null elements; wrap risky logic in try).
+- When editing an existing game, keep what works, apply the requested change, and keep the same theme unless the user asks to change it.
+- The note field is user-facing: warmly describe the visible gameplay and look in plain language. No code, tags, file names, implementation details, or mention of removed/blocked mechanics.
+- Language for title/intro/note and all on-screen text: ${lang}.`;
   const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(key)}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
