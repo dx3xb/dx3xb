@@ -49,12 +49,27 @@ function bounded(value: unknown, max: number) {
   return clean(value, max);
 }
 
+function codeBounded(value: unknown, max: number) {
+  return String(value ?? "")
+    .replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, "")
+    .slice(0, max);
+}
+
+function extractBodyFragment(html: string) {
+  const body = html.match(/<body\b[^>]*>([\s\S]*?)<\/body>/i)?.[1];
+  return body ?? html;
+}
+
 function stripDangerousHtml(html: string) {
-  return html
+  return extractBodyFragment(html)
     .replace(/<!doctype[^>]*>/gi, "")
-    .replace(/<\/?(html|head|body|script|iframe|object|embed|link|meta|base|form)[^>]*>/gi, "")
-    .replace(/\son[a-z]+\s*=\s*(['"]).*?\1/gi, "")
-    .replace(/\s(src|href)\s*=\s*(['"])\s*(https?:|\/\/|javascript:).*?\2/gi, "");
+    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, "")
+    .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, "")
+    .replace(/<head\b[^>]*>[\s\S]*?<\/head>/gi, "")
+    .replace(/<\/?(html|head|body|script|style|iframe|object|embed|link|meta|base|form|input|textarea|select|option)[^>]*>/gi, "")
+    .replace(/\son[a-z]+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, "")
+    .replace(/\s(src|href|xlink:href|formaction)\s*=\s*(?:"(?:https?:|\/\/|javascript:|data:text\/html)[^"]*"|'(?:https?:|\/\/|javascript:|data:text\/html)[^']*'|(?:https?:|\/\/|javascript:|data:text\/html)[^\s>]*)/gi, "")
+    .trim();
 }
 
 function stripDangerousJs(js: string) {
@@ -69,9 +84,9 @@ export function wsValidate(input: unknown): WorkshopConfig {
   const messagesRaw = (Array.isArray(o.messages) ? o.messages.slice(-10) : []) as Record<string, unknown>[];
   return {
     intro: bounded(o.intro, 240) || "AI Game Workshop",
-    html: stripDangerousHtml(bounded(o.html, 12000)) || SAMPLE_HTML,
-    css: bounded(o.css, 9000) || SAMPLE_CSS,
-    js: stripDangerousJs(bounded(o.js, 10000)) || SAMPLE_JS,
+    html: stripDangerousHtml(codeBounded(o.html, 12000)) || SAMPLE_HTML,
+    css: codeBounded(o.css, 9000) || SAMPLE_CSS,
+    js: stripDangerousJs(codeBounded(o.js, 10000)) || SAMPLE_JS,
     turnsUsed: Math.max(0, Math.min(10, Math.round(Number(o.turnsUsed) || 0))),
     messages: messagesRaw.map((m): WorkshopMessage => ({
       role: m.role === "ai" ? "ai" : "user",
