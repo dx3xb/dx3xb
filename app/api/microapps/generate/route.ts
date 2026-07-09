@@ -5,7 +5,7 @@ import { getServiceClient } from "@/lib/supabase";
 export const runtime = "nodejs";
 
 type Body = { template?: string; prompt?: string; lang?: "zh" | "en" };
-type Draft = { title: string; config: unknown; meta?: unknown };
+type Draft = { title: string; config: unknown; meta?: unknown; source?: string };
 
 const TEMPLATES = new Set(["quiz", "knowme", "thisorthat", "higherlower", "madlibs", "escape"]);
 
@@ -103,7 +103,47 @@ function localDraft(template: string, prompt: string, lang: "zh" | "en"): Draft 
   };
 }
 
-async function modelDraft(template: string, prompt: string, lang: "zh" | "en") {
+function parseJsonDraft(content: unknown) {
+  if (typeof content !== "string") return null;
+  const json = content
+    .trim()
+    .replace(/^```(?:json)?/i, "")
+    .replace(/```$/i, "")
+    .trim();
+  return JSON.parse(json) as { title?: string; config?: unknown; meta?: unknown };
+}
+
+async function geminiDraft(template: string, prompt: string, lang: "zh" | "en") {
+  const key = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY;
+  if (!key) return null;
+  const model = process.env.GEMINI_MODEL || "gemini-3.5-flash";
+  const instruction = `Return only JSON: {"title":string,"config":object,"meta":{"coverEmoji":string,"accent":"#RRGGBB"}}.
+Template: ${template}. Language: ${lang}. Make safe, playful content for a no-code micro-game. Keep arrays valid and small.
+For quiz config use {intro, results:[{key,emoji,title,desc}], questions:[{q,options:[{label,scores}]}]}.
+For knowme use {intro, questions:[{q,options,correct}], results:[{min,label,desc}]}.
+For thisorthat use {intro,pairs:[{a,b,mine}]}.
+For higherlower use {intro,unit,items:[{label,value}]}.
+For madlibs use {intro,story} with blanks like {地点}.
+For escape use {intro,riddles:[{q,answer,hint}]}.`;
+  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(key)}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      contents: [{ role: "user", parts: [{ text: `${instruction}\n\nUser prompt: ${prompt}` }] }],
+      generationConfig: {
+        temperature: 0.7,
+        responseMimeType: "application/json",
+      },
+    }),
+  });
+  if (!res.ok) return null;
+  const data = await res.json();
+  const text = data?.candidates?.[0]?.content?.parts?.map((p: { text?: string }) => p.text || "").join("");
+  const draft = parseJsonDraft(text);
+  return draft ? { ...draft, source: `gemini:${model}` } : null;
+}
+
+async function openaiDraft(template: string, prompt: string, lang: "zh" | "en") {
   if (!process.env.OPENAI_API_KEY) return null;
   const instruction = `Return only JSON: {"title":string,"config":object,"meta":{"coverEmoji":string,"accent":"#RRGGBB"}}.
 Template: ${template}. Language: ${lang}. Make safe, playful content for a no-code micro-game. Keep all arrays small and valid.`;
@@ -123,8 +163,12 @@ Template: ${template}. Language: ${lang}. Make safe, playful content for a no-co
   if (!res.ok) return null;
   const data = await res.json();
   const content = data?.choices?.[0]?.message?.content;
-  if (typeof content !== "string") return null;
-  return JSON.parse(content) as { title?: string; config?: unknown; meta?: unknown };
+  const draft = parseJsonDraft(content);
+  return draft ? { ...draft, source: `openai:${process.env.OPENAI_MODEL || "gpt-4o-mini"}` } : null;
+}
+
+async function modelDraft(template: string, prompt: string, lang: "zh" | "en") {
+  return (await geminiDraft(template, prompt, lang)) ?? (await openaiDraft(template, prompt, lang));
 }
 
 export async function POST(req: NextRequest) {
@@ -151,10 +195,11 @@ export async function POST(req: NextRequest) {
       title: cleanText(draft.title || fallback.title, 60),
       config: draft.config || fallback.config,
       meta: draft.meta || { coverEmoji: "🎮", accent: "#12b7a6" },
+      source: draft.source || "local",
     });
   } catch (error) {
     console.error("microapp generate failed", error);
     const fallback = localDraft(template, prompt, lang);
-    return NextResponse.json({ ok: true, ...fallback, meta: { coverEmoji: "🎮", accent: "#12b7a6" } });
+    return NextResponse.json({ ok: true, ...fallback, meta: { coverEmoji: "🎮", accent: "#12b7a6" }, source: "local" });
   }
 }
