@@ -12,7 +12,7 @@ test("instant memory mobile flow", async ({ page }) => {
   await page.clock.install();
   await page.setViewportSize({ width: 390, height: 844 });
   const baseUrl = process.env.PLAYWRIGHT_BASE_URL || "http://localhost:3011";
-  await page.goto(`${baseUrl}/?seed=qa-memory&score=900`);
+  await page.goto(`${baseUrl}/?seed=qa-memory&score=900&lang=zh`);
   await expect(page.getByRole("heading", { name: "瞬间记忆" })).toBeVisible();
   await page.getByRole("button", { name: "开始测试" }).click();
   await page.clock.runFor(2500);
@@ -68,7 +68,11 @@ test("instant memory mobile flow", async ({ page }) => {
     return out;
   });
 
-  for (const index of indices) {
+  await page.locator(".memoryTile").nth(indices[0]).click();
+  await expect(page.locator(".feedbackStrip")).toContainText("对了");
+  await page.clock.runFor(170);
+
+  for (const index of indices.slice(1)) {
     await page.locator(".memoryTile").nth(index).click();
   }
 
@@ -80,4 +84,43 @@ test("instant memory mobile flow", async ({ page }) => {
   await expect(page.locator(".reportCard")).toContainText("最长序列");
   await page.screenshot({ path: "/tmp/instant-memory-mobile.png", fullPage: true });
   expect(issues).toEqual([]);
+});
+
+test("instant memory shows wrong tap feedback", async ({ page }) => {
+  await page.clock.install();
+  await page.setViewportSize({ width: 390, height: 844 });
+  const baseUrl = process.env.PLAYWRIGHT_BASE_URL || "http://localhost:3011";
+  await page.goto(`${baseUrl}/?seed=qa-memory&score=900&lang=zh`);
+  await page.getByRole("button", { name: "开始测试" }).click();
+  await page.clock.runFor(2500);
+  await expect(page.locator(".roundMeta")).toContainText("输入");
+
+  const firstExpected = await page.$$eval(".memoryTile", (buttons) => {
+    const seed = "qa-memory";
+    function hashString(input) {
+      let hash = 2166136261;
+      for (let i = 0; i < input.length; i += 1) {
+        hash ^= input.charCodeAt(i);
+        hash = Math.imul(hash, 16777619);
+      }
+      return hash >>> 0;
+    }
+    function mulberry32(seedValue) {
+      return () => {
+        let t = (seedValue += 0x6d2b79f5);
+        t = Math.imul(t ^ (t >>> 15), t | 1);
+        t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+      };
+    }
+    const rand = mulberry32(hashString(`${seed}:instant-memory:1`));
+    return Math.floor(rand() * buttons.length);
+  });
+
+  const wrongIndex = (firstExpected + 1) % (await page.locator(".memoryTile").count());
+  await page.locator(".memoryTile").nth(wrongIndex).click();
+  await expect(page.locator(".feedbackStrip")).toContainText("错了");
+  await expect(page.locator(".feedbackStrip")).toContainText(`正确是第 ${firstExpected + 1} 格`);
+  await expect(page.locator(".memoryTile").nth(wrongIndex)).toHaveClass(/wrong/);
+  await expect(page.locator(".memoryTile").nth(firstExpected)).toHaveClass(/expected/);
 });

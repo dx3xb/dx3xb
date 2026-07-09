@@ -11,6 +11,12 @@ type Tile = {
   icon: string;
   color: string;
 };
+type TapFeedback = {
+  kind: "correct" | "wrong";
+  index: number;
+  expected?: number;
+  done?: boolean;
+};
 
 const TOTAL_TIME = 60;
 const NAME_MAX = 24;
@@ -57,6 +63,12 @@ const COPY = {
     seqLabel: (n: number) => `${n} 位序列`,
     previewHint: "记住闪现顺序",
     inputHint: (i: number, n: number) => `输入 ${i}/${n}`,
+    feedback: {
+      correct: "对了",
+      roundClear: "本轮通过",
+      wrong: "错了",
+      expected: (n: number) => `正确是第 ${n} 格`,
+    },
     namingTitle: "给自己起个称呼",
     namingHint: "这个称呼会印在战报上，也会进挑战链接，朋友知道是谁发起的。",
     namingPlaceholder: "你的称呼",
@@ -109,6 +121,12 @@ const COPY = {
     seqLabel: (n: number) => `${n}-symbol sequence`,
     previewHint: "memorize the flashes",
     inputHint: (i: number, n: number) => `tap ${i}/${n}`,
+    feedback: {
+      correct: "nice",
+      roundClear: "round clear",
+      wrong: "miss",
+      expected: (n: number) => `tile ${n} was next`,
+    },
     namingTitle: "NAME YOUR RUN",
     namingHint: "This name is printed on your report and baked into the challenge link so friends know who dared them.",
     namingPlaceholder: "your name",
@@ -234,6 +252,8 @@ export default function InstantMemory() {
   const [longest, setLongest] = useState(0);
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const [input, setInput] = useState<number[]>([]);
+  const [feedback, setFeedback] = useState<TapFeedback | null>(null);
+  const [resolving, setResolving] = useState(false);
   const [roundStartedAt, setRoundStartedAt] = useState(Date.now());
   const [solveTimes, setSolveTimes] = useState<number[]>([]);
   const [challengeScore, setChallengeScore] = useState(0);
@@ -247,6 +267,7 @@ export default function InstantMemory() {
   const [saving, setSaving] = useState(false);
 
   const reportRef = useRef<HTMLDivElement>(null);
+  const feedbackTimerRef = useRef<number | null>(null);
   const t = COPY[lang];
 
   const round = useMemo(() => makeSequence(seed, level), [seed, level]);
@@ -255,6 +276,30 @@ export default function InstantMemory() {
   const title = titleFor(pct, t.titles);
   const avgSolve =
     solveTimes.length > 0 ? solveTimes.reduce((sum, item) => sum + item, 0) / solveTimes.length : 0;
+  const feedbackText = feedback
+    ? feedback.kind === "correct"
+      ? feedback.done
+        ? t.feedback.roundClear
+        : t.feedback.correct
+      : `${t.feedback.wrong} · ${t.feedback.expected((feedback.expected ?? 0) + 1)}`
+    : "";
+
+  function clearFeedbackTimer() {
+    if (feedbackTimerRef.current === null) return;
+    window.clearTimeout(feedbackTimerRef.current);
+    feedbackTimerRef.current = null;
+  }
+
+  function showFeedback(next: TapFeedback, duration = 180) {
+    clearFeedbackTimer();
+    setFeedback(next);
+    if (duration > 0) {
+      feedbackTimerRef.current = window.setTimeout(() => {
+        setFeedback(null);
+        feedbackTimerRef.current = null;
+      }, duration);
+    }
+  }
 
   useEffect(() => {
     const initialLang = getInitialLang();
@@ -283,6 +328,10 @@ export default function InstantMemory() {
         setPlayerName(automaticName || COPY[initialLang].anon);
       }
     })();
+  }, []);
+
+  useEffect(() => {
+    return () => clearFeedbackTimer();
   }, []);
 
   useEffect(() => {
@@ -330,6 +379,8 @@ export default function InstantMemory() {
     let cancelled = false;
     setInput([]);
     setActiveIndex(null);
+    setFeedback(null);
+    setResolving(false);
 
     const runPreview = async () => {
       await new Promise((resolve) => window.setTimeout(resolve, 280));
@@ -406,6 +457,8 @@ export default function InstantMemory() {
     setLongest(0);
     setActiveIndex(null);
     setInput([]);
+    setFeedback(null);
+    setResolving(false);
     setSolveTimes([]);
     setCopied(false);
   }
@@ -425,6 +478,9 @@ export default function InstantMemory() {
   }
 
   function finishRound(success: boolean) {
+    clearFeedbackTimer();
+    setFeedback(null);
+    setResolving(false);
     setRounds((prev) => prev + 1);
     if (success) {
       const solvedMs = Date.now() - roundStartedAt;
@@ -453,17 +509,23 @@ export default function InstantMemory() {
   }
 
   function choose(index: number) {
-    if (phase !== "input") return;
+    if (phase !== "input" || resolving) return;
     const expected = round.sequence[input.length];
     if (index !== expected) {
-      finishRound(false);
+      setResolving(true);
+      showFeedback({ kind: "wrong", index, expected }, 0);
+      window.setTimeout(() => finishRound(false), 420);
       return;
     }
     const nextInput = [...input, index];
     setInput(nextInput);
     if (nextInput.length === round.sequence.length) {
-      finishRound(true);
+      setResolving(true);
+      showFeedback({ kind: "correct", index, done: true }, 0);
+      window.setTimeout(() => finishRound(true), 300);
+      return;
     }
+    showFeedback({ kind: "correct", index }, 150);
   }
 
   function saveName() {
@@ -607,6 +669,13 @@ export default function InstantMemory() {
               <span>{t.seqLabel(round.length)}</span>
               <span>{phase === "preview" ? t.previewHint : t.inputHint(input.length, round.length)}</span>
             </div>
+            <div
+              className={`feedbackStrip ${feedback ? feedback.kind : ""}`}
+              aria-live="polite"
+              aria-hidden={!feedback}
+            >
+              {feedbackText || "\u00a0"}
+            </div>
             <div className="progressDots" aria-label="input progress">
               {round.sequence.map((_, index) => (
                 <span key={index} className={index < input.length ? "done" : ""} />
@@ -617,10 +686,15 @@ export default function InstantMemory() {
                 const tile = TILES[index % TILES.length];
                 const isActive = activeIndex === index;
                 const wasPressed = input.includes(index);
+                const isCorrectTap = feedback?.kind === "correct" && feedback.index === index;
+                const isWrongTap = feedback?.kind === "wrong" && feedback.index === index;
+                const isExpected = feedback?.kind === "wrong" && feedback.expected === index;
                 return (
                   <button
                     key={`${level}-${index}`}
-                    className={`memoryTile ${isActive ? "active" : ""} ${wasPressed ? "pressed" : ""}`}
+                    className={`memoryTile ${isActive ? "active" : ""} ${wasPressed ? "pressed" : ""} ${
+                      isCorrectTap ? "correct" : ""
+                    } ${isWrongTap ? "wrong" : ""} ${isExpected ? "expected" : ""}`}
                     style={{ "--tile-color": tile.color } as React.CSSProperties}
                     aria-label={`memory tile ${index + 1}`}
                     disabled={phase !== "input"}

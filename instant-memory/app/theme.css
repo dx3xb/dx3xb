@@ -356,6 +356,35 @@ a {
   font-size: 10px;
 }
 
+.feedbackStrip {
+  min-height: 36px;
+  margin: 0 0 12px;
+  border: 3px solid transparent;
+  padding: 5px 10px;
+  font-family: var(--font-press), "PingFang SC", monospace;
+  font-size: 11px;
+  line-height: 1.35;
+  color: transparent;
+  transition: background 0.08s, border-color 0.08s, color 0.08s, transform 0.08s;
+}
+
+.feedbackStrip.correct,
+.feedbackStrip.wrong {
+  color: var(--ink);
+  border-color: var(--line);
+  box-shadow: 3px 3px 0 var(--ink);
+  transform: translate(-1px, -1px);
+}
+
+.feedbackStrip.correct {
+  background: var(--green);
+}
+
+.feedbackStrip.wrong {
+  background: var(--coral);
+  color: var(--white);
+}
+
 .progressDots {
   display: flex;
   gap: 6px;
@@ -410,8 +439,54 @@ a {
   background: rgba(18, 183, 166, 0.18);
 }
 
+.memoryTile.correct {
+  background: var(--green);
+  animation: tileCorrect 0.18s steps(2, end);
+}
+
+.memoryTile.wrong {
+  background: var(--coral);
+  color: var(--white);
+  animation: tileWrong 0.28s steps(2, end);
+}
+
+.memoryTile.expected {
+  background: var(--yellow);
+  transform: translate(-2px, -2px) scale(1.02);
+  box-shadow: 7px 7px 0 var(--ink);
+}
+
 .memoryTile:disabled {
   cursor: default;
+}
+
+@keyframes tileCorrect {
+  0% {
+    transform: translate(0, 0) scale(1);
+  }
+  60% {
+    transform: translate(-3px, -3px) scale(1.04);
+    box-shadow: 8px 8px 0 var(--ink);
+  }
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+}
+
+@keyframes tileWrong {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  25% {
+    transform: translate(-4px, 0);
+  }
+  50% {
+    transform: translate(4px, 0);
+  }
+  75% {
+    transform: translate(-2px, 0);
+  }
 }
 
 .nameInput {
