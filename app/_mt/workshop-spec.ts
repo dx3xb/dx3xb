@@ -50,9 +50,12 @@ function bounded(value: unknown, max: number) {
 }
 
 function codeBounded(value: unknown, max: number) {
-  return String(value ?? "")
-    .replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, "")
-    .slice(0, max);
+  const s = String(value ?? "").replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, "");
+  if (s.length <= max) return s;
+  // 超限时截到最后一个语句边界（}/;/换行），绝不截在半句——否则括号不平衡会让整段 script 语法错误、事件全部失效。
+  const cut = s.slice(0, max);
+  const boundary = Math.max(cut.lastIndexOf("}"), cut.lastIndexOf(";"), cut.lastIndexOf("\n"));
+  return boundary > max * 0.6 ? cut.slice(0, boundary + 1) : cut;
 }
 
 function extractBodyFragment(html: string) {
@@ -84,9 +87,9 @@ export function wsValidate(input: unknown): WorkshopConfig {
   const messagesRaw = (Array.isArray(o.messages) ? o.messages.slice(-10) : []) as Record<string, unknown>[];
   return {
     intro: bounded(o.intro, 240) || "AI Game Workshop",
-    html: stripDangerousHtml(codeBounded(o.html, 12000)) || SAMPLE_HTML,
-    css: codeBounded(o.css, 9000) || SAMPLE_CSS,
-    js: stripDangerousJs(codeBounded(o.js, 10000)) || SAMPLE_JS,
+    html: stripDangerousHtml(codeBounded(o.html, 18000)) || SAMPLE_HTML,
+    css: codeBounded(o.css, 16000) || SAMPLE_CSS,
+    js: stripDangerousJs(codeBounded(o.js, 24000)) || SAMPLE_JS,
     turnsUsed: Math.max(0, Math.min(10, Math.round(Number(o.turnsUsed) || 0))),
     messages: messagesRaw.map((m): WorkshopMessage => ({
       role: m.role === "ai" ? "ai" : "user",

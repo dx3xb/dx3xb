@@ -56,6 +56,7 @@ CONSTRAINTS:
 - Compact, readable, robust code (guard against null elements; wrap risky logic in try).
 - When editing an existing game, keep what works, apply the requested change, and keep the same theme unless the user asks to change it.
 - The note field is user-facing: warmly describe the visible gameplay and look in plain language. No code, tags, file names, implementation details, or mention of removed/blocked mechanics.
+- Keep total JS comfortably under ~20000 characters and CSS under ~14000: prefer compact, reusable code over sprawling per-level hardcoding, so the game is never truncated. Every event handler and the game loop must be fully defined.
 - Language for title/intro/note and all on-screen text: ${lang}.`;
   const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(key)}`, {
     method: "POST",
@@ -63,9 +64,9 @@ CONSTRAINTS:
     body: JSON.stringify({
       contents: [{
         role: "user",
-        parts: [{ text: `${instruction}\n\nCurrent title: ${title}\nCurrent intro: ${current.intro}\nCurrent html:\n${current.html.slice(0, 5000)}\n\nCurrent css:\n${current.css.slice(0, 3500)}\n\nCurrent js:\n${current.js.slice(0, 3500)}\n\nUser request: ${prompt}` }],
+        parts: [{ text: `${instruction}\n\nCurrent title: ${title}\nCurrent intro: ${current.intro}\nCurrent html:\n${current.html.slice(0, 9000)}\n\nCurrent css:\n${current.css.slice(0, 8000)}\n\nCurrent js:\n${current.js.slice(0, 12000)}\n\nUser request: ${prompt}` }],
       }],
-      generationConfig: { temperature: 0.75, responseMimeType: "application/json" },
+      generationConfig: { temperature: 0.7, responseMimeType: "application/json", maxOutputTokens: 8192 },
     }),
   });
   if (!res.ok) return null;
