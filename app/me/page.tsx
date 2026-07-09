@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import {
+  DEFAULT_AVATAR_URL,
+  getAvatarUrl,
   getTrioProgress,
   getProfileHandle,
   getMyRuns,
@@ -17,6 +19,7 @@ import {
   TRIO_GAMES,
   TRIO_REPORT_URL,
   updateAccountPassword,
+  uploadAvatar,
   type TrioGame,
   type TrioProgress,
   type MyRun,
@@ -87,6 +90,10 @@ const COPY = {
     passwordUpdated: "密码已更新。",
     loggedIn: "已登录。",
     loggedOut: "已退出登录。",
+    avatarAlt: "空间头像",
+    avatarUpload: "换头像",
+    avatarUploading: "上传中…",
+    avatarErr: "头像上传失败",
     existingSent: "这个邮箱已有账号，请切换到登录。",
     claimed: "认领完成，当前空间已绑定邮箱。",
     err: "发送失败，换个邮箱再试",
@@ -139,6 +146,10 @@ const COPY = {
     passwordUpdated: "Password updated.",
     loggedIn: "Signed in.",
     loggedOut: "Signed out.",
+    avatarAlt: "Space avatar",
+    avatarUpload: "Change avatar",
+    avatarUploading: "Uploading…",
+    avatarErr: "Avatar upload failed",
     existingSent: "This email already has an account. Switch to sign in.",
     claimed: "Claim complete. This space is now bound to your email.",
     err: "Failed — try another email",
@@ -209,6 +220,9 @@ export default function MePage() {
   const [email, setEmail] = useState<string | null>(null);
   const [runs, setRuns] = useState<MyRun[]>([]);
   const [myApps, setMyApps] = useState<Microapp[]>([]);
+  const [avatarUrl, setAvatarUrl] = useState(DEFAULT_AVATAR_URL);
+  const [avatarBusy, setAvatarBusy] = useState(false);
+  const [avatarError, setAvatarError] = useState("");
   const [loaded, setLoaded] = useState(false);
   const [claimEmail, setClaimEmail] = useState("");
   const [claimHandle, setClaimHandle] = useState("");
@@ -220,12 +234,13 @@ export default function MePage() {
   const t = COPY[lang];
 
   async function refreshSpace() {
-    const [prog, h, e, r, apps] = await Promise.all([
+    const [prog, h, e, r, apps, avatar] = await Promise.all([
       getTrioProgress(),
       getProfileHandle(),
       getEmail(),
       getMyRuns(),
       getMyMicroapps(),
+      getAvatarUrl(),
     ]);
     setProgress(prog);
     if (h) {
@@ -237,6 +252,7 @@ export default function MePage() {
     setEmail(e);
     setRuns(r);
     setMyApps(apps);
+    setAvatarUrl(avatar);
     setLoaded(true);
   }
 
@@ -387,10 +403,28 @@ export default function MePage() {
     setHandle("");
     setRuns([]);
     setMyApps([]);
+    setAvatarUrl(DEFAULT_AVATAR_URL);
     setProgress(null);
     setClaim("loggedOut");
     await ensureSession();
     await refreshSpace();
+  }
+
+  async function changeAvatar(file?: File) {
+    if (!file) return;
+    setAvatarError("");
+    if (!file.type.startsWith("image/") || file.size > 2 * 1024 * 1024) {
+      setAvatarError(lang === "zh" ? "请上传 2MB 内的图片" : "Upload an image under 2MB");
+      return;
+    }
+    setAvatarBusy(true);
+    const result = await uploadAvatar(file);
+    setAvatarBusy(false);
+    if (result.error || !result.url) {
+      setAvatarError(claimErrorText(result.error || "avatar_upload_failed", lang));
+      return;
+    }
+    setAvatarUrl(result.url);
   }
 
   const langQ = `?lang=${lang}`;
@@ -405,11 +439,23 @@ export default function MePage() {
       </div>
 
       <section className="mhead">
-        <div className="mavatar pixel" aria-hidden="true">d×ᴃ</div>
+        <div className="mavatarWrap">
+          <div className="mavatar">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={avatarUrl} alt={t.avatarAlt} onError={() => setAvatarUrl(DEFAULT_AVATAR_URL)} />
+          </div>
+          {!isAnon && (
+            <label className="avatarUpload">
+              <span>{avatarBusy ? t.avatarUploading : t.avatarUpload}</span>
+              <input type="file" accept="image/png,image/jpeg,image/webp,image/gif" onChange={(e) => changeAvatar(e.target.files?.[0])} disabled={avatarBusy} />
+            </label>
+          )}
+        </div>
         <div>
           <p className="mkick">{t.kicker}</p>
           <h1 className="pixel mname">{handle || t.anon}</h1>
           <span className={`mtag ${isAnon ? "guest" : "claimed"}`}>{isAnon ? t.anonTag : `${t.claimedTag} · ${email}`}</span>
+          {avatarError && <p className="avatarErr">{avatarError}</p>}
         </div>
       </section>
 
@@ -586,8 +632,16 @@ const STYLE = `
 .mbtn.yellow { background: var(--yellow); }
 .mbtn:active { transform: translate(3px,3px); box-shadow: none; }
 .mhead { display: flex; align-items: center; gap: 14px; margin: 6px 0 20px; }
-.mavatar { width: 64px; height: 64px; flex: none; background: var(--ink); color: var(--cream); border: 3px solid var(--line);
-  box-shadow: var(--shadow); display: flex; align-items: center; justify-content: center; font-size: 18px; }
+.mavatarWrap { width: 72px; flex: none; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.mavatar { width: 64px; height: 64px; flex: none; background: #fff; border: 3px solid var(--line);
+  box-shadow: var(--shadow); display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.mavatar img { width: 100%; height: 100%; object-fit: cover; display: block; image-rendering: auto; }
+.avatarUpload { max-width: 72px; cursor: pointer; user-select: none; text-align: center; font-family: var(--font-press), monospace;
+  font-size: 8px; line-height: 1.25; color: var(--ink); background: var(--yellow); border: 2px solid var(--line); box-shadow: 2px 2px 0 var(--ink);
+  padding: 5px 4px; }
+.avatarUpload:active { transform: translate(2px,2px); box-shadow: none; }
+.avatarUpload input { display: none; }
+.avatarErr { margin: 7px 0 0; color: var(--coral); font-size: 15px; }
 .mkick { font-family: var(--font-press), monospace; font-size: 10px; letter-spacing: 1px; color: var(--ink-soft); margin: 0 0 6px; }
 .mname { margin: 0 0 6px; font-size: clamp(22px, 6vw, 34px); line-height: 1.1; }
 .mtag { font-size: 14px; border: 2px solid var(--line); padding: 2px 7px; }

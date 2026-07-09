@@ -11,6 +11,8 @@ const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 const COOKIE_DOMAIN = ".dx3xb.com";
 const STORAGE_KEY = "dx3xb-auth";
 const CHUNK = 3200;
+const AVATAR_BUCKET = "dx3xb-avatars";
+export const DEFAULT_AVATAR_URL = "/icon-192.png";
 
 export const TRIO_GAMES = ["color-hunter", "dont-click-wrong", "instant-memory"] as const;
 export type TrioGame = (typeof TRIO_GAMES)[number];
@@ -352,6 +354,36 @@ export async function getProfileHandle(): Promise<string | null> {
   } catch {
     return null;
   }
+}
+
+export async function getAvatarUrl(): Promise<string> {
+  try {
+    const c = dx3xb();
+    const id = await ensureSession();
+    if (!id) return DEFAULT_AVATAR_URL;
+    const { data } = c.storage.from(AVATAR_BUCKET).getPublicUrl(`${id}/avatar`);
+    return `${data.publicUrl}?v=${Date.now()}`;
+  } catch {
+    return DEFAULT_AVATAR_URL;
+  }
+}
+
+export async function uploadAvatar(file: File): Promise<{ url?: string; error?: string }> {
+  const c = dx3xb();
+  const { data } = await c.auth.getSession();
+  const accessToken = data.session?.access_token;
+  if (!accessToken) return { error: "missing_session" };
+
+  const form = new FormData();
+  form.append("avatar", file);
+  const res = await fetch("/api/profile/avatar", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${accessToken}` },
+    body: form,
+  });
+  const body = await res.json().catch(() => null);
+  if (!res.ok || !body?.url) return { error: body?.error || "avatar_upload_failed" };
+  return { url: body.url };
 }
 
 export type MyRun = { game: TrioGame; score: number; pct: number; title: string; created_at: string };
