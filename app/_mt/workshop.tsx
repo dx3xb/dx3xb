@@ -9,9 +9,7 @@ const LIMIT = 10;
 const T = {
   zh: {
     empty: "这个 Canvas 游戏还没生成好。",
-    preview: "沙盒预览",
-    complete: "标记完成",
-    completed: "已完成",
+    preview: "游戏效果",
     share: "分享",
     copied: "已复制",
     aiTitle: "AI Canvas 对话",
@@ -23,9 +21,7 @@ const T = {
   },
   en: {
     empty: "This Canvas game is not ready yet.",
-    preview: "Sandbox Preview",
-    complete: "Mark Complete",
-    completed: "Completed",
+    preview: "Game Preview",
     share: "Share",
     copied: "Copied",
     aiTitle: "AI Canvas Dialog",
@@ -58,7 +54,6 @@ export function WorkshopPlayer({
 } & PlayerEvents) {
   const t = T[lang];
   const cfg = useMemo(() => wsValidate(config), [config]);
-  const [done, setDone] = useState(false);
   const [copied, setCopied] = useState(false);
   const frameRef = useRef<HTMLIFrameElement>(null);
   const srcDoc = useMemo(() => buildWorkshopSrcDoc(cfg), [cfg]);
@@ -71,7 +66,6 @@ export function WorkshopPlayer({
     function onMessage(event: MessageEvent) {
       if (event.source !== frameRef.current?.contentWindow) return;
       if ((event.data as { type?: string })?.type === "dx3xb-workshop-complete") {
-        setDone(true);
         onComplete?.();
       }
     }
@@ -95,14 +89,8 @@ export function WorkshopPlayer({
   return (
     <div className="ws">
       <style dangerouslySetInnerHTML={{ __html: WS_STYLE }} />
-      <div className="ws-head">
-        <b>{t.preview}</b>
-        <div>
-          <button className="ws-btn" onClick={() => { setDone(true); onComplete?.(); }}>{done ? t.completed : t.complete}</button>
-          {!preview && <button className="ws-btn teal" onClick={share}>{copied ? t.copied : t.share}</button>}
-        </div>
-      </div>
-      <iframe ref={frameRef} className="ws-frame" title={title || "dx3xb canvas game"} sandbox="allow-scripts" srcDoc={srcDoc} />
+      <iframe ref={frameRef} className="ws-frame play" title={title || "dx3xb canvas game"} sandbox="allow-scripts" srcDoc={srcDoc} />
+      {!preview && <button className="ws-btn teal share" onClick={share}>{copied ? t.copied : t.share}</button>}
     </div>
   );
 }
@@ -155,6 +143,10 @@ export function WorkshopEditor({
     <div className="ws-edit">
       <style dangerouslySetInnerHTML={{ __html: WS_STYLE }} />
       <div className="ws-canvas">
+        <div className="ws-preview">
+          <div className="ws-head"><b>{t.preview}</b></div>
+          <iframe className="ws-frame edit" title="workshop preview" sandbox="allow-scripts" srcDoc={srcDoc} />
+        </div>
         <div className="ws-chat">
           <h3 className="ehead">{t.aiTitle}</h3>
           <div className="ws-messages">
@@ -167,7 +159,6 @@ export function WorkshopEditor({
             <button className="ebig teal" disabled={busy || !prompt.trim() || left <= 0} onClick={askAi}>{busy ? t.busy : t.send}</button>
           </div>
         </div>
-        <iframe className="ws-frame edit" title="workshop preview" sandbox="allow-scripts" srcDoc={srcDoc} />
       </div>
     </div>
   );
@@ -178,11 +169,14 @@ const WS_STYLE = `
 .ws-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
 .ws-head b { font-family: var(--font-press), monospace; font-size: 10px; }
 .ws-head div, .ws-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-.ws-frame { width: 100%; height: min(70vh, 560px); border: 4px solid var(--line); box-shadow: 8px 8px 0 var(--ink); background: #fff; }
-.ws-frame.edit { height: 420px; box-shadow: 4px 4px 0 var(--ink); }
+.ws-frame { width: 100%; height: min(78vh, 700px); border: 4px solid var(--line); box-shadow: 8px 8px 0 var(--ink); background: #fff; }
+.ws-frame.play { min-height: 520px; }
+.ws-frame.edit { height: min(64vh, 620px); min-height: 430px; box-shadow: 4px 4px 0 var(--ink); }
 .ws-btn { font-family: var(--font-press), monospace; font-size: 10px; cursor: pointer; border: 3px solid var(--line); box-shadow: 3px 3px 0 var(--ink); padding: 9px 11px; background: #fff; color: var(--ink); }
 .ws-btn.teal { background: var(--teal); color: #fff; }
-.ws-canvas { display: grid; grid-template-columns: minmax(230px, .72fr) minmax(0, 1.28fr); gap: 12px; align-items: stretch; }
+.ws-btn.share { justify-self: center; }
+.ws-canvas { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(250px, .65fr); gap: 12px; align-items: stretch; }
+.ws-preview { display: grid; gap: 8px; min-width: 0; }
 .ws-chat { background: var(--cream); border: 3px solid var(--line); box-shadow: 3px 3px 0 var(--ink); padding: 12px; display: grid; gap: 8px; align-content: start; }
 .ws-messages { max-height: 210px; overflow: auto; display: grid; gap: 7px; }
 .ws-messages p { margin: 0; padding: 8px; border: 2px solid var(--line); background: #fff; font-size: 16px; }
@@ -192,6 +186,7 @@ const WS_STYLE = `
 .ws-row span { font-family: var(--font-press), monospace; font-size: 9px; color: var(--ink-soft); }
 @media (max-width: 760px) {
   .ws-canvas { grid-template-columns: 1fr; }
-  .ws-frame, .ws-frame.edit { height: 420px; }
+  .ws-frame, .ws-frame.edit { height: 520px; min-height: 520px; }
+  .ws-frame.play { min-height: 560px; }
 }
 `;

@@ -38,8 +38,10 @@ Rules:
 - No script tags in html. Put all JavaScript in js.
 - No external URLs, fetch, XHR, websocket, workers, storage, cookies, forms, iframes, object/embed, page navigation, top/opener access, or ads.
 - Keep code compact and readable. No libraries.
-- Use mobile-friendly controls.
-- The note field is user-facing: describe the visual/gameplay change in plain language only. Do not include code, tags, snippets, file names, or implementation details.
+- The game must be playable by ordinary users with mouse/touch. Do not require keyboard-only controls, focus tricks, developer tools, text input, or hidden controls.
+- Use large visible buttons/tappable targets, clear start/restart states, and fit the full game inside the iframe on mobile and desktop.
+- Avoid alert(), prompt(), confirm(), downloads, file inputs, and any UI that asks users to copy code.
+- The note field is user-facing: describe the visible gameplay/visual result in positive plain language only. Do not include code, tags, snippets, file names, implementation details, or mention prohibited/removed mechanics.
 - If the game can be completed, call parent.postMessage({type:"dx3xb-workshop-complete"},"*").
 - Language: ${lang}.`;
   const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(key)}`, {

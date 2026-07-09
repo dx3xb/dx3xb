@@ -100,8 +100,8 @@ export function buildWorkshopSrcDoc(config: WorkshopConfig) {
     "form-action 'none'",
     "base-uri 'none'",
   ].join("; ");
-  return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="Content-Security-Policy" content="${csp}"><style>${cfg.css}</style></head><body>${cfg.html}<script>
-window.fetch=undefined;window.XMLHttpRequest=undefined;window.WebSocket=undefined;window.EventSource=undefined;window.open=undefined;
+  return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1"><meta http-equiv="Content-Security-Policy" content="${csp}"><style>html,body{min-height:100%;touch-action:manipulation;}*,*::before,*::after{box-sizing:border-box;}button,[role=button]{touch-action:manipulation;}</style><style>${cfg.css}</style></head><body>${cfg.html}<script>
+window.fetch=undefined;window.XMLHttpRequest=undefined;window.WebSocket=undefined;window.EventSource=undefined;window.open=undefined;window.alert=undefined;window.prompt=undefined;window.confirm=undefined;
 try{${cfg.js}}catch(e){document.body.insertAdjacentHTML('beforeend','<pre style="white-space:pre-wrap;color:#ff5f57;background:#fff;padding:8px;border:2px solid #ff5f57">JS error: '+String(e).replace(/[<>&]/g,'')+'</pre>')}
 </script></body></html>`;
 }
