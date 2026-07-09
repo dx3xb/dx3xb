@@ -6,15 +6,55 @@ import { wsValidate } from "@/app/_mt/workshop-spec";
 export const runtime = "nodejs";
 
 type Body = { prompt?: string; lang?: "zh" | "en"; title?: string };
+type WorkshopDraft = { title?: string; intro?: string; html?: string; css?: string; js?: string; note?: string; source?: string };
 
 function cleanId(value: string) {
   return value.replace(/[^a-f0-9-]/gi, "").slice(0, 40);
 }
 
-function parseJson(content: unknown) {
+function parseJson(content: unknown): WorkshopDraft | null {
   if (typeof content !== "string") return null;
-  const json = content.trim().replace(/^```(?:json)?/i, "").replace(/```$/i, "").trim();
-  return JSON.parse(json) as { title?: string; intro?: string; html?: string; css?: string; js?: string; note?: string };
+  const stripped = content.trim().replace(/^```(?:json)?/i, "").replace(/```$/i, "").trim();
+  const start = stripped.indexOf("{");
+  const end = stripped.lastIndexOf("}");
+  const json = start >= 0 && end > start ? stripped.slice(start, end + 1) : stripped;
+  try {
+    return JSON.parse(json) as WorkshopDraft;
+  } catch {
+    return null;
+  }
+}
+
+function escapeHtml(value: string) {
+  return value.replace(/[&<>"']/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch] || ch));
+}
+
+function numberFromPrompt(prompt: string, re: RegExp, fallback: number, min: number, max: number) {
+  const n = Number(prompt.match(re)?.[1]);
+  if (!Number.isFinite(n)) return fallback;
+  return Math.max(min, Math.min(max, Math.round(n)));
+}
+
+function localPlayableWorkshop(prompt: string, lang: "zh" | "en", title: string): Required<WorkshopDraft> {
+  const levelCount = numberFromPrompt(prompt, /(\d{1,2})\s*(?:个)?(?:关卡|关|levels?|stages?)/i, 5, 2, 8);
+  const lives = numberFromPrompt(prompt, /(\d{1,2})\s*(?:条)?(?:命|lives?)/i, 3, 1, 5);
+  const plainTitle = (title || (lang === "zh" ? "AI 闯关小游戏" : "AI Mini Game")).slice(0, 60);
+  const safeTitle = escapeHtml(plainTitle);
+  const isZh = lang === "zh";
+  const levels = Array.from({ length: levelCount }, (_, i) => ({
+    name: isZh ? `第 ${i + 1} 关` : `Level ${i + 1}`,
+    target: Math.min(8 + i * 2, 20),
+    speed: 850 - Math.min(i * 70, 420),
+  }));
+  return {
+    title: plainTitle,
+    intro: isZh ? `${levelCount} 个关卡、${lives} 条命的轻量闯关游戏。` : `${levelCount} levels, ${lives} lives, quick arcade challenge.`,
+    html: `<main class="game"><section id="screen" class="panel"></section></main>`,
+    css: `body{margin:0;background:#101827;color:#fff;font-family:ui-monospace,monospace}.game{min-height:100vh;display:grid;place-items:center;padding:18px;background:radial-gradient(circle at 20% 10%,#2dd4bf55,transparent 32%),radial-gradient(circle at 85% 20%,#fb718555,transparent 30%),linear-gradient(135deg,#0f172a,#111827 52%,#27113f)}.panel{width:min(720px,100%);min-height:min(620px,92vh);border:3px solid #fff;border-radius:26px;padding:22px;box-shadow:0 24px 80px #0008,inset 0 0 0 4px #ffffff18;background:#0b1025cc;display:grid;align-content:center;gap:16px;text-align:center}.title{font-size:clamp(28px,7vw,56px);margin:0;text-shadow:0 4px 0 #000}.hud{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}.pill{border:2px solid #fff;border-radius:999px;padding:8px 13px;background:#ffffff18;font-weight:900}.arena{position:relative;height:clamp(240px,48vh,410px);border:2px solid #ffffff80;border-radius:20px;overflow:hidden;background:linear-gradient(180deg,#1e293b,#020617)}.orb{position:absolute;width:58px;height:58px;border:0;border-radius:50%;font-size:30px;background:#2dd4bf;box-shadow:0 0 28px #2dd4bf;transform:translate(-50%,-50%);touch-action:manipulation}.bad{background:#fb7185;box-shadow:0 0 28px #fb7185}.big{font:900 18px ui-monospace,monospace;border:3px solid #fff;border-radius:16px;background:#facc15;color:#111827;padding:14px 22px;box-shadow:6px 6px 0 #000;cursor:pointer}.big:active,.orb:active{transform:translate(-50%,-50%) scale(.92)}.big:active{transform:translate(4px,4px);box-shadow:none}.flash{animation:pop .22s ease}@keyframes pop{50%{filter:brightness(1.8);transform:scale(1.03)}}`,
+    js: `const cfg=${JSON.stringify({ title: safeTitle, levels, lives, start: isZh ? "开始游戏" : "Start", again: isZh ? "再玩一次" : "Play again", win: isZh ? "通关成功！" : "You cleared it!", over: isZh ? "游戏结束" : "Game over", tap: isZh ? "点绿色星星，避开红色炸弹" : "Tap green stars, avoid red bombs" })};let level=0,score=0,lives=cfg.lives,timer=0,active=false;const s=document.getElementById('screen');function drawHome(msg){active=false;clearTimeout(timer);s.innerHTML='<h1 class="title">'+cfg.title+'</h1><p>'+cfg.tap+'</p>'+(msg?'<p class="pill">'+msg+'</p>':'')+'<div class="hud"><span class="pill">'+cfg.levels.length+' levels</span><span class="pill">'+cfg.lives+' lives</span></div><button id="start" class="big">'+cfg.start+'</button>';document.getElementById('start').onclick=()=>{level=0;score=0;lives=cfg.lives;play()}}function play(){active=true;clearTimeout(timer);const L=cfg.levels[level];s.innerHTML='<div class="hud"><span class="pill">'+L.name+'</span><span class="pill">Score '+score+'/'+L.target+'</span><span class="pill">Lives '+lives+'</span></div><div id="arena" class="arena"></div>';spawn()}function spawn(){if(!active)return;const a=document.getElementById('arena');if(!a)return;const bad=Math.random()<.28;const b=document.createElement('button');b.className='orb '+(bad?'bad':'');b.textContent=bad?'💥':'⭐';b.style.left=(12+Math.random()*76)+'%';b.style.top=(15+Math.random()*70)+'%';b.onclick=()=>{if(!active)return;if(bad){lives--;s.classList.add('flash');setTimeout(()=>s.classList.remove('flash'),220);if(lives<=0)return drawHome(cfg.over)}else{score++;if(score>=L.target){level++;score=0;if(level>=cfg.levels.length){parent.postMessage({type:'dx3xb-workshop-complete'},'*');return drawHome(cfg.win)}}}play()};a.appendChild(b);timer=setTimeout(()=>{if(active){if(!bad)lives--;if(lives<=0)return drawHome(cfg.over);play()}},L.speed)}drawHome('');`,
+    note: isZh ? `已生成一个 ${levelCount} 关、${lives} 条命的可玩闯关游戏。绿色目标加分，红色陷阱会扣命。` : `Generated a playable ${levelCount}-level game with ${lives} lives. Green targets score, red traps cost lives.`,
+    source: "local:fallback",
+  };
 }
 
 async function generateWorkshop({
@@ -29,9 +69,9 @@ async function generateWorkshop({
   current: ReturnType<typeof wsValidate>;
 }) {
   const key = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY;
-  if (!key) return null;
+  if (!key) return localPlayableWorkshop(prompt, lang, title);
   const model = process.env.GEMINI_MODEL || "gemini-3.5-flash";
-  const instruction = `You are dx3xb AI Game Workshop, a senior game & UI designer. Return only JSON: {"title":string,"intro":string,"html":string,"css":string,"js":string,"note":string}.
+  const buildInstruction = (compact = false) => `You are dx3xb AI Game Workshop, a senior game & UI designer. Return only JSON: {"title":string,"intro":string,"html":string,"css":string,"js":string,"note":string}.
 Build ONE polished, self-contained browser mini game that runs inside a fixed-size sandbox iframe (a framed canvas box, landscape on desktop and portrait on mobile).
 
 VISUAL QUALITY (this is what makes it feel premium — do not skip):
@@ -56,9 +96,13 @@ CONSTRAINTS:
 - Compact, readable, robust code (guard against null elements; wrap risky logic in try).
 - When editing an existing game, keep what works, apply the requested change, and keep the same theme unless the user asks to change it.
 - The note field is user-facing: warmly describe the visible gameplay and look in plain language. No code, tags, file names, implementation details, or mention of removed/blocked mechanics.
-- Keep total JS comfortably under ~20000 characters and CSS under ~14000: prefer compact, reusable code over sprawling per-level hardcoding, so the game is never truncated. Every event handler and the game loop must be fully defined.
+- Keep total JS comfortably under ${compact ? "~9000" : "~18000"} characters and CSS under ${compact ? "~7000" : "~12000"}: prefer compact, reusable code over sprawling per-level hardcoding, so the game is never truncated. Every event handler and the game loop must be fully defined.
+- If the user asks for many levels, implement them data-driven in arrays/loops instead of writing each level by hand.
+- JSON must be complete and parseable. Do not stop mid-string or mid-function.
 - Language for title/intro/note and all on-screen text: ${lang}.`;
-  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(key)}`, {
+  const callGemini = async (compact = false) => {
+    const instruction = buildInstruction(compact);
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(key)}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -66,13 +110,24 @@ CONSTRAINTS:
         role: "user",
         parts: [{ text: `${instruction}\n\nCurrent title: ${title}\nCurrent intro: ${current.intro}\nCurrent html:\n${current.html.slice(0, 9000)}\n\nCurrent css:\n${current.css.slice(0, 8000)}\n\nCurrent js:\n${current.js.slice(0, 12000)}\n\nUser request: ${prompt}` }],
       }],
-      generationConfig: { temperature: 0.7, responseMimeType: "application/json", maxOutputTokens: 8192 },
+      generationConfig: { temperature: compact ? 0.55 : 0.7, responseMimeType: "application/json", maxOutputTokens: compact ? 16384 : 24576 },
     }),
   });
-  if (!res.ok) return null;
-  const data = await res.json();
-  const text = data?.candidates?.[0]?.content?.parts?.map((p: { text?: string }) => p.text || "").join("");
-  return parseJson(text);
+    if (!res.ok) {
+      console.warn("workshop gemini http failed", { status: res.status });
+      return null;
+    }
+    const data = await res.json();
+    const candidate = data?.candidates?.[0];
+    const text = candidate?.content?.parts?.map((p: { text?: string }) => p.text || "").join("") || "";
+    const draft = parseJson(text);
+    if (!draft?.html || !draft?.css || !draft?.js) {
+      console.warn("workshop gemini parse failed", { finishReason: candidate?.finishReason, textLength: text.length, compact });
+      return null;
+    }
+    return { ...draft, source: `gemini:${model}` };
+  };
+  return (await callGemini(false)) ?? (await callGemini(true)) ?? localPlayableWorkshop(prompt, lang, title);
 }
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -114,9 +169,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     const current = wsValidate({ ...(app.config as Record<string, unknown>), turnsUsed: count });
     const generated = await generateWorkshop({ prompt, lang, title: title || String(app.title || ""), current });
-    if (!generated?.html || !generated?.css || !generated?.js) {
-      return NextResponse.json({ ok: false, error: "generation_failed" }, { status: 502 });
-    }
+    if (!generated?.html || !generated?.css || !generated?.js) return NextResponse.json({ ok: false, error: "generation_failed" }, { status: 502 });
 
     const nextCount = count + 1;
     const nextConfig = wsValidate({
@@ -150,7 +203,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       .eq("id", id);
     if (updateError) throw updateError;
 
-    return NextResponse.json({ ok: true, title: nextTitle, config: nextConfig, turnsUsed: nextCount, source: `gemini:${process.env.GEMINI_MODEL || "gemini-3.5-flash"}` });
+    return NextResponse.json({ ok: true, title: nextTitle, config: nextConfig, turnsUsed: nextCount, source: generated.source || `gemini:${process.env.GEMINI_MODEL || "gemini-3.5-flash"}` });
   } catch (error) {
     console.error("workshop generate failed", error);
     return NextResponse.json({ ok: false, error: "server_error" }, { status: 500 });
