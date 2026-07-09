@@ -185,10 +185,10 @@ export async function getMicroapp(id: string): Promise<Microapp | null> {
 
 export async function getMicroappBySlug(slug: string): Promise<Microapp | null> {
   try {
-    const c = dx3xb();
-    await ensureSession();
-    const { data } = await c.from("dx3xb_microapps").select(SEL).eq("slug", slug).maybeSingle();
-    return (data as Microapp) ?? null;
+    const res = await fetch(`/api/microapps/${encodeURIComponent(slug)}`, { cache: "no-store" });
+    const body = await res.json().catch(() => null);
+    if (!res.ok || !body?.app) return null;
+    return body.app as Microapp;
   } catch {
     return null;
   }

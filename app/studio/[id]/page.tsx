@@ -83,8 +83,9 @@ export default function EditorPage() {
   async function save(newStatus?: MicroStatus) {
     if (cfg == null) return;
     setSaveState("saving");
-    const ok = await updateMicroapp(id, { title, config: regFor(tpl).validate(cfg), status: newStatus });
-    if (ok && newStatus) setStatus(newStatus);
+    const nextStatus = newStatus ?? (status === "public" ? "pending" : undefined);
+    const ok = await updateMicroapp(id, { title, config: regFor(tpl).validate(cfg), status: nextStatus });
+    if (ok && nextStatus) setStatus(nextStatus);
     setSaveState(ok ? "saved" : "idle");
   }
   async function remove() {
