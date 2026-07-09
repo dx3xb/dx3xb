@@ -39,6 +39,7 @@ Rules:
 - No external URLs, fetch, XHR, websocket, workers, storage, cookies, forms, iframes, object/embed, page navigation, top/opener access, or ads.
 - Keep code compact and readable. No libraries.
 - Use mobile-friendly controls.
+- The note field is user-facing: describe the visual/gameplay change in plain language only. Do not include code, tags, snippets, file names, or implementation details.
 - If the game can be completed, call parent.postMessage({type:"dx3xb-workshop-complete"},"*").
 - Language: ${lang}.`;
   const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(key)}`, {

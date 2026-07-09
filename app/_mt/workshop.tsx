@@ -1,5 +1,5 @@
 "use client";
-// AI 游戏工坊：允许编辑 HTML/CSS/JS，但只在 sandbox iframe 中运行，绝不执行在 dx3xb 主站上下文。
+// AI 游戏工坊：用户只看效果并用自然语言修改；代码只在 sandbox iframe 内运行，不在主站上下文展示或执行。
 import { useEffect, useMemo, useRef, useState } from "react";
 import { dx3xb } from "../dx3xb-trio";
 import { buildWorkshopSrcDoc, wsPublishable, wsValidate, type WorkshopConfig } from "./workshop-spec";
@@ -19,10 +19,7 @@ const T = {
     send: "让 AI 修改",
     busy: "生成中…",
     left: (n: number) => `剩余 ${n} 次`,
-    maxed: "这个项目的 10 次 AI 交互已用完，可继续手动编辑代码。",
-    html: "HTML",
-    css: "CSS",
-    js: "JS",
+    maxed: "这个项目的 10 次 AI 交互已用完。",
   },
   en: {
     empty: "This Canvas game is not ready yet.",
@@ -36,10 +33,7 @@ const T = {
     send: "Ask AI",
     busy: "Generating…",
     left: (n: number) => `${n} turns left`,
-    maxed: "This project has used its 10 AI turns. You can still edit code manually.",
-    html: "HTML",
-    css: "CSS",
-    js: "JS",
+    maxed: "This project has used its 10 AI turns.",
   },
 } as const;
 
@@ -175,12 +169,6 @@ export function WorkshopEditor({
         </div>
         <iframe className="ws-frame edit" title="workshop preview" sandbox="allow-scripts" srcDoc={srcDoc} />
       </div>
-      <h3 className="ehead">{t.html}</h3>
-      <textarea className="ein code" rows={9} value={cfg.html} maxLength={12000} onChange={(e) => onChange(wsValidate({ ...cfg, html: e.target.value }))} />
-      <h3 className="ehead">{t.css}</h3>
-      <textarea className="ein code" rows={8} value={cfg.css} maxLength={9000} onChange={(e) => onChange(wsValidate({ ...cfg, css: e.target.value }))} />
-      <h3 className="ehead">{t.js}</h3>
-      <textarea className="ein code" rows={9} value={cfg.js} maxLength={10000} onChange={(e) => onChange(wsValidate({ ...cfg, js: e.target.value }))} />
     </div>
   );
 }
@@ -194,7 +182,7 @@ const WS_STYLE = `
 .ws-frame.edit { height: 420px; box-shadow: 4px 4px 0 var(--ink); }
 .ws-btn { font-family: var(--font-press), monospace; font-size: 10px; cursor: pointer; border: 3px solid var(--line); box-shadow: 3px 3px 0 var(--ink); padding: 9px 11px; background: #fff; color: var(--ink); }
 .ws-btn.teal { background: var(--teal); color: #fff; }
-.ws-canvas { display: grid; grid-template-columns: minmax(230px, .8fr) minmax(0, 1.2fr); gap: 12px; align-items: stretch; }
+.ws-canvas { display: grid; grid-template-columns: minmax(230px, .72fr) minmax(0, 1.28fr); gap: 12px; align-items: stretch; }
 .ws-chat { background: var(--cream); border: 3px solid var(--line); box-shadow: 3px 3px 0 var(--ink); padding: 12px; display: grid; gap: 8px; align-content: start; }
 .ws-messages { max-height: 210px; overflow: auto; display: grid; gap: 7px; }
 .ws-messages p { margin: 0; padding: 8px; border: 2px solid var(--line); background: #fff; font-size: 16px; }
@@ -202,7 +190,6 @@ const WS_STYLE = `
 .ws-messages .ai { background: #fff7db; }
 .ws-row { justify-content: space-between; }
 .ws-row span { font-family: var(--font-press), monospace; font-size: 9px; color: var(--ink-soft); }
-.code { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 13px; line-height: 1.45; }
 @media (max-width: 760px) {
   .ws-canvas { grid-template-columns: 1fr; }
   .ws-frame, .ws-frame.edit { height: 420px; }
