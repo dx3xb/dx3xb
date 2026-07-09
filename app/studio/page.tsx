@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { getMyMicroapps, createMicroapp, deleteMicroapp, TEMPLATE_META, type Microapp } from "../dx3xb-apps";
 import { regFor } from "../_mt/registry";
+import { getEmail } from "../dx3xb-trio";
 
 type Lang = "zh" | "en";
 function initialLang(): Lang {
@@ -19,6 +20,10 @@ const C = {
     kicker: "微应用工厂",
     title: "我的微应用",
     desc: "选个模板、填上内容，就能做出自己的小测验并分享。无需写代码。",
+    workshopTitle: "AI 游戏工坊",
+    workshopDesc: "注册用户专属：用 Gemini 生成受控游戏规格，由 dx3xb 引擎渲染，仍需审核后上墙。",
+    workshopBtn: "开启 AI 游戏工坊",
+    workshopLocked: "注册后开启",
     newQuiz: "+ 新建小测验",
     creating: "创建中…",
     empty: "还没有微应用，新建一个吧。",
@@ -35,6 +40,10 @@ const C = {
     kicker: "MICRO-APP STUDIO",
     title: "My Micro-apps",
     desc: "Pick a template, fill in your content, and ship your own shareable quiz. No code.",
+    workshopTitle: "AI Game Workshop",
+    workshopDesc: "Registered users only: Gemini generates a controlled game spec, dx3xb renders it, gallery publishing still needs review.",
+    workshopBtn: "Open AI Game Workshop",
+    workshopLocked: "Register to unlock",
     newQuiz: "+ New Quiz",
     creating: "Creating…",
     empty: "No micro-apps yet — make one.",
@@ -53,12 +62,15 @@ export default function StudioPage() {
   const [apps, setApps] = useState<Microapp[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [email, setEmail] = useState<string | null>(null);
   const t = C[lang];
 
   useEffect(() => {
     setLang(initialLang());
     (async () => {
-      setApps(await getMyMicroapps());
+      const [list, e] = await Promise.all([getMyMicroapps(), getEmail()]);
+      setApps(list);
+      setEmail(e);
       setLoaded(true);
     })();
   }, []);
@@ -103,8 +115,20 @@ export default function StudioPage() {
         <p className="skick">{t.kicker}</p>
         <h1 className="pixel stitle">{t.title}</h1>
         <p className="sdesc">{t.desc}</p>
+        <div className="sworkshop">
+          <span className="spickemoji">🕹️</span>
+          <div>
+            <b>{t.workshopTitle}</b>
+            <p>{t.workshopDesc}</p>
+          </div>
+          {email ? (
+            <button className="sbtn coral" onClick={() => newApp("workshop")} disabled={creating}>{creating ? t.creating : t.workshopBtn}</button>
+          ) : (
+            <a className="sbtn" href={`/me?lang=${lang}`}>{t.workshopLocked}</a>
+          )}
+        </div>
         <div className="spick">
-          {TEMPLATE_META.map((m) => (
+          {TEMPLATE_META.filter((m) => m.id !== "workshop").map((m) => (
             <button key={m.id} className="spickcard" onClick={() => newApp(m.id)} disabled={creating}>
               <span className="spickemoji">{m.emoji}</span>
               <b>{m.name[lang]}</b>
@@ -152,6 +176,11 @@ const STYLE = `
 .skick { font-family: var(--font-press), monospace; font-size: 10px; letter-spacing: 1px; color: var(--ink-soft); margin: 0 0 8px; }
 .stitle { margin: 0 0 8px; font-size: clamp(24px, 7vw, 40px); }
 .sdesc { font-size: 18px; color: var(--ink-soft); margin: 0 0 16px; max-width: 40em; }
+.sworkshop { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 12px; align-items: center; background: var(--ink);
+  color: var(--cream); border: 3px solid var(--line); box-shadow: var(--shadow-lg); padding: 14px; margin: 0 0 14px; }
+.sworkshop b { font-family: var(--font-press), monospace; font-size: 13px; }
+.sworkshop p { margin: 5px 0 0; color: rgba(255,253,248,.78); font-size: 15px; }
+.sworkshop .sbtn { white-space: nowrap; }
 .sbig { font-family: var(--font-press), monospace; font-size: 12px; cursor: pointer; border: 3px solid var(--line);
   box-shadow: var(--shadow); padding: 14px 18px; color: #fff; background: var(--coral); }
 .sbig:active { transform: translate(4px,4px); box-shadow: none; }
@@ -176,4 +205,8 @@ const STYLE = `
 .spickemoji { font-size: 32px; }
 .spickcard b { font-size: 19px; }
 .spicktag { font-size: 15px; color: var(--ink-soft); }
+@media (max-width: 640px) {
+  .sworkshop { grid-template-columns: auto 1fr; }
+  .sworkshop .sbtn { grid-column: 1 / -1; text-align: center; }
+}
 `;

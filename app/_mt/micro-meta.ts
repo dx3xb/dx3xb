@@ -148,5 +148,11 @@ export function summarizeMicroConfig(template: string, config: unknown, lang: La
     return lang === "zh" ? `${blanks} 个填空` : `${blanks} blanks`;
   }
   if (template === "escape") return lang === "zh" ? `${n("riddles")} 关谜题` : `${n("riddles")} rooms`;
+  if (template === "workshop") {
+    const genre = String(c.genre ?? "tap");
+    const good = n("collectibles");
+    const bad = n("hazards");
+    return lang === "zh" ? `${genre} 玩法 / ${good} 个目标 / ${bad} 个陷阱` : `${genre} game / ${good} targets / ${bad} hazards`;
+  }
   return lang === "zh" ? "自定义内容" : "Custom content";
 }

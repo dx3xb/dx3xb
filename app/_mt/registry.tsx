@@ -8,6 +8,7 @@ import { KnowMePlayer, KnowMeEditor, kmValidate, kmPublishable, kmEmpty } from "
 import { HigherLowerPlayer, HigherLowerEditor, hlValidate, hlPublishable, hlEmpty } from "./higherlower";
 import { MadLibsPlayer, MadLibsEditor, mlValidate, mlPublishable, mlEmpty } from "./madlibs";
 import { RiddleEscapePlayer, RiddleEscapeEditor, rdValidate, rdPublishable, rdEmpty } from "./riddle";
+import { WorkshopPlayer, WorkshopEditor, wsValidate, wsPublishable, wsEmpty } from "./workshop";
 import type { Lang } from "./types";
 import type { PlayerEvents } from "./types";
 
@@ -64,6 +65,13 @@ export const REG: Record<string, Reg> = {
     publishable: (c) => rdPublishable(rdValidate(c)),
     Player: RiddleEscapePlayer as PlayerC,
     Editor: RiddleEscapeEditor as EditorC,
+  },
+  workshop: {
+    empty: wsEmpty,
+    validate: wsValidate,
+    publishable: (c) => wsPublishable(wsValidate(c)),
+    Player: WorkshopPlayer as PlayerC,
+    Editor: WorkshopEditor as EditorC,
   },
 };
 

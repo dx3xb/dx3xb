@@ -7,7 +7,7 @@ export const runtime = "nodejs";
 type Body = { template?: string; prompt?: string; lang?: "zh" | "en" };
 type Draft = { title: string; config: unknown; meta?: unknown; source?: string };
 
-const TEMPLATES = new Set(["quiz", "knowme", "thisorthat", "higherlower", "madlibs", "escape"]);
+const TEMPLATES = new Set(["quiz", "knowme", "thisorthat", "higherlower", "madlibs", "escape", "workshop"]);
 
 function titleFrom(prompt: string, lang: "zh" | "en") {
   const p = prompt.replace(/[。.!?？].*$/u, "").trim();
@@ -87,6 +87,34 @@ function localDraft(template: string, prompt: string, lang: "zh" | "en"): Draft 
       },
     };
   }
+  if (template === "workshop") {
+    return {
+      title,
+      config: {
+        intro: lang === "zh" ? `一个关于「${topic}」的轻互动小游戏。` : `A light interactive mini game about ${topic}.`,
+        genre: "tap",
+        durationSec: 30,
+        targetScore: 10,
+        lives: 3,
+        heroEmoji: "🕹️",
+        heroLabel: lang === "zh" ? "玩家" : "Player",
+        collectibles: [
+          { emoji: "⭐", label: lang === "zh" ? "灵感星星" : "Idea star", points: 1 },
+          { emoji: "💎", label: lang === "zh" ? "隐藏宝石" : "Hidden gem", points: 2 },
+          { emoji: "🚀", label: lang === "zh" ? "加速道具" : "Boost", points: 3 },
+        ],
+        hazards: [
+          { emoji: "💣", label: lang === "zh" ? "捣乱陷阱" : "Trap", points: -1 },
+          { emoji: "🕳️", label: lang === "zh" ? "黑洞" : "Black hole", points: -2 },
+        ],
+        sequence: ["🕹️", "⭐", "💎", "🚀"],
+        winText: lang === "zh" ? "你通关了这个 AI 小游戏！" : "You cleared this AI mini game!",
+        loseText: lang === "zh" ? "差一点，再挑战一次。" : "So close. Try again.",
+      },
+      meta: { coverEmoji: "🕹️", accent: "#4564ff" },
+      source: "local",
+    };
+  }
   return {
     title,
     config: {
@@ -124,7 +152,8 @@ For knowme use {intro, questions:[{q,options,correct}], results:[{min,label,desc
 For thisorthat use {intro,pairs:[{a,b,mine}]}.
 For higherlower use {intro,unit,items:[{label,value}]}.
 For madlibs use {intro,story} with blanks like {地点}.
-For escape use {intro,riddles:[{q,answer,hint}]}.`;
+For escape use {intro,riddles:[{q,answer,hint}]}.
+For workshop use only this controlled spec, no HTML/CSS/JS/code: {intro,genre:"tap"|"catch"|"sequence",durationSec,targetScore,lives,heroEmoji,heroLabel,collectibles:[{emoji,label,points}],hazards:[{emoji,label,points}],sequence:[emoji],winText,loseText}.`;
   const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(key)}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -188,6 +217,9 @@ export async function POST(req: NextRequest) {
   try {
     const { data, error } = await getServiceClient().auth.getUser(token);
     if (error || !data.user) return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
+    if (template === "workshop" && (data.user.is_anonymous || !data.user.email)) {
+      return NextResponse.json({ ok: false, error: "registered_required" }, { status: 403 });
+    }
     const draft = (await modelDraft(template, prompt, lang).catch(() => null)) ?? localDraft(template, prompt, lang);
     const fallback = localDraft(template, prompt, lang);
     return NextResponse.json({

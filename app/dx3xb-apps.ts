@@ -1,6 +1,6 @@
 // ===== dx3xb 微应用（无代码模板工厂）数据层 =====
 // 复用 dx3xb-trio 的匿名会话客户端；数据由 RLS 保护。
-import { dx3xb, ensureSession } from "./dx3xb-trio";
+import { dx3xb, ensureSession, getEmail } from "./dx3xb-trio";
 import type { MicroEvent } from "./_mt/micro-meta";
 
 export type QuizOption = { label: string; scores: Record<string, number> };
@@ -121,12 +121,14 @@ export const TEMPLATE_META: { id: string; emoji: string; name: Record<"zh" | "en
   { id: "higherlower", emoji: "📈", name: { zh: "猜价闯关", en: "Higher-Lower" }, tagline: { zh: "猜下一个更高还是更低，冲连胜", en: "Guess higher or lower — chase a streak" } },
   { id: "madlibs", emoji: "📖", name: { zh: "故事填词", en: "Mad Libs" }, tagline: { zh: "写带空的故事，朋友乱填出爆笑剧情", en: "Write a story with blanks — friends fill the funny" } },
   { id: "escape", emoji: "🔐", name: { zh: "解谜闯关", en: "Riddle Escape" }, tagline: { zh: "出一串谜题，朋友逐关解锁比用时", en: "Chain of riddles — escape and beat the clock" } },
+  { id: "workshop", emoji: "🕹️", name: { zh: "AI 游戏工坊", en: "AI Game Workshop" }, tagline: { zh: "注册后用 AI 生成受控互动小游戏", en: "Registered users generate controlled mini games" } },
 ];
 
 export async function createMicroapp(template: string, config: unknown): Promise<{ id: string; slug: string } | null> {
   const c = dx3xb();
   const id = await ensureSession();
   if (!id) return null;
+  if (template === "workshop" && !(await getEmail())) return null;
   for (let i = 0; i < 5; i += 1) {
     const slug = "q" + Math.random().toString(36).slice(2, 8);
     const { data, error } = await c
