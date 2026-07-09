@@ -179,7 +179,7 @@ export default function EditorPage() {
   const templateLabel = tpl;
 
   return (
-    <main className="wrap">
+    <main className={`wrap ${tpl === "workshop" ? "workshop" : ""}`}>
       <style dangerouslySetInnerHTML={{ __html: STYLE }} />
       <div className="ebar">
         <a className="ebtn" href={`/studio?lang=${lang}`}>{t.back}</a>
@@ -258,6 +258,7 @@ export default function EditorPage() {
 
 const STYLE = `
 .wrap { max-width: 720px; margin: 0 auto; padding: 22px 16px 60px; }
+.wrap.workshop { max-width: 1180px; }
 .enote { color: var(--ink-soft); }
 .ebar { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 18px; }
 .ebtn { display: inline-block; text-decoration: none; font-family: var(--font-press), monospace; font-size: 11px;

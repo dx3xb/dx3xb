@@ -62,7 +62,7 @@ export function RunnerClient({ slug }: { slug: string }) {
   );
 
   return (
-    <main className="wrap">
+    <main className={`wrap ${app?.template === "workshop" ? "workshop" : ""}`}>
       <style dangerouslySetInnerHTML={{ __html: STYLE }} />
       <div className="ubar">
         <a className="ubtn" href={`https://dx3xb.com/?lang=${lang}`}>{t.back}</a>
@@ -121,6 +121,7 @@ export function RunnerClient({ slug }: { slug: string }) {
 
 const STYLE = `
 .wrap { max-width: 640px; margin: 0 auto; padding: 22px 16px 60px; }
+.wrap.workshop { max-width: 960px; }
 .ubar { display: flex; justify-content: space-between; gap: 10px; margin-bottom: 18px; }
 .ubtn { display: inline-block; text-decoration: none; font-family: var(--font-press), monospace; font-size: 11px;
   background: #fff; color: var(--ink); border: 3px solid var(--line); box-shadow: 3px 3px 0 var(--ink); padding: 9px 12px; }

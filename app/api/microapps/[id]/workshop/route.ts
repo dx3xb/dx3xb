@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cleanText, readJson, tooManyRequests } from "@/lib/request-guards";
 import { getServiceClient } from "@/lib/supabase";
-import { wsValidate } from "@/app/_mt/workshop-spec";
+import { WORKSHOP_CODE_LIMITS, workshopJsPolicyIssue, wsValidate } from "@/app/_mt/workshop-spec";
 
 export const runtime = "nodejs";
 
@@ -23,6 +23,27 @@ function parseJson(content: unknown): WorkshopDraft | null {
   } catch {
     return null;
   }
+}
+
+function validateGeneratedDraft(draft: WorkshopDraft): { draft: WorkshopDraft; reason: null } | { draft: null; reason: string } {
+  const html = String(draft.html ?? "");
+  const css = String(draft.css ?? "");
+  const js = String(draft.js ?? "");
+  if (!html.trim() || !css.trim() || !js.trim()) return { draft: null, reason: "missing_code" };
+  if (html.length > WORKSHOP_CODE_LIMITS.html) return { draft: null, reason: "html_too_long" };
+  if (css.length > WORKSHOP_CODE_LIMITS.css) return { draft: null, reason: "css_too_long" };
+  if (js.length > WORKSHOP_CODE_LIMITS.js) return { draft: null, reason: "js_too_long" };
+  const policyIssue = workshopJsPolicyIssue(js);
+  if (policyIssue) return { draft: null, reason: policyIssue };
+
+  const checked = wsValidate({ html, css, js });
+  try {
+    // Compile only; generated code is never executed in the API process.
+    new Function(checked.js);
+  } catch {
+    return { draft: null, reason: "invalid_js" };
+  }
+  return { draft: { ...draft, html: checked.html, css: checked.css, js: checked.js }, reason: null };
 }
 
 function escapeHtml(value: string) {
@@ -121,11 +142,16 @@ CONSTRAINTS:
     const candidate = data?.candidates?.[0];
     const text = candidate?.content?.parts?.map((p: { text?: string }) => p.text || "").join("") || "";
     const draft = parseJson(text);
-    if (!draft?.html || !draft?.css || !draft?.js) {
+    if (!draft) {
       console.warn("workshop gemini parse failed", { finishReason: candidate?.finishReason, textLength: text.length, compact });
       return null;
     }
-    return { ...draft, source: `gemini:${model}` };
+    const checked = validateGeneratedDraft(draft);
+    if (!checked.draft) {
+      console.warn("workshop gemini draft rejected", { finishReason: candidate?.finishReason, textLength: text.length, compact, reason: checked.reason });
+      return null;
+    }
+    return { ...checked.draft, source: `gemini:${model}` };
   };
   return (await callGemini(false)) ?? (await callGemini(true)) ?? localPlayableWorkshop(prompt, lang, title);
 }

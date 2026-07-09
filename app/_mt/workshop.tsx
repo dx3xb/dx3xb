@@ -25,6 +25,8 @@ const T = {
     you: "你",
     ai: "AI",
     emptyChat: "还没有对话。在下面描述你想要的游戏，AI 会直接改给你看。",
+    runtimeError: "游戏脚本未能运行，请返回工坊让 AI 重新生成。",
+    editorRuntimeError: "这版游戏脚本有错误，请继续描述修改，AI 会重新生成。",
   },
   en: {
     empty: "This Canvas game is not ready yet.",
@@ -44,6 +46,8 @@ const T = {
     you: "You",
     ai: "AI",
     emptyChat: "No conversation yet. Describe the game you want below and AI will build it live.",
+    runtimeError: "The game script could not run. Return to the workshop and ask AI to regenerate it.",
+    editorRuntimeError: "This game script has an error. Describe another change and AI will regenerate it.",
   },
 } as const;
 
@@ -70,6 +74,7 @@ export function WorkshopPlayer({
   const cfg = useMemo(() => wsValidate(config), [config]);
   const [copied, setCopied] = useState(false);
   const [nonce, setNonce] = useState(0);
+  const [runtimeError, setRuntimeError] = useState(false);
   const frameRef = useRef<HTMLIFrameElement>(null);
   const srcDoc = useMemo(() => buildWorkshopSrcDoc(cfg), [cfg]);
 
@@ -80,13 +85,20 @@ export function WorkshopPlayer({
   useEffect(() => {
     function onMessage(event: MessageEvent) {
       if (event.source !== frameRef.current?.contentWindow) return;
-      if ((event.data as { type?: string })?.type === "dx3xb-workshop-complete") {
+      const type = (event.data as { type?: string })?.type;
+      if (type === "dx3xb-workshop-complete") {
         onComplete?.();
+      } else if (type === "dx3xb-workshop-error") {
+        setRuntimeError(true);
       }
     }
     window.addEventListener("message", onMessage);
     return () => window.removeEventListener("message", onMessage);
   }, [onComplete]);
+
+  useEffect(() => {
+    setRuntimeError(false);
+  }, [nonce, srcDoc]);
 
   async function share() {
     if (preview) return;
@@ -108,6 +120,7 @@ export function WorkshopPlayer({
       <div className="ws-stage play">
         <iframe key={nonce} ref={frameRef} className="ws-frame" title={title || "dx3xb canvas game"} sandbox="allow-scripts" srcDoc={srcDoc} />
       </div>
+      {runtimeError && <p className="ws-runtime-error" role="alert">{t.runtimeError}</p>}
       {!preview && (
         <div className="ws-playbar">
           <button className="ws-btn" onClick={() => setNonce((n) => n + 1)}>↻ {t.replay}</button>
@@ -139,15 +152,30 @@ export function WorkshopEditor({
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const [nonce, setNonce] = useState(0);
+  const [runtimeError, setRuntimeError] = useState(false);
   const srcDoc = useMemo(() => buildWorkshopSrcDoc(cfg), [cfg]);
   const left = Math.max(0, LIMIT - cfg.turnsUsed);
   const msgRef = useRef<HTMLDivElement>(null);
+  const frameRef = useRef<HTMLIFrameElement>(null);
 
   useEffect(() => {
     // 新消息或生成态变化时自动滚到底
     const node = msgRef.current;
     if (node) node.scrollTop = node.scrollHeight;
   }, [cfg.messages.length, busy]);
+
+  useEffect(() => {
+    function onMessage(event: MessageEvent) {
+      if (event.source !== frameRef.current?.contentWindow) return;
+      if ((event.data as { type?: string })?.type === "dx3xb-workshop-error") setRuntimeError(true);
+    }
+    window.addEventListener("message", onMessage);
+    return () => window.removeEventListener("message", onMessage);
+  }, []);
+
+  useEffect(() => {
+    setRuntimeError(false);
+  }, [nonce, srcDoc]);
 
   async function askAi() {
     if (!appId || !prompt.trim() || busy || left <= 0) return;
@@ -187,8 +215,9 @@ export function WorkshopEditor({
             <button className="ws-mini" onClick={() => setNonce((n) => n + 1)} title={t.replay}>↻</button>
           </div>
           <div className="ws-stage edit">
-            <iframe key={nonce} className="ws-frame" title="workshop preview" sandbox="allow-scripts" srcDoc={srcDoc} />
+            <iframe key={nonce} ref={frameRef} className="ws-frame" title="workshop preview" sandbox="allow-scripts" srcDoc={srcDoc} />
           </div>
+          {runtimeError && <p className="ws-runtime-error" role="alert">{t.editorRuntimeError}</p>}
         </section>
 
         <section className="ws-chat">
@@ -251,10 +280,12 @@ const WS_STYLE = `
 
 /* —— 游戏画框：稳定高度 + iframe 绝对填充，任何游戏都完整显示、不裁切 —— */
 .ws-stage { position: relative; width: 100%; overflow: hidden; border: 4px solid var(--ink); box-shadow: 8px 8px 0 var(--ink);
-  background: repeating-conic-gradient(#0d1220 0% 25%, #121a2e 0% 50%) 50% / 22px 22px; }
-.ws-stage.play { height: clamp(440px, 76vh, 760px); }
-.ws-stage.edit { height: clamp(400px, 62vh, 640px); box-shadow: 4px 4px 0 var(--ink); }
+  background: repeating-conic-gradient(#0d1220 0% 25%, #121a2e 0% 50%) 50% / 22px 22px; contain: layout paint; }
+.ws-stage.play { height: clamp(480px, calc(100dvh - 230px), 760px); }
+.ws-stage.edit { height: clamp(440px, 62dvh, 680px); box-shadow: 4px 4px 0 var(--ink); }
 .ws-frame { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; display: block; }
+.ws-runtime-error { margin: 0; padding: 9px 11px; color: #b42318; background: #fff; border: 2px solid var(--coral);
+  font-family: var(--font-vt323), monospace; font-size: 16px; }
 
 .ws-playbar { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
 .ws-btn { font-family: var(--font-press), monospace; font-size: 10px; cursor: pointer; border: 3px solid var(--line);
@@ -267,7 +298,7 @@ const WS_STYLE = `
 .ws-mini:hover { background: var(--cream); }
 
 /* —— 编辑器双栏：预览 + 对话 —— */
-.ws-canvas { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(300px, .6fr); gap: 14px; align-items: stretch; }
+.ws-canvas { display: grid; grid-template-columns: minmax(0, 2fr) minmax(320px, 1fr); gap: 14px; align-items: stretch; }
 .ws-preview { display: grid; grid-template-rows: auto 1fr; gap: 8px; min-width: 0; }
 .ws-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
 .ws-head b { font-family: var(--font-press), monospace; font-size: 10px; }
@@ -304,13 +335,13 @@ const WS_STYLE = `
 .ws-left.low { color: var(--coral); }
 .ws-err { margin: 0; font-size: 14px; color: var(--coral); }
 
-@media (max-width: 820px) {
+@media (max-width: 900px) {
   .ws-canvas { grid-template-columns: 1fr; }
-  .ws-stage.edit { height: clamp(360px, 56vh, 520px); }
+  .ws-stage.edit { height: clamp(420px, 60dvh, 620px); }
   .ws-chat { height: clamp(420px, 60vh, 560px); }
 }
 @media (max-width: 480px) {
-  .ws-stage.play { height: clamp(420px, 72vh, 600px); }
+  .ws-stage.play { height: clamp(420px, calc(100dvh - 230px), 620px); }
   .ws-msg { max-width: 94%; }
 }
 `;

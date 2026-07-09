@@ -34,6 +34,18 @@ star.addEventListener("click", () => {
   }
 });`;
 
+export const WORKSHOP_CODE_LIMITS = {
+  html: 18000,
+  css: 16000,
+  js: 24000,
+} as const;
+
+const WORKSHOP_HARD_LIMITS = {
+  html: 72000,
+  css: 64000,
+  js: 96000,
+} as const;
+
 export function wsEmpty(lang: Lang = "zh"): WorkshopConfig {
   return {
     intro: lang === "zh" ? "用 AI 生成或手动编辑一个安全沙盒里的 HTML 小游戏。" : "Generate or edit a sandboxed HTML mini game.",
@@ -49,13 +61,8 @@ function bounded(value: unknown, max: number) {
   return clean(value, max);
 }
 
-function codeBounded(value: unknown, max: number) {
-  const s = String(value ?? "").replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, "");
-  if (s.length <= max) return s;
-  // 超限时截到最后一个语句边界（}/;/换行），绝不截在半句——否则括号不平衡会让整段 script 语法错误、事件全部失效。
-  const cut = s.slice(0, max);
-  const boundary = Math.max(cut.lastIndexOf("}"), cut.lastIndexOf(";"), cut.lastIndexOf("\n"));
-  return boundary > max * 0.6 ? cut.slice(0, boundary + 1) : cut;
+function cleanCode(value: unknown) {
+  return String(value ?? "").replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, "");
 }
 
 function extractBodyFragment(html: string) {
@@ -75,21 +82,29 @@ function stripDangerousHtml(html: string) {
     .trim();
 }
 
-function stripDangerousJs(js: string) {
-  return js
-    .replace(/\b(fetch|XMLHttpRequest|WebSocket|EventSource|Worker|SharedWorker)\b/g, "/* blocked */")
-    .replace(/\b(localStorage|sessionStorage|indexedDB|cookie)\b/g, "/* blocked */")
-    .replace(/\b(top|opener|parent\.location|window\.location)\b/g, "/* blocked */");
+export function workshopJsPolicyIssue(js: string): string | null {
+  if (/\b(?:fetch|XMLHttpRequest|WebSocket|EventSource|Worker|SharedWorker)\b/.test(js)) return "network_api";
+  if (/\b(?:localStorage|sessionStorage|indexedDB)\b|\bdocument\s*\.\s*cookie\b/.test(js)) return "storage_api";
+  if (/\b(?:window|parent|top|opener)\s*\.\s*location\b|\bwindow\s*\.\s*opener\b/.test(js)) return "navigation_api";
+  if (/\b(?:eval|Function)\s*\(/.test(js)) return "dynamic_code";
+  return null;
 }
 
 export function wsValidate(input: unknown): WorkshopConfig {
   const o = (input ?? {}) as Record<string, unknown>;
   const messagesRaw = (Array.isArray(o.messages) ? o.messages.slice(-10) : []) as Record<string, unknown>[];
+  const rawHtml = cleanCode(o.html);
+  const rawCss = cleanCode(o.css);
+  const rawJs = cleanCode(o.js);
+  const codeTooLarge =
+    rawHtml.length > WORKSHOP_HARD_LIMITS.html ||
+    rawCss.length > WORKSHOP_HARD_LIMITS.css ||
+    rawJs.length > WORKSHOP_HARD_LIMITS.js;
   return {
     intro: bounded(o.intro, 240) || "AI Game Workshop",
-    html: stripDangerousHtml(codeBounded(o.html, 18000)) || SAMPLE_HTML,
-    css: codeBounded(o.css, 16000) || SAMPLE_CSS,
-    js: stripDangerousJs(codeBounded(o.js, 24000)) || SAMPLE_JS,
+    html: codeTooLarge ? SAMPLE_HTML : stripDangerousHtml(rawHtml) || SAMPLE_HTML,
+    css: codeTooLarge ? SAMPLE_CSS : rawCss || SAMPLE_CSS,
+    js: codeTooLarge ? SAMPLE_JS : rawJs || SAMPLE_JS,
     turnsUsed: Math.max(0, Math.min(10, Math.round(Number(o.turnsUsed) || 0))),
     messages: messagesRaw.map((m): WorkshopMessage => ({
       role: m.role === "ai" ? "ai" : "user",
@@ -105,6 +120,8 @@ export function wsPublishable(c: WorkshopConfig): boolean {
 
 export function buildWorkshopSrcDoc(config: WorkshopConfig) {
   const cfg = wsValidate(config);
+  const safeCss = cfg.css.replace(/<\/style/gi, "<\\/style");
+  const safeJs = cfg.js.replace(/<\/script/gi, "<\\/script");
   const csp = [
     "default-src 'none'",
     "script-src 'unsafe-inline'",
@@ -121,8 +138,23 @@ export function buildWorkshopSrcDoc(config: WorkshopConfig) {
   // 注入基线：游戏充满整个画框（height:100%），无双滚动条，深色兜底底，触控友好。
   // 游戏自己的 CSS 在这之后加载，可完全覆盖这些默认值。
   const base = `html,body{height:100%;margin:0;padding:0;overflow:hidden;background:#0d1220;color:#f4f6ff;touch-action:manipulation;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;}*,*::before,*::after{box-sizing:border-box;}img{max-width:100%;}button,[role=button]{touch-action:manipulation;cursor:pointer;}`;
-  return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover"><meta http-equiv="Content-Security-Policy" content="${csp}"><style>${base}</style><style>${cfg.css}</style></head><body>${cfg.html}<script>
-window.fetch=undefined;window.XMLHttpRequest=undefined;window.WebSocket=undefined;window.EventSource=undefined;window.open=undefined;window.alert=undefined;window.prompt=undefined;window.confirm=undefined;
-try{${cfg.js}}catch(e){document.body.insertAdjacentHTML('beforeend','<pre style="white-space:pre-wrap;color:#ff5f57;background:#fff;padding:8px;border:2px solid #ff5f57">JS error: '+String(e).replace(/[<>&]/g,'')+'</pre>')}
+  return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover"><meta http-equiv="Content-Security-Policy" content="${csp}"><style>${base}</style><style>${safeCss}</style></head><body>${cfg.html}<script>
+(function(){
+  function report(value){
+    var message=String(value&&value.message?value.message:value||'Unknown game error').slice(0,240);
+    try{parent.postMessage({type:'dx3xb-workshop-error',message:message},'*')}catch(_){}
+    var box=document.getElementById('dx3xb-workshop-error');
+    if(!box){box=document.createElement('div');box.id='dx3xb-workshop-error';box.setAttribute('role','alert');box.style.cssText='position:fixed;inset:auto 12px 12px;z-index:2147483647;padding:10px 12px;background:#fff;color:#b42318;border:2px solid #ff5f57;font:14px/1.35 ui-monospace,monospace;box-shadow:4px 4px 0 #ff5f57';document.body.appendChild(box)}
+    box.textContent='Game failed to load.';
+  }
+  Object.defineProperty(window,'__dx3xbReportError',{value:report,writable:false,configurable:false});
+  window.addEventListener('error',function(event){report(event.error||event.message)});
+  window.addEventListener('unhandledrejection',function(event){report(event.reason)});
+  ['fetch','XMLHttpRequest','WebSocket','EventSource','Worker','SharedWorker','open','alert','prompt','confirm'].forEach(function(key){try{Object.defineProperty(window,key,{value:undefined,writable:false,configurable:false})}catch(_){window[key]=undefined}});
+})();
+</script><script>
+try{
+${safeJs}
+}catch(e){window.__dx3xbReportError(e)}
 </script></body></html>`;
 }
