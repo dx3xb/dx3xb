@@ -1,7 +1,14 @@
 // 微应用模板注册表 · 类型
 import type { ReactNode } from "react";
+import type { MicroAdvanced } from "./micro-meta";
 
 export type Lang = "zh" | "en";
+export type PlayerEvents = {
+  onStart?: () => void;
+  onComplete?: () => void;
+  onShare?: () => void;
+  advanced?: MicroAdvanced;
+};
 
 // 每个模板自定义自己的 config 形状；Player/Editor 都按该形状工作。
 export type TemplateDef<C = unknown> = {
@@ -12,7 +19,7 @@ export type TemplateDef<C = unknown> = {
   empty: () => C;
   validate: (c: unknown) => C; // 读取/保存前清洗：去 HTML/控制符、限长限量
   publishable: (c: C) => boolean;
-  Player: (p: { config: C; title: string; slug?: string; lang: Lang; preview?: boolean }) => ReactNode;
+  Player: (p: { config: C; title: string; slug?: string; lang: Lang; preview?: boolean } & PlayerEvents) => ReactNode;
   Editor: (p: { config: C; onChange: (c: C) => void; lang: Lang }) => ReactNode;
 };
 

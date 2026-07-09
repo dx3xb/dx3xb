@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import QRCode from "qrcode";
 import { toPng } from "html-to-image";
 import { scoreQuiz, validateQuizConfig, type QuizConfig } from "./dx3xb-apps";
+import type { PlayerEvents } from "./_mt/types";
 
 type Lang = "zh" | "en";
 
@@ -46,13 +47,16 @@ export function QuizPlayer({
   slug,
   lang,
   preview = false,
+  onStart,
+  onComplete,
+  onShare,
 }: {
   config: unknown;
   title: string;
   slug?: string;
   lang: Lang;
   preview?: boolean;
-}) {
+} & PlayerEvents) {
   const t = T[lang];
   const config = useMemo(() => validateQuizConfig(rawConfig), [rawConfig]);
   const [phase, setPhase] = useState<"intro" | "play" | "result">("intro");
@@ -94,7 +98,10 @@ export function QuizPlayer({
     next[idx] = optIndex;
     setPicks(next);
     if (idx + 1 < config.questions.length) setIdx(idx + 1);
-    else setPhase("result");
+    else {
+      setPhase("result");
+      onComplete?.();
+    }
   }
 
   function restart() {
@@ -102,12 +109,14 @@ export function QuizPlayer({
     setPicks([]);
     setCopied(false);
     setPhase(config.questions.length ? "play" : "intro");
+    if (config.questions.length) onStart?.();
   }
 
   async function share() {
     if (!result) return;
     const text = t.shareText(title || "dx3xb quiz", result.title, `${shareUrl}?r=${result.key}`);
     try {
+      onShare?.();
       if (navigator.share) await navigator.share({ title: title || "dx3xb", text, url: `${shareUrl}?r=${result.key}` });
       else {
         await navigator.clipboard.writeText(text);
@@ -120,6 +129,7 @@ export function QuizPlayer({
   async function copy() {
     if (!result) return;
     try {
+      onShare?.();
       await navigator.clipboard.writeText(t.shareText(title || "dx3xb quiz", result.title, `${shareUrl}?r=${result.key}`));
       setCopied(true);
     } catch {
@@ -131,6 +141,7 @@ export function QuizPlayer({
     if (!node || saving) return;
     setSaving(true);
     try {
+      onShare?.();
       if (document.fonts && document.fonts.ready) await document.fonts.ready;
       const dataUrl = await toPng(node, { pixelRatio: 2, backgroundColor: "#fffdf8", cacheBust: true });
       const a = document.createElement("a");
@@ -154,7 +165,7 @@ export function QuizPlayer({
         <div className="qp-card qp-intro">
           <h2 className="pixel qp-title">{title || "dx3xb quiz"}</h2>
           {config.intro && <p className="qp-introtext">{config.intro}</p>}
-          <button className="qp-btn coral" onClick={() => setPhase("play")}>{t.start}</button>
+          <button className="qp-btn coral" onClick={() => { setPhase("play"); onStart?.(); }}>{t.start}</button>
         </div>
       )}
 

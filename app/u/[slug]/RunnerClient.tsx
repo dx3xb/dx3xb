@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { regFor } from "../../_mt/registry";
-import { getMicroappBySlug, bumpPlay, reportMicroapp, type Microapp } from "../../dx3xb-apps";
+import { MicroThemeShell } from "../../_mt/micro-shell";
+import { applyAdvancedConfig, extractMicroMeta, stripMicroMeta, type MicroEvent } from "../../_mt/micro-meta";
+import { getMicroappBySlug, bumpPlay, reportMicroapp, trackMicroappEvent, TEMPLATE_META, type Microapp } from "../../dx3xb-apps";
 
 type Lang = "zh" | "en";
 function initialLang(): Lang {
@@ -23,6 +25,7 @@ export function RunnerClient({ slug }: { slug: string }) {
   const [app, setApp] = useState<Microapp | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [reported, setReported] = useState(false);
+  const sent = useRef<Partial<Record<MicroEvent, boolean>>>({});
   const t = C[lang];
 
   function toggleLang() {
@@ -42,9 +45,21 @@ export function RunnerClient({ slug }: { slug: string }) {
       const a = await getMicroappBySlug(slug);
       setApp(a);
       setLoaded(true);
-      if (a) void bumpPlay(slug);
+      if (a) {
+        void bumpPlay(slug);
+        void trackMicroappEvent(slug, "view");
+      }
     })();
   }, [slug]);
+
+  const sendEvent = useCallback(
+    (event: MicroEvent) => {
+      if (sent.current[event]) return;
+      sent.current[event] = true;
+      void trackMicroappEvent(slug, event);
+    },
+    [slug],
+  );
 
   return (
     <main className="wrap">
@@ -68,7 +83,24 @@ export function RunnerClient({ slug }: { slug: string }) {
         <>
           {(() => {
             const Player = regFor(app.template).Player;
-            return <Player config={app.config} title={app.title} slug={app.slug} lang={lang} />;
+            const meta = extractMicroMeta(app.config);
+            const baseConfig = stripMicroMeta(app.config);
+            const playConfig = applyAdvancedConfig(baseConfig, app.template, meta, app.slug);
+            const label = TEMPLATE_META.find((m) => m.id === app.template)?.name[lang] ?? app.template;
+            return (
+              <MicroThemeShell meta={meta} title={app.title} templateLabel={label} lang={lang} onTimeUp={() => sendEvent("complete")}>
+                <Player
+                  config={playConfig}
+                  title={app.title}
+                  slug={app.slug}
+                  lang={lang}
+                  advanced={meta.advanced}
+                  onStart={() => sendEvent("start")}
+                  onComplete={() => sendEvent("complete")}
+                  onShare={() => sendEvent("share")}
+                />
+              </MicroThemeShell>
+            );
           })()}
           <div className="ufoot">
             <button

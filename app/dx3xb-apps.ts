@@ -1,6 +1,7 @@
 // ===== dx3xb 微应用（无代码模板工厂）数据层 =====
 // 复用 dx3xb-trio 的匿名会话客户端；数据由 RLS 保护。
 import { dx3xb, ensureSession } from "./dx3xb-trio";
+import type { MicroEvent } from "./_mt/micro-meta";
 
 export type QuizOption = { label: string; scores: Record<string, number> };
 export type QuizQuestion = { q: string; options: QuizOption[] };
@@ -223,5 +224,18 @@ export async function reportMicroapp(id: string, reason: string) {
     await dx3xb().from("dx3xb_microapp_reports").insert({ microapp_id: id, reason: reason.slice(0, 200) });
   } catch {
     /* ignore */
+  }
+}
+
+export async function trackMicroappEvent(slug: string, event: MicroEvent) {
+  try {
+    await fetch(`/api/microapps/${encodeURIComponent(slug)}/events`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ event }),
+      keepalive: true,
+    });
+  } catch {
+    /* analytics failure must not affect play */
   }
 }

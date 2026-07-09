@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import QRCode from "qrcode";
 import { toPng } from "html-to-image";
-import { clean, type Lang } from "./types";
+import { clean, type Lang, type PlayerEvents } from "./types";
 
 export type Riddle = { q: string; answer: string; hint: string };
 export type RdConfig = { intro: string; riddles: Riddle[] };
@@ -93,13 +93,16 @@ export function RiddleEscapePlayer({
   slug,
   lang,
   preview = false,
+  onStart,
+  onComplete,
+  onShare,
 }: {
   config: RdConfig;
   title: string;
   slug?: string;
   lang: Lang;
   preview?: boolean;
-}) {
+} & PlayerEvents) {
   const t = T[lang];
   const cfg = useMemo(() => rdValidate(config), [config]);
   const riddles = useMemo(() => cfg.riddles.filter((r) => r.q.trim() && r.answer.trim()), [cfg]);
@@ -155,6 +158,7 @@ export function RiddleEscapePlayer({
     setStartAt(Date.now());
     setElapsed(0);
     setPhase("play");
+    onStart?.();
   }
   function submit() {
     if (matches(riddles[idx].answer, guess)) {
@@ -165,6 +169,7 @@ export function RiddleEscapePlayer({
       else {
         setElapsed((Date.now() - startAt) / 1000);
         setPhase("result");
+        onComplete?.();
       }
     } else {
       setWrong(true);
@@ -174,6 +179,7 @@ export function RiddleEscapePlayer({
   async function share() {
     const text = t.shareText(title || "dx3xb", secsStr, shareUrl);
     try {
+      onShare?.();
       if (navigator.share) await navigator.share({ title: title || "dx3xb", text, url: shareUrl });
       else {
         await navigator.clipboard.writeText(text);
@@ -185,6 +191,7 @@ export function RiddleEscapePlayer({
   }
   async function copy() {
     try {
+      onShare?.();
       await navigator.clipboard.writeText(t.shareText(title || "dx3xb", secsStr, shareUrl));
       setCopied(true);
     } catch {
@@ -196,6 +203,7 @@ export function RiddleEscapePlayer({
     if (!node || saving) return;
     setSaving(true);
     try {
+      onShare?.();
       if (document.fonts && document.fonts.ready) await document.fonts.ready;
       const u = await toPng(node, { pixelRatio: 2, backgroundColor: "#fffdf8", cacheBust: true });
       const a = document.createElement("a");

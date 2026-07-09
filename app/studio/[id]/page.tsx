@@ -4,8 +4,20 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { regFor } from "../../_mt/registry";
 import { SharePoster } from "../../_mt/share-poster";
+import { MicroThemeShell } from "../../_mt/micro-shell";
+import {
+  ACCENTS,
+  CARD_OPTIONS,
+  FONT_OPTIONS,
+  THEME_OPTIONS,
+  attachMicroMeta,
+  extractMicroMeta,
+  normalizeMicroMeta,
+  stripMicroMeta,
+  type MicroMeta,
+} from "../../_mt/micro-meta";
 import { getMicroapp, updateMicroapp, deleteMicroapp, type Microapp, type MicroStatus } from "../../dx3xb-apps";
-import { getEmail } from "../../dx3xb-trio";
+import { dx3xb, getEmail } from "../../dx3xb-trio";
 
 type Lang = "zh" | "en";
 function initialLang(): Lang {
@@ -22,16 +34,42 @@ const C = {
     save: "保存草稿", saved: "已保存 ✓", saving: "保存中…", makeLink: "生成分享链接", submit: "提交到社区墙",
     submitted: "已提交审核 ✓", del: "删除", delConfirm: "确定删除这个微应用？", shareLabel: "分享链接：",
     needPublishable: "内容填好后才能发布（按各模板的最少要求）。", needEmail: "提交到社区墙需要先注册认领账号。",
-    goClaim: "去 /me 注册 →", notfound: "找不到这个微应用。",
+    goClaim: "去 /me 注册 →", notfound: "找不到这个微应用。", ai: "AI 草稿", aiPh: "一句话描述你想做的玩具，比如：给三年级小朋友玩的恐龙冷知识测试",
+    aiBtn: "生成内容", aiBusy: "生成中…", style: "外观", cover: "封面", accent: "强调色", advanced: "高级玩法",
+    shuffle: "随机题序", progress: "显示进度", time: "限时秒数", lives: "生命值（猜价生效）",
   },
   en: {
     back: "← My Micro-apps", edit: "EDIT", preview: "PREVIEW", langBtn: "中", titlePh: "Title (e.g. Which cat are you?)",
     save: "Save draft", saved: "Saved ✓", saving: "Saving…", makeLink: "Make share link", submit: "Submit to gallery",
     submitted: "Submitted ✓", del: "Delete", delConfirm: "Delete this micro-app?", shareLabel: "Share link:",
     needPublishable: "Fill in the content before publishing (per template's minimum).", needEmail: "Submitting to the gallery needs a claimed account.",
-    goClaim: "Register at /me →", notfound: "Micro-app not found.",
+    goClaim: "Register at /me →", notfound: "Micro-app not found.", ai: "AI Draft", aiPh: "Describe the toy in one sentence, e.g. a dinosaur trivia quiz for 3rd graders",
+    aiBtn: "Generate", aiBusy: "Generating…", style: "Style", cover: "Cover", accent: "Accent", advanced: "Advanced",
+    shuffle: "Shuffle order", progress: "Show progress", time: "Time limit", lives: "Lives (higher-lower)",
   },
 };
+
+function Segmented<T extends string>({
+  items,
+  value,
+  lang,
+  onPick,
+}: {
+  items: { id: T; zh: string; en: string }[];
+  value: T;
+  lang: Lang;
+  onPick: (value: T) => void;
+}) {
+  return (
+    <div className="eseg">
+      {items.map((item) => (
+        <button key={item.id} className={value === item.id ? "on" : ""} onClick={() => onPick(item.id)}>
+          {item[lang]}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 export default function EditorPage() {
   const params = useParams<{ id: string }>();
@@ -42,10 +80,13 @@ export default function EditorPage() {
   const [tab, setTab] = useState<"edit" | "preview">("edit");
   const [title, setTitle] = useState("");
   const [cfg, setCfg] = useState<unknown>(null);
+  const [meta, setMeta] = useState<MicroMeta>(normalizeMicroMeta(null));
   const [status, setStatus] = useState<MicroStatus>("draft");
   const [slug, setSlug] = useState("");
   const [tpl, setTpl] = useState("quiz");
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved">("idle");
+  const [aiPrompt, setAiPrompt] = useState("");
+  const [aiBusy, setAiBusy] = useState(false);
   const [email, setEmail] = useState<string | null>(null);
   const t = C[lang];
 
@@ -57,7 +98,10 @@ export default function EditorPage() {
         setApp(a);
         setTitle(a.title);
         setTpl(a.template);
-        setCfg(regFor(a.template).validate(a.config));
+        const nextMeta = extractMicroMeta(a.config);
+        setMeta(nextMeta);
+        setAiPrompt(nextMeta.aiPrompt);
+        setCfg(regFor(a.template).validate(stripMicroMeta(a.config)));
         setStatus(a.status);
         setSlug(a.slug);
       }
@@ -80,13 +124,42 @@ export default function EditorPage() {
     setCfg(c);
     setSaveState("idle");
   }
+  function patchMeta(patch: Partial<MicroMeta>) {
+    setMeta((prev) => normalizeMicroMeta({ ...prev, ...patch, advanced: { ...prev.advanced, ...(patch.advanced ?? {}) } }));
+    setSaveState("idle");
+  }
   async function save(newStatus?: MicroStatus) {
     if (cfg == null) return;
     setSaveState("saving");
     const nextStatus = newStatus ?? (status === "public" ? "pending" : undefined);
-    const ok = await updateMicroapp(id, { title, config: regFor(tpl).validate(cfg), status: nextStatus });
+    const ok = await updateMicroapp(id, { title, config: attachMicroMeta(regFor(tpl).validate(cfg), { ...meta, aiPrompt }), status: nextStatus });
     if (ok && nextStatus) setStatus(nextStatus);
     setSaveState(ok ? "saved" : "idle");
+  }
+  async function generateDraft() {
+    if (!aiPrompt.trim()) return;
+    setAiBusy(true);
+    try {
+      const { data } = await dx3xb().auth.getSession();
+      const token = data.session?.access_token;
+      const res = await fetch("/api/microapps/generate", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ template: tpl, prompt: aiPrompt, lang }),
+      });
+      const body = await res.json().catch(() => null);
+      if (res.ok && body?.config) {
+        setCfg(regFor(tpl).validate(body.config));
+        if (body.title) setTitle(String(body.title).slice(0, 60));
+        if (body.meta) setMeta(normalizeMicroMeta({ ...meta, ...body.meta, aiPrompt }));
+        setSaveState("idle");
+      }
+    } finally {
+      setAiBusy(false);
+    }
   }
   async function remove() {
     if (!window.confirm(t.delConfirm)) return;
@@ -103,6 +176,7 @@ export default function EditorPage() {
   const Player = reg.Player;
   const Editor = reg.Editor;
   const shareUrl = `https://dx3xb.com/u/${slug}`;
+  const templateLabel = tpl;
 
   return (
     <main className="wrap">
@@ -119,10 +193,43 @@ export default function EditorPage() {
       </div>
 
       {tab === "preview" ? (
-        <Player config={validCfg} title={title} lang={lang} preview />
+        <MicroThemeShell meta={meta} title={title} templateLabel={templateLabel} lang={lang}>
+          <Player config={validCfg} title={title} lang={lang} preview advanced={meta.advanced} />
+        </MicroThemeShell>
       ) : (
         <div className="eform">
           <input className="ein big" placeholder={t.titlePh} value={title} maxLength={60} onChange={(e) => { setTitle(e.target.value); setSaveState("idle"); }} />
+          <div className="epanel">
+            <h3 className="ehead">{t.ai}</h3>
+            <div className="erow">
+              <textarea className="ein grow" rows={2} placeholder={t.aiPh} value={aiPrompt} maxLength={240} onChange={(e) => { setAiPrompt(e.target.value); setSaveState("idle"); }} />
+              <button className="ebig teal" onClick={generateDraft} disabled={aiBusy || !aiPrompt.trim()}>{aiBusy ? t.aiBusy : t.aiBtn}</button>
+            </div>
+          </div>
+
+          <div className="epanel">
+            <h3 className="ehead">{t.style}</h3>
+            <div className="erow wraprow">
+              <label className="efield"><span>{t.cover}</span><input className="ein emoji" value={meta.coverEmoji} maxLength={4} onChange={(e) => patchMeta({ coverEmoji: e.target.value })} /></label>
+              <label className="efield grow"><span>{t.accent}</span><input className="ein" value={meta.accent} maxLength={7} onChange={(e) => patchMeta({ accent: e.target.value })} /></label>
+              <div className="eswatches">
+                {ACCENTS.map((c) => <button key={c} aria-label={c} className={meta.accent === c ? "on" : ""} style={{ background: c }} onClick={() => patchMeta({ accent: c })} />)}
+              </div>
+            </div>
+            <Segmented items={THEME_OPTIONS} value={meta.theme} lang={lang} onPick={(theme) => patchMeta({ theme })} />
+            <Segmented items={FONT_OPTIONS} value={meta.font} lang={lang} onPick={(font) => patchMeta({ font })} />
+            <Segmented items={CARD_OPTIONS} value={meta.card} lang={lang} onPick={(card) => patchMeta({ card })} />
+          </div>
+
+          <div className="epanel">
+            <h3 className="ehead">{t.advanced}</h3>
+            <label className="echeck"><input type="checkbox" checked={meta.advanced.shuffle} onChange={(e) => patchMeta({ advanced: { ...meta.advanced, shuffle: e.target.checked } })} /> {t.shuffle}</label>
+            <label className="echeck"><input type="checkbox" checked={meta.advanced.showProgress} onChange={(e) => patchMeta({ advanced: { ...meta.advanced, showProgress: e.target.checked } })} /> {t.progress}</label>
+            <div className="erow">
+              <label className="efield grow"><span>{t.time}</span><input className="ein" type="number" min={0} max={900} value={meta.advanced.timeLimitSec} onChange={(e) => patchMeta({ advanced: { ...meta.advanced, timeLimitSec: Number(e.target.value) || 0 } })} /></label>
+              <label className="efield grow"><span>{t.lives}</span><input className="ein" type="number" min={1} max={9} value={meta.advanced.lives} onChange={(e) => patchMeta({ advanced: { ...meta.advanced, lives: Number(e.target.value) || 1 } })} /></label>
+            </div>
+          </div>
           <Editor config={validCfg} onChange={onCfg} lang={lang} />
 
           <div className="esave">
@@ -161,6 +268,7 @@ const STYLE = `
 .etab + .etab { border-left: none; }
 .etab.on { background: var(--ink); color: var(--cream); }
 .eform { display: grid; gap: 10px; }
+.epanel { background: var(--cream); border: 3px solid var(--line); box-shadow: 3px 3px 0 var(--ink); padding: 12px; display: grid; gap: 9px; }
 .ein { font-family: var(--font-vt323), monospace; font-size: 19px; background: #fff; color: var(--ink);
   border: 3px solid var(--line); box-shadow: inset 2px 2px 0 rgba(43,34,51,.1); padding: 10px 12px; width: 100%; outline: none; }
 .ein:focus { box-shadow: var(--shadow); }
@@ -170,6 +278,18 @@ const STYLE = `
 .ehead { font-family: var(--font-press), monospace; font-size: 12px; margin: 16px 0 2px; }
 .ecard { background: var(--cream); border: 3px solid var(--line); box-shadow: 3px 3px 0 var(--ink); padding: 12px; display: grid; gap: 8px; }
 .erow { display: flex; gap: 8px; align-items: center; }
+.erow.wraprow { flex-wrap: wrap; }
+.efield { display: grid; gap: 4px; min-width: 96px; }
+.efield span { font-family: var(--font-press), monospace; font-size: 9px; color: var(--ink-soft); }
+.echeck { font-size: 17px; display: inline-flex; align-items: center; gap: 8px; }
+.echeck input { width: 18px; height: 18px; accent-color: var(--teal); }
+.eswatches { display: flex; flex-wrap: wrap; gap: 6px; align-items: end; }
+.eswatches button { width: 34px; height: 34px; border: 3px solid var(--line); cursor: pointer; box-shadow: 2px 2px 0 var(--ink); }
+.eswatches button.on { outline: 3px solid var(--yellow); }
+.eseg { display: flex; flex-wrap: wrap; gap: 0; }
+.eseg button { font-family: var(--font-press), monospace; font-size: 9px; background: #fff; color: var(--ink-soft); border: 3px solid var(--line); padding: 8px 10px; cursor: pointer; }
+.eseg button + button { margin-left: -3px; }
+.eseg button.on { background: var(--ink); color: var(--cream); }
 .ex { flex: none; width: 38px; height: 38px; font-family: var(--font-press), monospace; font-size: 12px; cursor: pointer;
   background: #fff; color: var(--ink); border: 3px solid var(--line); }
 .ex:disabled { opacity: .4; cursor: not-allowed; }

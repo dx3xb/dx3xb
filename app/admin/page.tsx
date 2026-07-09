@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { MicroReviewCard } from "../_mt/micro-shell";
+import type { MicroMeta } from "../_mt/micro-meta";
 
 type Row = {
   id: number;
@@ -23,6 +25,13 @@ type App = {
   plays: number;
   created_at: string;
   reports: number;
+  views: number;
+  starts: number;
+  completes: number;
+  shares: number;
+  completionRate: number;
+  meta: MicroMeta;
+  configSummary: string;
 };
 type AdminUserApp = {
   id: string;
@@ -218,6 +227,14 @@ export default function AdminPage() {
                 {a.reports > 0 && <span className="ahid">举报 {a.reports}</span>}
               </div>
               <div className="atitle">{a.title || "(无标题)"}</div>
+              <MicroReviewCard meta={a.meta} title={a.title} template={a.template} summary={a.configSummary} />
+              <div className="astats">
+                <span>曝光 {a.views}</span>
+                <span>开始 {a.starts}</span>
+                <span>完成 {a.completes}</span>
+                <span>完成率 {a.completionRate}%</span>
+                <span>分享 {a.shares}</span>
+              </div>
               <div className="arow">
                 <a className="abtn" href={`/u/${a.slug}`} target="_blank" rel="noreferrer">预览</a>
                 {a.status !== "public" && <button className="abtn teal" onClick={() => actMa(a.id, "public")}>通过上墙</button>}
@@ -317,6 +334,8 @@ const STYLE = `
 .astatus.hidden { background: var(--coral); color: #fff; }
 .atitle { font-size: 19px; }
 .arow { display: flex; gap: 8px; flex-wrap: wrap; }
+.astats { display: flex; flex-wrap: wrap; gap: 7px; }
+.astats span { background: var(--cream-2); border: 2px solid var(--line); padding: 4px 7px; font-size: 13px; }
 .ustats { display: flex; flex-wrap: wrap; gap: 8px; }
 .ustats span { background: var(--cream-2); border: 2px solid var(--line); padding: 4px 7px; font-size: 13px; }
 .uid { font-family: monospace; font-size: 12px; color: var(--ink-soft); word-break: break-all; }

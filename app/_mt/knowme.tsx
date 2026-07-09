@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import QRCode from "qrcode";
 import { toPng } from "html-to-image";
-import { clean, type Lang } from "./types";
+import { clean, type Lang, type PlayerEvents } from "./types";
 
 export type KmQuestion = { q: string; options: string[]; correct: number };
 export type KmBand = { min: number; label: string; desc: string };
@@ -112,13 +112,16 @@ export function KnowMePlayer({
   slug,
   lang,
   preview = false,
+  onStart,
+  onComplete,
+  onShare,
 }: {
   config: KmConfig;
   title: string;
   slug?: string;
   lang: Lang;
   preview?: boolean;
-}) {
+} & PlayerEvents) {
   const t = T[lang];
   const cfg = useMemo(() => kmValidate(config), [config]);
   const [phase, setPhase] = useState<"intro" | "play" | "result">("intro");
@@ -169,11 +172,15 @@ export function KnowMePlayer({
     next[idx] = o;
     setPicks(next);
     if (idx + 1 < cfg.questions.length) setIdx(idx + 1);
-    else setPhase("result");
+    else {
+      setPhase("result");
+      onComplete?.();
+    }
   }
   async function share() {
     const text = t.shareText(title || "dx3xb", pct, tier, shareUrl);
     try {
+      onShare?.();
       if (navigator.share) await navigator.share({ title: title || "dx3xb", text, url: shareUrl });
       else {
         await navigator.clipboard.writeText(text);
@@ -185,6 +192,7 @@ export function KnowMePlayer({
   }
   async function copy() {
     try {
+      onShare?.();
       await navigator.clipboard.writeText(t.shareText(title || "dx3xb", pct, tier, shareUrl));
       setCopied(true);
     } catch {
@@ -196,6 +204,7 @@ export function KnowMePlayer({
     if (!node || saving) return;
     setSaving(true);
     try {
+      onShare?.();
       if (document.fonts && document.fonts.ready) await document.fonts.ready;
       const u = await toPng(node, { pixelRatio: 2, backgroundColor: "#fffdf8", cacheBust: true });
       const a = document.createElement("a");
@@ -216,7 +225,7 @@ export function KnowMePlayer({
         <div className="km-card km-intro">
           <h2 className="pixel km-title">{title || "dx3xb"}</h2>
           {cfg.intro && <p className="km-introtext">{cfg.intro}</p>}
-          <button className="km-btn coral" onClick={() => setPhase("play")}>{t.start}</button>
+          <button className="km-btn coral" onClick={() => { setPhase("play"); onStart?.(); }}>{t.start}</button>
         </div>
       )}
       {phase === "play" && cfg.questions[idx] && (
@@ -266,7 +275,7 @@ export function KnowMePlayer({
             {!preview && <button className="km-btn coral" onClick={download}>{saving ? "…" : t.download}</button>}
             {!preview && <button className="km-btn teal" onClick={share}>{t.share}</button>}
             {!preview && <button className="km-btn ghost" onClick={copy}>{copied ? t.copied : t.copy}</button>}
-            <button className="km-btn ghost" onClick={() => { setIdx(0); setPicks([]); setPhase("play"); }}>{t.replay}</button>
+            <button className="km-btn ghost" onClick={() => { setIdx(0); setPicks([]); setPhase("play"); onStart?.(); }}>{t.replay}</button>
           </div>
         </div>
       )}

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import QRCode from "qrcode";
 import { toPng } from "html-to-image";
-import { clean, type Lang } from "./types";
+import { clean, type Lang, type PlayerEvents } from "./types";
 
 export type TotPair = { a: string; b: string; mine: 0 | 1 };
 export type TotConfig = { intro: string; pairs: TotPair[] };
@@ -80,13 +80,16 @@ export function ThisOrThatPlayer({
   slug,
   lang,
   preview = false,
+  onStart,
+  onComplete,
+  onShare,
 }: {
   config: TotConfig;
   title: string;
   slug?: string;
   lang: Lang;
   preview?: boolean;
-}) {
+} & PlayerEvents) {
   const t = T[lang];
   const cfg = useMemo(() => totValidate(config), [config]);
   const [phase, setPhase] = useState<"intro" | "play" | "result">("intro");
@@ -135,12 +138,16 @@ export function ThisOrThatPlayer({
     next[idx] = side;
     setPicks(next);
     if (idx + 1 < cfg.pairs.length) setIdx(idx + 1);
-    else setPhase("result");
+    else {
+      setPhase("result");
+      onComplete?.();
+    }
   }
 
   async function share() {
     const text = t.shareText(title || "dx3xb", matchPct, shareUrl);
     try {
+      onShare?.();
       if (navigator.share) await navigator.share({ title: title || "dx3xb", text, url: shareUrl });
       else {
         await navigator.clipboard.writeText(text);
@@ -152,6 +159,7 @@ export function ThisOrThatPlayer({
   }
   async function copy() {
     try {
+      onShare?.();
       await navigator.clipboard.writeText(t.shareText(title || "dx3xb", matchPct, shareUrl));
       setCopied(true);
     } catch {
@@ -163,6 +171,7 @@ export function ThisOrThatPlayer({
     if (!node || saving) return;
     setSaving(true);
     try {
+      onShare?.();
       if (document.fonts && document.fonts.ready) await document.fonts.ready;
       const url = await toPng(node, { pixelRatio: 2, backgroundColor: "#fffdf8", cacheBust: true });
       const a = document.createElement("a");
@@ -183,7 +192,7 @@ export function ThisOrThatPlayer({
         <div className="tot-card tot-intro">
           <h2 className="pixel tot-title">{title || "dx3xb"}</h2>
           {cfg.intro && <p className="tot-introtext">{cfg.intro}</p>}
-          <button className="tot-btn coral" onClick={() => setPhase("play")}>{t.start}</button>
+          <button className="tot-btn coral" onClick={() => { setPhase("play"); onStart?.(); }}>{t.start}</button>
         </div>
       )}
       {phase === "play" && cfg.pairs[idx] && (
@@ -239,7 +248,7 @@ export function ThisOrThatPlayer({
             {!preview && <button className="tot-btn coral" onClick={download}>{saving ? "…" : t.download}</button>}
             {!preview && <button className="tot-btn teal" onClick={share}>{t.share}</button>}
             {!preview && <button className="tot-btn ghost" onClick={copy}>{copied ? t.copied : t.copy}</button>}
-            <button className="tot-btn ghost" onClick={() => { setIdx(0); setPicks([]); setPhase("play"); }}>{t.replay}</button>
+            <button className="tot-btn ghost" onClick={() => { setIdx(0); setPicks([]); setPhase("play"); onStart?.(); }}>{t.replay}</button>
           </div>
         </div>
       )}

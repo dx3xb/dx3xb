@@ -9,9 +9,10 @@ import { HigherLowerPlayer, HigherLowerEditor, hlValidate, hlPublishable, hlEmpt
 import { MadLibsPlayer, MadLibsEditor, mlValidate, mlPublishable, mlEmpty } from "./madlibs";
 import { RiddleEscapePlayer, RiddleEscapeEditor, rdValidate, rdPublishable, rdEmpty } from "./riddle";
 import type { Lang } from "./types";
+import type { PlayerEvents } from "./types";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-type PlayerC = ComponentType<{ config: any; title: string; slug?: string; lang: Lang; preview?: boolean }>;
+type PlayerC = ComponentType<{ config: any; title: string; slug?: string; lang: Lang; preview?: boolean } & PlayerEvents>;
 type EditorC = ComponentType<{ config: any; onChange: (c: any) => void; lang: Lang }>;
 type Reg = {
   empty: (lang?: Lang) => unknown;

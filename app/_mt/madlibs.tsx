@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import QRCode from "qrcode";
 import { toPng } from "html-to-image";
-import { clean, type Lang } from "./types";
+import { clean, type Lang, type PlayerEvents } from "./types";
 
 export type MlConfig = { intro: string; story: string };
 
@@ -84,13 +84,16 @@ export function MadLibsPlayer({
   slug,
   lang,
   preview = false,
+  onStart,
+  onComplete,
+  onShare,
 }: {
   config: MlConfig;
   title: string;
   slug?: string;
   lang: Lang;
   preview?: boolean;
-}) {
+} & PlayerEvents) {
   const t = T[lang];
   const cfg = useMemo(() => mlValidate(config), [config]);
   const parsed = useMemo(() => parseStory(cfg.story), [cfg.story]);
@@ -134,6 +137,7 @@ export function MadLibsPlayer({
   async function share() {
     const text = t.shareText(title || "dx3xb", storyText, shareUrl);
     try {
+      onShare?.();
       if (navigator.share) await navigator.share({ title: title || "dx3xb", text, url: shareUrl });
       else {
         await navigator.clipboard.writeText(text);
@@ -145,6 +149,7 @@ export function MadLibsPlayer({
   }
   async function copy() {
     try {
+      onShare?.();
       await navigator.clipboard.writeText(t.shareText(title || "dx3xb", storyText, shareUrl));
       setCopied(true);
     } catch {
@@ -156,6 +161,7 @@ export function MadLibsPlayer({
     if (!node || saving) return;
     setSaving(true);
     try {
+      onShare?.();
       if (document.fonts && document.fonts.ready) await document.fonts.ready;
       const u = await toPng(node, { pixelRatio: 2, backgroundColor: "#fffdf8", cacheBust: true });
       const a = document.createElement("a");
@@ -176,7 +182,7 @@ export function MadLibsPlayer({
         <div className="ml-card ml-intro">
           <h2 className="pixel ml-title">{title || "dx3xb"}</h2>
           {cfg.intro && <p className="ml-introtext">{cfg.intro}</p>}
-          <button className="ml-btn coral" onClick={() => setPhase("fill")}>{t.start}</button>
+          <button className="ml-btn coral" onClick={() => { setPhase("fill"); onStart?.(); }}>{t.start}</button>
         </div>
       )}
       {phase === "fill" && (
@@ -196,7 +202,7 @@ export function MadLibsPlayer({
               </div>
             ))}
           </div>
-          <button className="ml-btn coral" onClick={() => setPhase("result")}>{t.generate}</button>
+          <button className="ml-btn coral" onClick={() => { setPhase("result"); onComplete?.(); }}>{t.generate}</button>
         </div>
       )}
       {phase === "result" && (
@@ -236,7 +242,7 @@ export function MadLibsPlayer({
             {!preview && <button className="ml-btn coral" onClick={download}>{saving ? "…" : t.download}</button>}
             {!preview && <button className="ml-btn teal" onClick={share}>{t.share}</button>}
             {!preview && <button className="ml-btn ghost" onClick={copy}>{copied ? t.copied : t.copy}</button>}
-            <button className="ml-btn ghost" onClick={() => { setFills([]); setPhase("fill"); }}>{t.replay}</button>
+            <button className="ml-btn ghost" onClick={() => { setFills([]); setPhase("fill"); onStart?.(); }}>{t.replay}</button>
           </div>
         </div>
       )}

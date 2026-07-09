@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import QRCode from "qrcode";
 import { toPng } from "html-to-image";
-import { clean, type Lang } from "./types";
+import { clean, type Lang, type PlayerEvents } from "./types";
 
 export type HlItem = { label: string; value: number };
 export type HlConfig = { intro: string; unit: string; items: HlItem[] };
@@ -106,13 +106,17 @@ export function HigherLowerPlayer({
   slug,
   lang,
   preview = false,
+  advanced,
+  onStart,
+  onComplete,
+  onShare,
 }: {
   config: HlConfig;
   title: string;
   slug?: string;
   lang: Lang;
   preview?: boolean;
-}) {
+} & PlayerEvents) {
   const t = T[lang];
   const cfg = useMemo(() => hlValidate(config), [config]);
   const items = useMemo(() => cfg.items.filter((i) => i.label.trim()), [cfg]);
@@ -120,6 +124,7 @@ export function HigherLowerPlayer({
   const [curIdx, setCurIdx] = useState(0);
   const [nextIdx, setNextIdx] = useState(1);
   const [streak, setStreak] = useState(0);
+  const [livesLeft, setLivesLeft] = useState(Math.max(1, advanced?.lives ?? 1));
   const [reveal, setReveal] = useState<null | boolean>(null); // null=未翻, true/false=对错
   const [copied, setCopied] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -131,8 +136,9 @@ export function HigherLowerPlayer({
   useEffect(() => {
     setPhase("intro");
     setStreak(0);
+    setLivesLeft(Math.max(1, advanced?.lives ?? 1));
     setReveal(null);
-  }, [config]);
+  }, [config, advanced?.lives]);
 
   useEffect(() => {
     if (phase !== "result" || preview || !slug) {
@@ -154,9 +160,11 @@ export function HigherLowerPlayer({
     setCurIdx(a);
     setNextIdx(randExcept(items.length, a));
     setStreak(0);
+    setLivesLeft(Math.max(1, advanced?.lives ?? 1));
     setReveal(null);
     lock.current = false;
     setPhase("play");
+    onStart?.();
   }
   function guess(higher: boolean) {
     if (lock.current || reveal !== null) return;
@@ -173,7 +181,19 @@ export function HigherLowerPlayer({
         setReveal(null);
         lock.current = false;
       } else {
-        setPhase("result");
+        setLivesLeft((left) => {
+          const nextLives = left - 1;
+          if (nextLives > 0) {
+            setCurIdx(nextIdx);
+            setNextIdx(randExcept(items.length, nextIdx));
+            setReveal(null);
+            lock.current = false;
+          } else {
+            setPhase("result");
+            onComplete?.();
+          }
+          return Math.max(0, nextLives);
+        });
       }
     }, 950);
   }
@@ -181,6 +201,7 @@ export function HigherLowerPlayer({
   async function share() {
     const text = t.shareText(title || "dx3xb", streak, shareUrl);
     try {
+      onShare?.();
       if (navigator.share) await navigator.share({ title: title || "dx3xb", text, url: shareUrl });
       else {
         await navigator.clipboard.writeText(text);
@@ -192,6 +213,7 @@ export function HigherLowerPlayer({
   }
   async function copy() {
     try {
+      onShare?.();
       await navigator.clipboard.writeText(t.shareText(title || "dx3xb", streak, shareUrl));
       setCopied(true);
     } catch {
@@ -203,6 +225,7 @@ export function HigherLowerPlayer({
     if (!node || saving) return;
     setSaving(true);
     try {
+      onShare?.();
       if (document.fonts && document.fonts.ready) await document.fonts.ready;
       const u = await toPng(node, { pixelRatio: 2, backgroundColor: "#fffdf8", cacheBust: true });
       const a = document.createElement("a");
@@ -230,7 +253,7 @@ export function HigherLowerPlayer({
       )}
       {phase === "play" && (
         <div className="hl-card">
-          <p className="hl-streak">{t.streak} <b>{streak}</b></p>
+          <p className="hl-streak">{t.streak} <b>{streak}</b>{(advanced?.lives ?? 1) > 1 ? ` · ♥ ${livesLeft}` : ""}</p>
           <div className="hl-arena">
             <div className="hl-item">
               <span className="hl-tag">{t.cur}</span>
