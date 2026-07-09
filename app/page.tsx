@@ -268,6 +268,14 @@ function scrollToId(id: string) {
   document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
 }
 
+function initialLang(): Lang {
+  if (typeof window === "undefined") return "en";
+  const fromUrl = new URLSearchParams(window.location.search).get("lang");
+  if (fromUrl === "zh" || fromUrl === "en") return fromUrl;
+  const saved = window.localStorage.getItem("dx3xb_lang");
+  return saved === "zh" ? "zh" : "en";
+}
+
 export default function Home() {
   const [lang, setLang] = useState<Lang>("en"); // 默认英文，访客可切换并记忆
   const [showNav, setShowNav] = useState(false);
@@ -288,10 +296,9 @@ export default function Home() {
 
   const t = COPY[lang];
 
-  // 默认英文；若访客之前切过语言则沿用其选择
+  // 默认英文；URL 参数优先，其次沿用访客之前切过的语言。
   useEffect(() => {
-    const saved = (typeof localStorage !== "undefined" && localStorage.getItem("dx3xb_lang")) as Lang | null;
-    if (saved === "zh" || saved === "en") setLang(saved);
+    setLang(initialLang());
   }, []);
 
   // 读取玩具墙目录
@@ -307,6 +314,9 @@ export default function Home() {
       const next = prev === "zh" ? "en" : "zh";
       try {
         localStorage.setItem("dx3xb_lang", next);
+        const url = new URL(window.location.href);
+        url.searchParams.set("lang", next);
+        window.history.replaceState(null, "", url.toString());
       } catch {
         /* ignore */
       }
