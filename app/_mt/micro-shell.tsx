@@ -15,6 +15,7 @@ export function MicroThemeShell({
   templateLabel,
   lang,
   onTimeUp,
+  stopped = false,
   byline,
   children,
 }: {
@@ -23,6 +24,8 @@ export function MicroThemeShell({
   templateLabel: string;
   lang: Lang;
   onTimeUp?: () => void;
+  /** 游戏已完成/已提交：停止倒计时并不再弹「时间到」层 */
+  stopped?: boolean;
   byline?: ReactNode;
   children: ReactNode;
 }) {
@@ -32,6 +35,7 @@ export function MicroThemeShell({
   const [expired, setExpired] = useState(false);
 
   useEffect(() => {
+    if (stopped) return; // 提交即停表：完成后不再计时，剩余秒数保持冻结
     setLeft(limit);
     setExpired(false);
     if (!limit) return;
@@ -47,7 +51,7 @@ export function MicroThemeShell({
       });
     }, 1000);
     return () => window.clearInterval(id);
-  }, [limit, onTimeUp]);
+  }, [limit, onTimeUp, stopped]);
 
   const style = useMemo(
     () =>
@@ -75,7 +79,7 @@ export function MicroThemeShell({
         </div>
       )}
       <div className="mbody">{children}</div>
-      {expired && (
+      {expired && !stopped && (
         <div className="mtimeout" role="status">
           <b>{t.timeup}</b>
           <button onClick={() => window.location.reload()}>{t.again}</button>

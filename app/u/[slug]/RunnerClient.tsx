@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useMemo } from "react";
 import { regFor } from "../../_mt/registry";
 import { MicroThemeShell } from "../../_mt/micro-shell";
 import { CommunityGameCard, CreatorLink } from "../../_mt/community-card";
@@ -27,6 +27,7 @@ export function RunnerClient({ slug }: { slug: string }) {
   const [loaded, setLoaded] = useState(false);
   const [reported, setReported] = useState(false);
   const [completed, setCompleted] = useState(false);
+  const [timeUp, setTimeUp] = useState(false);
   const sent = useRef<Partial<Record<MicroEvent, boolean>>>({});
   const t = C[lang];
 
@@ -70,6 +71,16 @@ export function RunnerClient({ slug }: { slug: string }) {
     sendEvent("complete");
   }, [sendEvent]);
 
+  // config 派生量必须 memo 锁定身份：否则任何父级重渲染（如完成时 setCompleted）
+  // 都会生成新 config 对象，触发各模板 Player 里「config 变了就重置」的效果，
+  // 把刚到手的结果页瞬间打回开始屏。
+  const play = useMemo(() => {
+    if (!app) return null;
+    const meta = extractMicroMeta(app.config);
+    const baseConfig = stripMicroMeta(app.config);
+    return { meta, playConfig: applyAdvancedConfig(baseConfig, app.template, meta, app.slug) };
+  }, [app]);
+
   return (
     <main className={`wrap ${app?.template === "workshop" ? "workshop" : ""}`}>
       <style dangerouslySetInnerHTML={{ __html: STYLE }} />
@@ -92,9 +103,7 @@ export function RunnerClient({ slug }: { slug: string }) {
         <>
           {(() => {
             const Player = regFor(app.template).Player;
-            const meta = extractMicroMeta(app.config);
-            const baseConfig = stripMicroMeta(app.config);
-            const playConfig = applyAdvancedConfig(baseConfig, app.template, meta, app.slug);
+            const { meta, playConfig } = play!;
             const label = TEMPLATE_META.find((m) => m.id === app.template)?.name[lang] ?? app.template;
             return (
               <MicroThemeShell
@@ -102,7 +111,8 @@ export function RunnerClient({ slug }: { slug: string }) {
                 title={app.title}
                 templateLabel={label}
                 lang={lang}
-                onTimeUp={complete}
+                onTimeUp={() => setTimeUp(true)}
+                stopped={completed}
                 byline={<CreatorLink creator={app.creator} lang={lang} sourceSlug={app.slug} compact className="cover-creator" />}
               >
                 <Player
@@ -111,6 +121,7 @@ export function RunnerClient({ slug }: { slug: string }) {
                   slug={app.slug}
                   lang={lang}
                   advanced={meta.advanced}
+                  timeUp={timeUp}
                   onStart={() => sendEvent("start")}
                   onComplete={complete}
                   onShare={() => sendEvent("share")}

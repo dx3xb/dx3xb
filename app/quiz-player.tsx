@@ -50,6 +50,7 @@ export function QuizPlayer({
   onStart,
   onComplete,
   onShare,
+  timeUp = false,
 }: {
   config: unknown;
   title: string;
@@ -77,6 +78,14 @@ export function QuizPlayer({
     setIdx(0);
     setPicks([]);
   }, [config]);
+
+  // 限时到点：自动提交当前作答并直接出结果
+  useEffect(() => {
+    if (timeUp && phase === "play") {
+      setPhase("result");
+      onComplete?.();
+    }
+  }, [timeUp, phase, onComplete]);
 
   useEffect(() => {
     if (phase !== "result" || !result || preview || !slug) {

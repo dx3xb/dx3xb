@@ -8,6 +8,8 @@ export type PlayerEvents = {
   onComplete?: () => void;
   onShare?: () => void;
   advanced?: MicroAdvanced;
+  /** 外壳限时到点信号：Player 应自动提交当前进度并展示结果 */
+  timeUp?: boolean;
 };
 
 // 每个模板自定义自己的 config 形状；Player/Editor 都按该形状工作。

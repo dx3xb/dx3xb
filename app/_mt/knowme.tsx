@@ -115,6 +115,7 @@ export function KnowMePlayer({
   onStart,
   onComplete,
   onShare,
+  timeUp = false,
 }: {
   config: KmConfig;
   title: string;
@@ -138,6 +139,14 @@ export function KnowMePlayer({
     setIdx(0);
     setPicks([]);
   }, [config]);
+
+  // 限时到点：自动提交当前作答并直接出结果（未答的题按未命中计）
+  useEffect(() => {
+    if (timeUp && phase === "play") {
+      setPhase("result");
+      onComplete?.();
+    }
+  }, [timeUp, phase, onComplete]);
 
   const pct = useMemo(() => {
     if (phase !== "result" || cfg.questions.length === 0) return 0;
