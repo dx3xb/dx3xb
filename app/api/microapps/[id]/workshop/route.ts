@@ -104,6 +104,8 @@ VISUAL QUALITY (this is what makes it feel premium — do not skip):
 LAYOUT (must fill the frame on BOTH mobile and desktop):
 - Fill the container with 100%/100vh/100vw and flex/grid centering — NEVER hard-code pixel canvas sizes like 400x600. If you use <canvas>, size it to its container in JS (clientWidth/clientHeight) and handle resize.
 - Title, score, controls and play area must be fully visible inside the frame with no scrolling or zooming, on a phone and a laptop.
+- In flex/grid gameplay screens, every flexible play-area child must use min-width:0; min-height:0; overflow:hidden so HUD + canvas cannot force the screen taller than the iframe.
+- A canvas wrapper must be the shrinking flex/grid child; keep the active gameplay screen aligned from the top rather than vertically centering the whole HUD + canvas column.
 - Large tap targets (~44px+). Support BOTH mouse and touch. Never require keyboard-only controls, hover-only interaction, focus tricks, text input, or hidden controls.
 
 STRUCTURE:
@@ -120,6 +122,7 @@ CONSTRAINTS:
 - Keep total JS comfortably under ${compact ? "~9000" : "~18000"} characters and CSS under ${compact ? "~7000" : "~12000"}: prefer compact, reusable code over sprawling per-level hardcoding, so the game is never truncated. Every event handler and the game loop must be fully defined.
 - If the user asks for many levels, implement them data-driven in arrays/loops instead of writing each level by hand.
 - JSON must be complete and parseable. Do not stop mid-string or mid-function.
+- Before returning, verify that Start and Play-again handlers are registered, the JS parses, and the active gameplay screen cannot overflow the iframe in either axis.
 - Language for title/intro/note and all on-screen text: ${lang}.`;
   const callGemini = async (compact = false) => {
     const instruction = buildInstruction(compact);
