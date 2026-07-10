@@ -28,6 +28,7 @@ export function RunnerClient({ slug }: { slug: string }) {
   const [reported, setReported] = useState(false);
   const [completed, setCompleted] = useState(false);
   const [timeUp, setTimeUp] = useState(false);
+  const [started, setStarted] = useState(false);
   const sent = useRef<Partial<Record<MicroEvent, boolean>>>({});
   const t = C[lang];
 
@@ -113,6 +114,7 @@ export function RunnerClient({ slug }: { slug: string }) {
                 lang={lang}
                 onTimeUp={() => setTimeUp(true)}
                 stopped={completed}
+                started={started}
                 byline={<CreatorLink creator={app.creator} lang={lang} sourceSlug={app.slug} compact className="cover-creator" />}
               >
                 <Player
@@ -124,7 +126,7 @@ export function RunnerClient({ slug }: { slug: string }) {
                   timeUp={timeUp}
                   onRestart={() => { setCompleted(false); setTimeUp(false); }}
                   onResult={(r) => { void fetch(`/api/microapps/${encodeURIComponent(app.id)}/results`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(r) }).catch(() => {}); }}
-                  onStart={() => sendEvent("start")}
+                  onStart={() => { setStarted(true); sendEvent("start"); }}
                   onComplete={complete}
                   onShare={() => sendEvent("share")}
                 />

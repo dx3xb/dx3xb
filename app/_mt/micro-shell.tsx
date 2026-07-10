@@ -16,6 +16,7 @@ export function MicroThemeShell({
   lang,
   onTimeUp,
   stopped = false,
+  started = false,
   byline,
   children,
 }: {
@@ -26,6 +27,8 @@ export function MicroThemeShell({
   onTimeUp?: () => void;
   /** 游戏已完成/已提交：停止倒计时并不再弹「时间到」层 */
   stopped?: boolean;
+  /** 玩家点了「开始」才起跑倒计时；未开始时徽章显示完整限时 */
+  started?: boolean;
   byline?: ReactNode;
   children: ReactNode;
 }) {
@@ -38,7 +41,7 @@ export function MicroThemeShell({
     if (stopped) return; // 提交即停表：完成后不再计时，剩余秒数保持冻结
     setLeft(limit);
     setExpired(false);
-    if (!limit) return;
+    if (!limit || !started) return; // 未点「开始」不起跑，徽章静止显示完整限时
     const id = window.setInterval(() => {
       setLeft((prev) => {
         if (prev <= 1) {
@@ -51,7 +54,7 @@ export function MicroThemeShell({
       });
     }, 1000);
     return () => window.clearInterval(id);
-  }, [limit, onTimeUp, stopped]);
+  }, [limit, onTimeUp, stopped, started]);
 
   const style = useMemo(
     () =>
