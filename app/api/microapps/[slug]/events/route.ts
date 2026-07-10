@@ -14,16 +14,18 @@ const EVENTS = new Set([
   "creator_profile_view",
   "creator_work_click",
 ]);
+const CREATOR_EVENTS = new Set(["creator_link_click", "creator_profile_view", "creator_work_click"]);
 
 function cleanSlug(value: string) {
   return value.replace(/[^a-z0-9_-]/gi, "").slice(0, 32);
 }
 
-function sessionId(req: NextRequest) {
+function sessionId(req: NextRequest, event: string) {
   const ua = req.headers.get("user-agent") || "";
   const ip = req.headers.get("x-forwarded-for")?.split(",")[0] || req.headers.get("x-real-ip") || "";
   const secret = process.env.EVENT_HASH_SECRET || process.env.SUPABASE_SERVICE_KEY || "dx3xb-events";
-  return createHmac("sha256", secret).update(`${ip}:${ua}`.slice(0, 180)).digest("base64url").slice(0, 64);
+  const digest = createHmac("sha256", secret).update(`${ip}:${ua}`.slice(0, 180)).digest("base64url").slice(0, 40);
+  return CREATOR_EVENTS.has(event) ? `${event}:${digest}`.slice(0, 64) : digest;
 }
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
@@ -50,10 +52,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ slu
     if (appError) throw appError;
     if (!app) return NextResponse.json({ ok: false, error: "not_found" }, { status: 404 });
 
+    // The existing database constraint accepts the original event enum only.
+    // Creator events stay distinguishable by the session prefix until the analytics table is migrated.
+    const storedEvent = CREATOR_EVENTS.has(event) ? "view" : event;
     const { error } = await (supabase as any).from("dx3xb_microapp_events").insert({
       microapp_id: app.id,
-      event,
-      session_id: sessionId(req),
+      event: storedEvent,
+      session_id: sessionId(req, event),
     });
     if (error) throw error;
     return NextResponse.json({ ok: true });
