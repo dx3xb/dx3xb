@@ -2,8 +2,6 @@ import "server-only";
 import { getServiceClient } from "./supabase";
 import type { PublicCreator, PublicCreatorPage, PublicMicroappSummary } from "@/app/_mt/creator-types";
 
-const AVATAR_BUCKET = "dx3xb-avatars";
-
 function cleanHandle(value: unknown) {
   return String(value ?? "")
     .replace(/[\u0000-\u001f\u007f]/g, "")
@@ -11,9 +9,8 @@ function cleanHandle(value: unknown) {
     .slice(0, 24);
 }
 
-function avatarUrl(supabase: ReturnType<typeof getServiceClient>, userId: string) {
-  const { data } = supabase.storage.from(AVATAR_BUCKET).getPublicUrl(`${userId}/avatar`);
-  return data.publicUrl;
+function avatarUrl(handle: string) {
+  return `/api/creators/${encodeURIComponent(handle)}/avatar`;
 }
 
 export async function getPublicCreators(ownerIds: string[]) {
@@ -33,7 +30,7 @@ export async function getPublicCreators(ownerIds: string[]) {
     if (!handle) continue;
     result.set(profile.user_id, {
       handle,
-      avatarUrl: avatarUrl(supabase, profile.user_id),
+      avatarUrl: avatarUrl(handle),
       joinedAt: profile.created_at,
     });
   }
@@ -73,7 +70,7 @@ export async function getPublicCreatorPage(handleInput: string): Promise<PublicC
   return {
     creator: {
       handle: publicHandle,
-      avatarUrl: avatarUrl(supabase, profile.user_id),
+      avatarUrl: avatarUrl(publicHandle),
       joinedAt: profile.created_at,
     },
     apps: summaries,
