@@ -122,6 +122,8 @@ export function RunnerClient({ slug }: { slug: string }) {
                   lang={lang}
                   advanced={meta.advanced}
                   timeUp={timeUp}
+                  onRestart={() => { setCompleted(false); setTimeUp(false); }}
+                  onResult={(r) => { void fetch(`/api/microapps/${encodeURIComponent(app.id)}/results`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(r) }).catch(() => {}); }}
                   onStart={() => sendEvent("start")}
                   onComplete={complete}
                   onShare={() => sendEvent("share")}

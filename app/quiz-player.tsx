@@ -51,6 +51,8 @@ export function QuizPlayer({
   onComplete,
   onShare,
   timeUp = false,
+  onRestart,
+  onResult,
 }: {
   config: unknown;
   title: string;
@@ -87,6 +89,16 @@ export function QuizPlayer({
     }
   }, [timeUp, phase, onComplete]);
 
+  const reportedRef = useRef(false);
+  useEffect(() => {
+    if (phase === "result" && result && !reportedRef.current) {
+      reportedRef.current = true;
+      onResult?.({ label: result.title });
+    }
+    if (phase === "play") reportedRef.current = false;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, result]);
+
   useEffect(() => {
     if (phase !== "result" || !result || preview || !slug) {
       setQr("");
@@ -114,6 +126,7 @@ export function QuizPlayer({
   }
 
   function restart() {
+    onRestart?.();
     setIdx(0);
     setPicks([]);
     setCopied(false);

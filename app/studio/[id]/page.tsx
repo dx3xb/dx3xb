@@ -249,6 +249,7 @@ export default function EditorPage() {
           {status !== "draft" && (
             <>
               <p className="eshare">{t.shareLabel} <a href={`/u/${slug}?lang=${lang}`}>{shareUrl}</a></p>
+              <p className="eshare"><a href={`/studio/${id}/results?lang=${lang}`}>{lang === "zh" ? "查看玩家测试结果（保留 24 小时）→" : "View player results (kept 24h) →"}</a></p>
               <SharePoster title={title} template={tpl} slug={slug} lang={lang} creatorHandle={creatorHandle} />
             </>
           )}

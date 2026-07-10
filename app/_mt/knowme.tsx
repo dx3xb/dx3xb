@@ -116,6 +116,8 @@ export function KnowMePlayer({
   onComplete,
   onShare,
   timeUp = false,
+  onRestart,
+  onResult,
 }: {
   config: KmConfig;
   title: string;
@@ -147,6 +149,16 @@ export function KnowMePlayer({
       onComplete?.();
     }
   }, [timeUp, phase, onComplete]);
+
+  const reportedRef = useRef(false);
+  useEffect(() => {
+    if (phase === "result" && !reportedRef.current) {
+      reportedRef.current = true;
+      onResult?.({ label: tier, score: pct });
+    }
+    if (phase === "play") reportedRef.current = false;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase]);
 
   const pct = useMemo(() => {
     if (phase !== "result" || cfg.questions.length === 0) return 0;
@@ -284,7 +296,7 @@ export function KnowMePlayer({
             {!preview && <button className="km-btn coral" onClick={download}>{saving ? "…" : t.download}</button>}
             {!preview && <button className="km-btn teal" onClick={share}>{t.share}</button>}
             {!preview && <button className="km-btn ghost" onClick={copy}>{copied ? t.copied : t.copy}</button>}
-            <button className="km-btn ghost" onClick={() => { setIdx(0); setPicks([]); setPhase("play"); onStart?.(); }}>{t.replay}</button>
+            <button className="km-btn ghost" onClick={() => { setIdx(0); setPicks([]); setPhase("play"); onRestart?.(); onStart?.(); }}>{t.replay}</button>
           </div>
         </div>
       )}

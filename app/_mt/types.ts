@@ -10,6 +10,10 @@ export type PlayerEvents = {
   advanced?: MicroAdvanced;
   /** 外壳限时到点信号：Player 应自动提交当前进度并展示结果 */
   timeUp?: boolean;
+  /** 玩家点了「再来一次」：外壳应重置倒计时与完成态 */
+  onRestart?: () => void;
+  /** 出结果时上报（用于创作者 24h 结果页） */
+  onResult?: (result: { label: string; score?: number }) => void;
 };
 
 // 每个模板自定义自己的 config 形状；Player/Editor 都按该形状工作。
