@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { CommunityGameCard } from "./_mt/community-card";
+import type { PublicMicroappSummary } from "./_mt/creator-types";
 
 type Msg = { id: number; name: string; message: string; created_at: string; parent_id: number | null };
 type Lang = "zh" | "en";
-type WallApp = { slug: string; title: string; template: string; plays: number };
-const TPL_EMOJI: Record<string, string> = { quiz: "🐱", knowme: "💘", thisorthat: "⚔️", higherlower: "📈", madlibs: "📖", escape: "🔐" };
+type WallApp = PublicMicroappSummary;
 type Toy = {
   slug: string;
   title_zh: string;
@@ -168,6 +169,8 @@ const COPY = {
     wallEmpty: "还没有人上墙，",
     wallMake: "来做第一个 →",
     wallMakeBtn: "+ 做个自己的玩具 →",
+    wallLatest: "最新",
+    wallPopular: "热门",
     soon: "施工中 🚧",
     open: "去玩 →",
     maint: "维护中",
@@ -221,6 +224,8 @@ const COPY = {
     wallEmpty: "Nothing here yet,",
     wallMake: "make the first →",
     wallMakeBtn: "+ Make your own →",
+    wallLatest: "LATEST",
+    wallPopular: "POPULAR",
     soon: "BUILDING 🚧",
     open: "OPEN →",
     maint: "MAINTENANCE",
@@ -289,6 +294,7 @@ export default function Home() {
   const [gbState, setGbState] = useState<"idle" | "loading" | "err">("idle");
   const [messages, setMessages] = useState<Msg[]>([]);
   const [community, setCommunity] = useState<WallApp[]>([]);
+  const [wallSort, setWallSort] = useState<"latest" | "popular">("latest");
   const [replyTo, setReplyTo] = useState<number | null>(null);
   const [replyName, setReplyName] = useState("");
   const [replyMsg, setReplyMsg] = useState("");
@@ -342,9 +348,9 @@ export default function Home() {
     }
   }
 
-  async function loadWall() {
+  async function loadWall(sort: "latest" | "popular") {
     try {
-      const res = await fetch("/api/wall", { cache: "no-store" });
+      const res = await fetch(`/api/wall?sort=${sort}`, { cache: "no-store" });
       const d = await res.json();
       setCommunity(d.apps ?? []);
     } catch {
@@ -354,8 +360,11 @@ export default function Home() {
 
   useEffect(() => {
     loadGuestbook();
-    loadWall();
   }, []);
+
+  useEffect(() => {
+    void loadWall(wallSort);
+  }, [wallSort]);
 
   async function subscribe(e: React.FormEvent) {
     e.preventDefault();
@@ -550,14 +559,12 @@ export default function Home() {
             <p className="note">{t.wallEmpty} <a href={`/studio?lang=${lang}`}>{t.wallMake}</a></p>
           ) : (
             <>
+              <div className="wall-tabs" role="tablist" aria-label={t.wallTitle}>
+                <button role="tab" aria-selected={wallSort === "latest"} className={wallSort === "latest" ? "on" : ""} onClick={() => setWallSort("latest")}>{t.wallLatest}</button>
+                <button role="tab" aria-selected={wallSort === "popular"} className={wallSort === "popular" ? "on" : ""} onClick={() => setWallSort("popular")}>{t.wallPopular}</button>
+              </div>
               <div className="grid">
-                {community.map((a) => (
-                  <a className="toy live" href={`/u/${a.slug}?lang=${lang}`} key={a.slug}>
-                    <div className="emoji">{TPL_EMOJI[a.template] || "🎲"}</div>
-                    <div className="pixel" style={{ fontSize: 15 }}>{a.title || "(untitled)"}</div>
-                    <div className="soon">▶ {a.plays}</div>
-                  </a>
-                ))}
+                {community.map((a) => <CommunityGameCard app={a} lang={lang} key={a.slug} />)}
               </div>
               <div style={{ marginTop: 14 }}>
                 <a className="btn" href={`/studio?lang=${lang}`} style={{ textDecoration: "none", display: "inline-block" }}>{t.wallMakeBtn}</a>

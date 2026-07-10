@@ -17,7 +17,7 @@ import {
   type MicroMeta,
 } from "../../_mt/micro-meta";
 import { getMicroapp, updateMicroapp, deleteMicroapp, type Microapp, type MicroStatus } from "../../dx3xb-apps";
-import { dx3xb, getEmail } from "../../dx3xb-trio";
+import { dx3xb, getEmail, getProfileHandle } from "../../dx3xb-trio";
 
 type Lang = "zh" | "en";
 function initialLang(): Lang {
@@ -33,7 +33,7 @@ const C = {
     back: "← 我的微应用", edit: "编辑", preview: "预览", langBtn: "EN", titlePh: "标题（如：你是哪种猫？）",
     save: "保存草稿", saved: "已保存 ✓", saving: "保存中…", makeLink: "生成分享链接", submit: "提交到社区墙",
     submitted: "已提交审核 ✓", del: "删除", delConfirm: "确定删除这个微应用？", shareLabel: "分享链接：",
-    needPublishable: "内容填好后才能发布（按各模板的最少要求）。", needEmail: "提交到社区墙需要先注册认领账号。",
+    needPublishable: "内容填好后才能发布（按各模板的最少要求）。", needEmail: "提交到社区墙需要先注册并设置用户名。",
     goClaim: "去 /me 注册 →", notfound: "找不到这个微应用。", ai: "AI 草稿", aiPh: "一句话描述你想做的玩具，比如：给三年级小朋友玩的恐龙冷知识测试",
     aiBtn: "生成内容", aiBusy: "生成中…", style: "外观", cover: "封面", accent: "强调色", advanced: "高级玩法",
     shuffle: "随机题序", progress: "显示进度", time: "限时秒数", lives: "生命值（猜价生效）",
@@ -42,7 +42,7 @@ const C = {
     back: "← My Micro-apps", edit: "EDIT", preview: "PREVIEW", langBtn: "中", titlePh: "Title (e.g. Which cat are you?)",
     save: "Save draft", saved: "Saved ✓", saving: "Saving…", makeLink: "Make share link", submit: "Submit to gallery",
     submitted: "Submitted ✓", del: "Delete", delConfirm: "Delete this micro-app?", shareLabel: "Share link:",
-    needPublishable: "Fill in the content before publishing (per template's minimum).", needEmail: "Submitting to the gallery needs a claimed account.",
+    needPublishable: "Fill in the content before publishing (per template's minimum).", needEmail: "Submitting to the gallery needs a claimed account and username.",
     goClaim: "Register at /me →", notfound: "Micro-app not found.", ai: "AI Draft", aiPh: "Describe the toy in one sentence, e.g. a dinosaur trivia quiz for 3rd graders",
     aiBtn: "Generate", aiBusy: "Generating…", style: "Style", cover: "Cover", accent: "Accent", advanced: "Advanced",
     shuffle: "Shuffle order", progress: "Show progress", time: "Time limit", lives: "Lives (higher-lower)",
@@ -88,12 +88,13 @@ export default function EditorPage() {
   const [aiPrompt, setAiPrompt] = useState("");
   const [aiBusy, setAiBusy] = useState(false);
   const [email, setEmail] = useState<string | null>(null);
+  const [creatorHandle, setCreatorHandle] = useState<string | null>(null);
   const t = C[lang];
 
   useEffect(() => {
     setLang(initialLang());
     (async () => {
-      const [a, e] = await Promise.all([getMicroapp(id), getEmail()]);
+      const [a, e, handle] = await Promise.all([getMicroapp(id), getEmail(), getProfileHandle()]);
       if (a) {
         setApp(a);
         setTitle(a.title);
@@ -106,6 +107,7 @@ export default function EditorPage() {
         setSlug(a.slug);
       }
       setEmail(e);
+      setCreatorHandle(handle);
       setLoaded(true);
     })();
   }, [id]);
@@ -235,19 +237,19 @@ export default function EditorPage() {
           <div className="esave">
             <button className="ebig" onClick={() => save()}>{saveState === "saving" ? t.saving : saveState === "saved" ? t.saved : t.save}</button>
             <button className="ebig teal" disabled={!publishable} onClick={() => save("unlisted")}>{t.makeLink}</button>
-            <button className="ebig coral" disabled={!publishable || !email} onClick={() => save("pending")}>
+            <button className="ebig coral" disabled={!publishable || !email || !creatorHandle} onClick={() => save("pending")}>
               {status === "pending" || status === "public" ? t.submitted : t.submit}
             </button>
             <button className="ebig ghost" onClick={remove}>{t.del}</button>
           </div>
           {!publishable && <p className="ewarn">{t.needPublishable}</p>}
-          {publishable && !email && (
+          {publishable && (!email || !creatorHandle) && (
             <p className="ewarn">{t.needEmail} <a href={`/me?lang=${lang}`}>{t.goClaim}</a></p>
           )}
           {status !== "draft" && (
             <>
               <p className="eshare">{t.shareLabel} <a href={`/u/${slug}?lang=${lang}`}>{shareUrl}</a></p>
-              <SharePoster title={title} template={tpl} slug={slug} lang={lang} />
+              <SharePoster title={title} template={tpl} slug={slug} lang={lang} creatorHandle={creatorHandle} />
             </>
           )}
         </div>

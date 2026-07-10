@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { getServiceClient } from "@/lib/supabase";
+import { getPublicCreators } from "@/lib/public-creators";
 import { RunnerClient } from "./RunnerClient";
 
 export const runtime = "nodejs";
@@ -11,6 +12,7 @@ const NAMES: Record<string, string> = {
   higherlower: "猜价闯关",
   madlibs: "故事填词",
   escape: "解谜闯关",
+  workshop: "AI 游戏",
 };
 
 async function getApp(slug: string) {
@@ -18,11 +20,12 @@ async function getApp(slug: string) {
     const s = getServiceClient();
     const { data } = await s
       .from("dx3xb_microapps")
-      .select("title, template, status")
+      .select("title,template,status,owner_id")
       .eq("slug", slug)
       .maybeSingle();
     if (!data || data.status === "draft" || data.status === "hidden") return null;
-    return data as { title: string; template: string; status: string };
+    const creators = await getPublicCreators([data.owner_id]);
+    return { title: data.title, template: data.template, status: data.status, creator: creators.get(data.owner_id) ?? null };
   } catch {
     return null;
   }
@@ -31,13 +34,15 @@ async function getApp(slug: string) {
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
   const app = await getApp(slug);
-  const title = app?.title ? `${app.title} · dx3xb` : "dx3xb 微应用";
+  const creatorName = app?.creator ? `@${app.creator.handle}` : "";
+  const title = app?.title ? `${app.title}${creatorName ? ` by ${creatorName}` : ""} · dx3xb` : "dx3xb 微应用";
   const kind = app ? NAMES[app.template] || "小玩具" : "趣味小工具";
-  const desc = app ? `来玩玩这个${kind}，看你的结果 —— dx3xb 微应用工厂` : "dx3xb · 后 Web3 / AI 时代的趣味网络小工具铺";
+  const desc = app ? `来玩玩${creatorName ? `${creatorName} 创作的` : "这个"}${kind} —— dx3xb 微应用工厂` : "dx3xb · 后 Web3 / AI 时代的趣味网络小工具铺";
   const url = `https://dx3xb.com/u/${slug}`;
   return {
     title,
     description: desc,
+    ...(app?.creator ? { authors: [{ name: creatorName, url: `https://dx3xb.com/p/${encodeURIComponent(app.creator.handle)}` }] } : {}),
     openGraph: { title, description: desc, url, siteName: "dx3xb", type: "website", images: ["https://dx3xb.com/opengraph-image"] },
     twitter: { card: "summary_large_image", title, description: desc, images: ["https://dx3xb.com/opengraph-image"] },
   };

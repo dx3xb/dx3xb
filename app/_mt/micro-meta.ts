@@ -5,7 +5,14 @@ export const META_KEY = "_dx3xb";
 export type MicroTheme = "pixel" | "candy" | "noir" | "paper";
 export type MicroFont = "pixel" | "soft" | "mono";
 export type MicroCard = "solid" | "ticket" | "shadow";
-export type MicroEvent = "view" | "start" | "complete" | "share";
+export type MicroEvent =
+  | "view"
+  | "start"
+  | "complete"
+  | "share"
+  | "creator_link_click"
+  | "creator_profile_view"
+  | "creator_work_click";
 
 export type MicroAdvanced = {
   shuffle: boolean;

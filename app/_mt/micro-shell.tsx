@@ -15,6 +15,7 @@ export function MicroThemeShell({
   templateLabel,
   lang,
   onTimeUp,
+  byline,
   children,
 }: {
   meta: MicroMeta;
@@ -22,6 +23,7 @@ export function MicroThemeShell({
   templateLabel: string;
   lang: Lang;
   onTimeUp?: () => void;
+  byline?: ReactNode;
   children: ReactNode;
 }) {
   const t = T[lang];
@@ -63,6 +65,7 @@ export function MicroThemeShell({
         <div className="mcoverText">
           <span>{templateLabel}</span>
           <h1>{title || "dx3xb"}</h1>
+          {byline && <div className="mcoverByline">{byline}</div>}
         </div>
       </div>
       {(limit > 0 || meta.advanced.lives > 1) && (
@@ -113,6 +116,9 @@ const SHELL_STYLE = `
 .mcoverText { min-width: 0; }
 .mcoverText span { font-family: var(--font-press), monospace; font-size: 9px; color: var(--ink-soft); text-transform: uppercase; }
 .mcoverText h1 { margin: 5px 0 0; font-size: 28px; line-height: 1.05; word-break: break-word; }
+.mcoverByline { margin-top: 9px; display: flex; }
+.mcoverByline .creator-link { border: 0; padding: 0; background: transparent; }
+.mcoverByline a.creator-link:hover { background: transparent; transform: translateX(1px); }
 .mstats { display: flex; flex-wrap: wrap; gap: 8px; }
 .mstats span { font-family: var(--font-press), monospace; font-size: 9px; border: 3px solid var(--line); background: #fff; padding: 7px 9px; box-shadow: 3px 3px 0 var(--ink); }
 .mbody { min-width: 0; }

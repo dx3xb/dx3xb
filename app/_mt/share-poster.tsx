@@ -45,11 +45,13 @@ export function SharePoster({
   template,
   slug,
   lang,
+  creatorHandle,
 }: {
   title: string;
   template: string;
   slug: string;
   lang: Lang;
+  creatorHandle?: string | null;
 }) {
   const t = C[lang];
   const meta = META[template] ?? { emoji: "🎲", zh: "微应用", en: "MICRO-APP" };
@@ -98,6 +100,7 @@ export function SharePoster({
         </div>
         <div className="sp-body">
           <h2 className="pixel sp-title">{title || "dx3xb"}</h2>
+          {creatorHandle && <p className="sp-author">by @{creatorHandle}</p>}
           <p className="sp-tag">{tag}</p>
           <div className="sp-qrframe">
             {qr ? (
@@ -126,6 +129,8 @@ const SP_STYLE = `
 .sp-kind { font-size: 17px; }
 .sp-body { padding: 22px 20px 24px; text-align: center; }
 .sp-title { font-size: clamp(22px, 7vw, 32px); margin: 0 0 8px; line-height: 1.1; }
+.sp-author { display: inline-block; margin: 0 0 12px; padding: 4px 7px; background: var(--yellow); border: 2px solid var(--line);
+  font-family: var(--font-press), "FpxCJK", monospace; font-size: 9px; overflow-wrap: anywhere; }
 .sp-tag { font-size: 19px; color: var(--ink-soft); margin: 0 0 18px; line-height: 1.3; }
 .sp-qrframe { display: inline-block; border: 4px solid var(--line); background: #fff; padding: 8px; box-shadow: var(--shadow); line-height: 0; }
 .sp-scan { font-family: var(--font-press), monospace; font-size: 11px; letter-spacing: 1px; color: var(--coral); margin: 14px 0 2px; }

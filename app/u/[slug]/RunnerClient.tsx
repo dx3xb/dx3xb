@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { regFor } from "../../_mt/registry";
 import { MicroThemeShell } from "../../_mt/micro-shell";
+import { CommunityGameCard, CreatorLink } from "../../_mt/community-card";
 import { applyAdvancedConfig, extractMicroMeta, stripMicroMeta, type MicroEvent } from "../../_mt/micro-meta";
 import { getMicroappBySlug, bumpPlay, reportMicroapp, trackMicroappEvent, TEMPLATE_META, type Microapp } from "../../dx3xb-apps";
 
@@ -16,8 +17,8 @@ function initialLang(): Lang {
 }
 
 const C = {
-  zh: { back: "← dx3xb", langBtn: "EN", loading: "加载中…", notfound: "这个微应用不存在或已下架。", explore: "去 dx3xb 玩玩", report: "举报", reported: "已举报，谢谢", make: "我也做一个 →" },
-  en: { back: "← dx3xb", langBtn: "中", loading: "Loading…", notfound: "This micro-app doesn't exist or was removed.", explore: "Explore dx3xb", report: "Report", reported: "Reported, thanks", make: "Make your own →" },
+  zh: { back: "← dx3xb", langBtn: "EN", loading: "加载中…", notfound: "这个微应用不存在或已下架。", explore: "去 dx3xb 玩玩", report: "举报", reported: "已举报，谢谢", make: "我也做一个 →", more: "通关了，再玩玩这位创作者的作品", profile: "查看创作者空间" },
+  en: { back: "← dx3xb", langBtn: "中", loading: "Loading…", notfound: "This micro-app doesn't exist or was removed.", explore: "Explore dx3xb", report: "Report", reported: "Reported, thanks", make: "Make your own →", more: "Nice run. Play more from this creator", profile: "View creator space" },
 };
 
 export function RunnerClient({ slug }: { slug: string }) {
@@ -25,6 +26,7 @@ export function RunnerClient({ slug }: { slug: string }) {
   const [app, setApp] = useState<Microapp | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [reported, setReported] = useState(false);
+  const [completed, setCompleted] = useState(false);
   const sent = useRef<Partial<Record<MicroEvent, boolean>>>({});
   const t = C[lang];
 
@@ -41,6 +43,8 @@ export function RunnerClient({ slug }: { slug: string }) {
 
   useEffect(() => {
     setLang(initialLang());
+    sent.current = {};
+    setCompleted(false);
     (async () => {
       const a = await getMicroappBySlug(slug);
       setApp(a);
@@ -60,6 +64,11 @@ export function RunnerClient({ slug }: { slug: string }) {
     },
     [slug],
   );
+
+  const complete = useCallback(() => {
+    setCompleted(true);
+    sendEvent("complete");
+  }, [sendEvent]);
 
   return (
     <main className={`wrap ${app?.template === "workshop" ? "workshop" : ""}`}>
@@ -88,7 +97,14 @@ export function RunnerClient({ slug }: { slug: string }) {
             const playConfig = applyAdvancedConfig(baseConfig, app.template, meta, app.slug);
             const label = TEMPLATE_META.find((m) => m.id === app.template)?.name[lang] ?? app.template;
             return (
-              <MicroThemeShell meta={meta} title={app.title} templateLabel={label} lang={lang} onTimeUp={() => sendEvent("complete")}>
+              <MicroThemeShell
+                meta={meta}
+                title={app.title}
+                templateLabel={label}
+                lang={lang}
+                onTimeUp={complete}
+                byline={<CreatorLink creator={app.creator} lang={lang} sourceSlug={app.slug} compact className="cover-creator" />}
+              >
                 <Player
                   config={playConfig}
                   title={app.title}
@@ -96,12 +112,28 @@ export function RunnerClient({ slug }: { slug: string }) {
                   lang={lang}
                   advanced={meta.advanced}
                   onStart={() => sendEvent("start")}
-                  onComplete={() => sendEvent("complete")}
+                  onComplete={complete}
                   onShare={() => sendEvent("share")}
                 />
               </MicroThemeShell>
             );
           })()}
+          {completed && app.creator && (
+            <section className="creator-finish" aria-labelledby="creator-more-title">
+              <div className="creator-finish-head">
+                <div>
+                  <h2 id="creator-more-title">{t.more}</h2>
+                  <CreatorLink creator={app.creator} lang={lang} sourceSlug={app.slug} compact />
+                </div>
+                <a className="ubtn" href={`/p/${encodeURIComponent(app.creator.handle)}?lang=${lang}`} onClick={() => sendEvent("creator_link_click")}>{t.profile}</a>
+              </div>
+              {app.moreByCreator && app.moreByCreator.length > 0 && (
+                <div className="grid creator-more-grid">
+                  {app.moreByCreator.map((item) => <CommunityGameCard key={item.slug} app={item} lang={lang} context="more" />)}
+                </div>
+              )}
+            </section>
+          )}
           <div className="ufoot">
             <button
               className="ulink"
@@ -129,6 +161,14 @@ const STYLE = `
 .ubtn:active { transform: translate(3px,3px); box-shadow: none; }
 .unote { color: var(--ink-soft); }
 .upanel { background: #fff; border: 3px solid var(--line); box-shadow: var(--shadow-lg); padding: 22px; display: grid; gap: 14px; justify-items: start; }
+.creator-finish { margin-top: 24px; padding-top: 18px; border-top: 4px solid var(--line); }
+.creator-finish-head { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-bottom: 14px; }
+.creator-finish-head > div { min-width: 0; display: grid; gap: 9px; justify-items: start; }
+.creator-finish h2 { margin: 0; font-family: var(--font-press), monospace; font-size: 12px; line-height: 1.5; }
+.creator-more-grid { grid-template-columns: repeat(auto-fill,minmax(180px,1fr)); }
 .ufoot { margin-top: 18px; text-align: center; }
 .ulink { background: none; border: none; color: var(--ink-soft); font-family: inherit; font-size: 15px; cursor: pointer; text-decoration: underline; }
+@media (max-width: 560px) {
+  .creator-finish-head { align-items: flex-start; flex-direction: column; }
+}
 `;

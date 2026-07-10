@@ -2,6 +2,7 @@
 // 复用 dx3xb-trio 的匿名会话客户端；数据由 RLS 保护。
 import { dx3xb, ensureSession, getEmail } from "./dx3xb-trio";
 import type { MicroEvent } from "./_mt/micro-meta";
+import type { PublicCreator, PublicMicroappSummary } from "./_mt/creator-types";
 
 export type QuizOption = { label: string; scores: Record<string, number> };
 export type QuizQuestion = { q: string; options: QuizOption[] };
@@ -17,6 +18,8 @@ export type Microapp = {
   status: MicroStatus;
   plays: number;
   updated_at?: string;
+  creator?: PublicCreator | null;
+  moreByCreator?: PublicMicroappSummary[];
 };
 
 const txt = (v: unknown, max: number) =>

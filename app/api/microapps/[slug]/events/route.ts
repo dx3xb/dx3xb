@@ -1,10 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
+import { createHmac } from "node:crypto";
 import { readJson, tooManyRequests } from "@/lib/request-guards";
 import { getServiceClient } from "@/lib/supabase";
 
 export const runtime = "nodejs";
 
-const EVENTS = new Set(["view", "start", "complete", "share"]);
+const EVENTS = new Set([
+  "view",
+  "start",
+  "complete",
+  "share",
+  "creator_link_click",
+  "creator_profile_view",
+  "creator_work_click",
+]);
 
 function cleanSlug(value: string) {
   return value.replace(/[^a-z0-9_-]/gi, "").slice(0, 32);
@@ -13,7 +22,8 @@ function cleanSlug(value: string) {
 function sessionId(req: NextRequest) {
   const ua = req.headers.get("user-agent") || "";
   const ip = req.headers.get("x-forwarded-for")?.split(",")[0] || req.headers.get("x-real-ip") || "";
-  return Buffer.from(`${ip}:${ua}`.slice(0, 180)).toString("base64url").slice(0, 64);
+  const secret = process.env.EVENT_HASH_SECRET || process.env.SUPABASE_SERVICE_KEY || "dx3xb-events";
+  return createHmac("sha256", secret).update(`${ip}:${ua}`.slice(0, 180)).digest("base64url").slice(0, 64);
 }
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {

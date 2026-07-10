@@ -218,6 +218,60 @@ a.toy { text-decoration: none; color: inherit; }
   font-size: 11px;
   color: var(--ink-soft);
 }
+.community-card { padding: 0; gap: 0; overflow: hidden; min-height: 154px; }
+.community-game-link {
+  color: inherit;
+  text-decoration: none;
+  padding: 14px 15px 11px;
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  gap: 6px;
+}
+.community-title { font-size: 15px; line-height: 1.35; overflow-wrap: anywhere; }
+.creator-link {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ink);
+  text-decoration: none;
+  padding: 9px 11px;
+  border: 2px solid var(--line);
+  background: var(--cream);
+  transition: background .08s, transform .08s;
+}
+a.creator-link:hover { background: #fff; transform: translate(-1px,-1px); }
+.community-card > .creator-link { border-width: 2px 0 0; }
+.creator-link.anonymous { color: var(--ink-soft); }
+.creator-avatar {
+  width: 36px;
+  height: 36px;
+  flex: none;
+  object-fit: cover;
+  background: #fff;
+  border: 2px solid var(--line);
+}
+.creator-copy { min-width: 0; display: grid; gap: 2px; line-height: 1; }
+.creator-copy small { font-family: var(--font-press), "FpxCJK", monospace; font-size: 7px; color: var(--ink-soft); }
+.creator-copy b { min-width: 0; font-size: 16px; font-weight: 400; overflow-wrap: anywhere; }
+.creator-link.compact { padding: 7px 11px; border-width: 2px; }
+.creator-link.compact .creator-avatar { width: 28px; height: 28px; }
+.creator-link.compact .creator-copy b { font-size: 15px; }
+.wall-tabs { display: inline-flex; margin: 0 0 12px; }
+.wall-tabs button {
+  min-height: 36px;
+  padding: 8px 11px;
+  cursor: pointer;
+  background: #fff;
+  color: var(--ink-soft);
+  border: 3px solid var(--line);
+  font-family: var(--font-press), "FpxCJK", monospace;
+  font-size: 9px;
+}
+.wall-tabs button + button { border-left: 0; }
+.wall-tabs button.on { background: var(--ink); color: var(--cream); }
 
 /* ---------- 施工中卡片：像素砖墙 + 工地警示牌 ---------- */
 .toy.coming_soon,
