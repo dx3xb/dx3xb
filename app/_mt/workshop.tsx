@@ -186,7 +186,11 @@ export function WorkshopEditor({
       const token = data.session?.access_token;
       const res = await fetch(`/api/microapps/${encodeURIComponent(appId)}/workshop`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        headers: {
+          "Content-Type": "application/json",
+          "Idempotency-Key": crypto.randomUUID(),
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify({ prompt, lang, title }),
       });
       const body = await res.json().catch(() => null);

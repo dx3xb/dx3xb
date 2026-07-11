@@ -1,13 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cleanText, readJson, tooManyRequests } from "@/lib/request-guards";
 import { getServiceClient } from "@/lib/supabase";
+import { aiInputHash, aiRequestId, aiReservationResponse, finishAiRequest, reserveAiRequest } from "@/lib/ai-usage";
 
 export const runtime = "nodejs";
 
 type Body = { template?: string; prompt?: string; lang?: "zh" | "en" };
 type Draft = { title: string; config: unknown; meta?: unknown; source?: string };
 
-const TEMPLATES = new Set(["quiz", "knowme", "thisorthat", "higherlower", "madlibs", "escape", "workshop"]);
+const TEMPLATES = new Set(["quiz", "knowme", "thisorthat", "higherlower", "madlibs", "escape"]);
+const MODEL_TIMEOUT_MS = 28_000;
 
 function titleFrom(prompt: string, lang: "zh" | "en") {
   const p = prompt.replace(/[。.!?？].*$/u, "").trim();
@@ -139,11 +141,11 @@ For knowme use {intro, questions:[{q,options,correct}], results:[{min,label,desc
 For thisorthat use {intro,pairs:[{a,b,mine}]}.
 For higherlower use {intro,unit,items:[{label,value}]}.
 For madlibs use {intro,story} with blanks like {地点}.
-For escape use {intro,riddles:[{q,answer,hint}]}.
-For workshop return a sandboxed Canvas game config only: {intro,html,css,js}. Do not return a full document, script tags, external URLs, network calls, forms, iframe/object/embed, or code that navigates the page. The JS may use parent.postMessage({type:"dx3xb-workshop-complete"},"*") when the game is completed.`;
-  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(key)}`, {
+For escape use {intro,riddles:[{q,answer,hint}]}.`;
+  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", "x-goog-api-key": key },
+    signal: AbortSignal.timeout(MODEL_TIMEOUT_MS),
     body: JSON.stringify({
       contents: [{ role: "user", parts: [{ text: `${instruction}\n\nUser prompt: ${prompt}` }] }],
       generationConfig: {
@@ -166,6 +168,7 @@ Template: ${template}. Language: ${lang}. Make safe, playful content for a no-co
   const res = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: { Authorization: `Bearer ${process.env.OPENAI_API_KEY}`, "Content-Type": "application/json" },
+    signal: AbortSignal.timeout(MODEL_TIMEOUT_MS),
     body: JSON.stringify({
       model: process.env.OPENAI_MODEL || "gpt-4o-mini",
       temperature: 0.7,
@@ -202,20 +205,38 @@ export async function POST(req: NextRequest) {
   if (!TEMPLATES.has(template) || !prompt) return NextResponse.json({ ok: false, error: "bad_request" }, { status: 400 });
 
   try {
-    const { data, error } = await getServiceClient().auth.getUser(token);
+    const supabase = getServiceClient();
+    const { data, error } = await supabase.auth.getUser(token);
     if (error || !data.user) return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
-    if (template === "workshop" && (data.user.is_anonymous || !data.user.email)) {
-      return NextResponse.json({ ok: false, error: "registered_required" }, { status: 403 });
-    }
-    const draft = (await modelDraft(template, prompt, lang).catch(() => null)) ?? localDraft(template, prompt, lang);
-    const fallback = localDraft(template, prompt, lang);
-    return NextResponse.json({
-      ok: true,
-      title: cleanText(draft.title || fallback.title, 60),
-      config: draft.config || fallback.config,
-      meta: draft.meta || { coverEmoji: "🎮", accent: "#12b7a6" },
-      source: draft.source || "local",
+    const requestId = aiRequestId(req);
+    const reservation = await reserveAiRequest({
+      supabase,
+      requestId,
+      userId: data.user.id,
+      scope: "generate",
+      inputHash: aiInputHash(template, prompt, lang),
+      dailyLimit: data.user.is_anonymous ? 5 : 20,
     });
+    if (!reservation.ok) {
+      const blocked = aiReservationResponse(reservation);
+      return NextResponse.json({ ok: false, error: blocked.error }, { status: blocked.status });
+    }
+    let succeeded = false;
+    try {
+      const draft = (await modelDraft(template, prompt, lang).catch(() => null)) ?? localDraft(template, prompt, lang);
+      const fallback = localDraft(template, prompt, lang);
+      succeeded = true;
+      return NextResponse.json({
+        ok: true,
+        title: cleanText(draft.title || fallback.title, 60),
+        config: draft.config || fallback.config,
+        meta: draft.meta || { coverEmoji: "🎮", accent: "#12b7a6" },
+        source: draft.source || "local",
+        quotaRemaining: reservation.dailyRemaining,
+      });
+    } finally {
+      await finishAiRequest(supabase, requestId, data.user.id, succeeded);
+    }
   } catch (error) {
     console.error("microapp generate failed", error);
     const fallback = localDraft(template, prompt, lang);

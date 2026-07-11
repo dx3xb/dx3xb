@@ -1,0 +1,43 @@
+{
+  "action": "rules.insert",
+  "id": null,
+  "value": {
+    "active": true,
+    "name": "AI generation rate limit",
+    "description": "Limit Gemini-backed generation routes before they reach serverless functions.",
+    "conditionGroup": [
+      {
+        "conditions": [
+          {
+            "type": "path",
+            "op": "eq",
+            "value": "/api/microapps/generate"
+          }
+        ]
+      },
+      {
+        "conditions": [
+          {
+            "type": "path",
+            "op": "re",
+            "value": "^/api/microapps/[^/]+/workshop$"
+          }
+        ]
+      }
+    ],
+    "action": {
+      "mitigate": {
+        "action": "rate_limit",
+        "rateLimit": {
+          "limit": 15,
+          "window": 60,
+          "keys": ["ip", "ja4"],
+          "algo": "fixed_window",
+          "action": "deny"
+        },
+        "redirect": null,
+        "actionDuration": "5m"
+      }
+    }
+  }
+}

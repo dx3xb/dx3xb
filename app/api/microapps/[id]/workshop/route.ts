@@ -2,11 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { cleanText, readJson, tooManyRequests } from "@/lib/request-guards";
 import { getServiceClient } from "@/lib/supabase";
 import { WORKSHOP_CODE_LIMITS, workshopJsPolicyIssue, wsValidate } from "@/app/_mt/workshop-spec";
+import { aiInputHash, aiRequestId, aiReservationResponse, finishAiRequest, reserveAiRequest } from "@/lib/ai-usage";
 
 export const runtime = "nodejs";
 
 type Body = { prompt?: string; lang?: "zh" | "en"; title?: string };
 type WorkshopDraft = { title?: string; intro?: string; html?: string; css?: string; js?: string; note?: string; source?: string };
+const MODEL_TIMEOUT_MS = 28_000;
 
 function cleanId(value: string) {
   return value.replace(/[^a-f0-9-]/gi, "").slice(0, 40);
@@ -126,9 +128,10 @@ CONSTRAINTS:
 - Language for title/intro/note and all on-screen text: ${lang}.`;
   const callGemini = async (compact = false) => {
     const instruction = buildInstruction(compact);
-    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(key)}`, {
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", "x-goog-api-key": key },
+    signal: AbortSignal.timeout(MODEL_TIMEOUT_MS),
     body: JSON.stringify({
       contents: [{
         role: "user",
@@ -192,47 +195,68 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       return NextResponse.json({ ok: false, error: "not_found" }, { status: 404 });
     }
 
-    const { data: turnRow } = await (supabase as any).from("dx3xb_workshop_turns").select("count").eq("microapp_id", id).maybeSingle();
-    const count = Math.max(Number(turnRow?.count) || 0, wsValidate(app.config).turnsUsed || 0);
-    if (count >= 10) return NextResponse.json({ ok: false, error: "turn_limit" }, { status: 403 });
-
-    const current = wsValidate({ ...(app.config as Record<string, unknown>), turnsUsed: count });
-    const generated = await generateWorkshop({ prompt, lang, title: title || String(app.title || ""), current });
-    if (!generated?.html || !generated?.css || !generated?.js) return NextResponse.json({ ok: false, error: "generation_failed" }, { status: 502 });
-
-    const nextCount = count + 1;
-    const nextConfig = wsValidate({
-      ...current,
-      intro: generated.intro || current.intro,
-      html: generated.html,
-      css: generated.css,
-      js: generated.js,
-      turnsUsed: nextCount,
-      messages: [
-        ...current.messages,
-        { role: "user", text: prompt },
-        { role: "ai", text: cleanText(generated.note || (lang === "zh" ? "已更新 Canvas 游戏。" : "Canvas game updated."), 500) },
-      ].slice(-10),
+    const requestId = aiRequestId(req);
+    const reservation = await reserveAiRequest({
+      supabase,
+      requestId,
+      userId: auth.user.id,
+      scope: "workshop",
+      inputHash: aiInputHash(id, prompt, lang, title),
+      dailyLimit: 10,
+      microappId: id,
+      appLimit: 10,
     });
-    const nextTitle = cleanText(generated.title || title || String(app.title || ""), 60);
+    if (!reservation.ok) {
+      const blocked = aiReservationResponse(reservation);
+      return NextResponse.json({ ok: false, error: blocked.error }, { status: blocked.status });
+    }
 
-    const { error: turnError } = await (supabase as any)
-      .from("dx3xb_workshop_turns")
-      .upsert({ microapp_id: id, count: nextCount, updated_at: new Date().toISOString() });
-    if (turnError) throw turnError;
+    let succeeded = false;
+    try {
+      const nextCount = reservation.appUsed ?? 10;
+      const current = wsValidate({ ...(app.config as Record<string, unknown>), turnsUsed: Math.max(0, nextCount - 1) });
+      const generated = await generateWorkshop({ prompt, lang, title: title || String(app.title || ""), current });
+      if (!generated?.html || !generated?.css || !generated?.js) return NextResponse.json({ ok: false, error: "generation_failed" }, { status: 502 });
 
-    const { error: updateError } = await supabase
-      .from("dx3xb_microapps")
-      .update({
+      const nextConfig = wsValidate({
+        ...current,
+        intro: generated.intro || current.intro,
+        html: generated.html,
+        css: generated.css,
+        js: generated.js,
+        turnsUsed: nextCount,
+        messages: [
+          ...current.messages,
+          { role: "user", text: prompt },
+          { role: "ai", text: cleanText(generated.note || (lang === "zh" ? "已更新 Canvas 游戏。" : "Canvas game updated."), 500) },
+        ].slice(-10),
+      });
+      const nextTitle = cleanText(generated.title || title || String(app.title || ""), 60);
+
+      const { error: updateError } = await supabase
+        .from("dx3xb_microapps")
+        .update({
+          title: nextTitle,
+          config: nextConfig as any,
+          status: app.status === "public" ? "pending" : app.status,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", id)
+        .eq("owner_id", auth.user.id);
+      if (updateError) throw updateError;
+
+      succeeded = true;
+      return NextResponse.json({
+        ok: true,
         title: nextTitle,
-        config: nextConfig as any,
-        status: app.status === "public" ? "pending" : app.status,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", id);
-    if (updateError) throw updateError;
-
-    return NextResponse.json({ ok: true, title: nextTitle, config: nextConfig, turnsUsed: nextCount, source: generated.source || `gemini:${process.env.GEMINI_MODEL || "gemini-3.5-flash"}` });
+        config: nextConfig,
+        turnsUsed: nextCount,
+        quotaRemaining: reservation.dailyRemaining,
+        source: generated.source || `gemini:${process.env.GEMINI_MODEL || "gemini-3.5-flash"}`,
+      });
+    } finally {
+      await finishAiRequest(supabase, requestId, auth.user.id, succeeded);
+    }
   } catch (error) {
     console.error("workshop generate failed", error);
     return NextResponse.json({ ok: false, error: "server_error" }, { status: 500 });

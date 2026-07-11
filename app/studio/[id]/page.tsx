@@ -148,6 +148,7 @@ export default function EditorPage() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "Idempotency-Key": crypto.randomUUID(),
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
         body: JSON.stringify({ template: tpl, prompt: aiPrompt, lang }),

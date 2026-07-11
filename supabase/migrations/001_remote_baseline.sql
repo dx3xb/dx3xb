@@ -1,0 +1,2 @@
+-- Remote baseline predates migration files in this repository.
+-- Keep this version marker so Supabase CLI history remains aligned.

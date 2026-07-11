@@ -1,0 +1,49 @@
+{
+  "action": "rules.insert",
+  "id": null,
+  "value": {
+    "active": true,
+    "name": "Challenge non-browser AI clients",
+    "description": "Challenge direct scripted access to Gemini-backed generation routes.",
+    "conditionGroup": [
+      {
+        "conditions": [
+          {
+            "type": "path",
+            "op": "eq",
+            "value": "/api/microapps/generate"
+          },
+          {
+            "type": "user_agent",
+            "op": "sub",
+            "neg": true,
+            "value": "Mozilla"
+          }
+        ]
+      },
+      {
+        "conditions": [
+          {
+            "type": "path",
+            "op": "re",
+            "value": "^/api/microapps/[^/]+/workshop$"
+          },
+          {
+            "type": "user_agent",
+            "op": "sub",
+            "neg": true,
+            "value": "Mozilla"
+          }
+        ]
+      }
+    ],
+    "action": {
+      "mitigate": {
+        "action": "challenge",
+        "rateLimit": null,
+        "redirect": null,
+        "actionDuration": "5m"
+      }
+    }
+  }
+}
