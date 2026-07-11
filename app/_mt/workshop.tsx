@@ -27,6 +27,16 @@ const T = {
     emptyChat: "还没有对话。在下面描述你想要的游戏，AI 会直接改给你看。",
     runtimeError: "游戏脚本未能运行，请返回工坊让 AI 重新生成。",
     editorRuntimeError: "这版游戏脚本有错误，请继续描述修改，AI 会重新生成。",
+    errors: {
+      generation_busy: "你已有一个 AI 任务正在生成，请等它完成后再试。",
+      duplicate_request: "这条请求已经提交，请勿重复发送。",
+      daily_limit: "今天的 10 次 AI 额度已用完，明天再继续。",
+      turn_limit: "这个项目的 10 次 AI 修改已用完，可新建项目继续。",
+      unauthorized: "登录已失效，请刷新页面后重新登录。",
+      registered_required: "AI 游戏工坊仅对注册用户开放。",
+      generation_failed: "AI 返回的游戏不完整，请换个简短说法再试。",
+      server_error: "服务暂时不可用，请稍后重试。",
+    } as Record<string, string>,
   },
   en: {
     empty: "This Canvas game is not ready yet.",
@@ -48,6 +58,16 @@ const T = {
     emptyChat: "No conversation yet. Describe the game you want below and AI will build it live.",
     runtimeError: "The game script could not run. Return to the workshop and ask AI to regenerate it.",
     editorRuntimeError: "This game script has an error. Describe another change and AI will regenerate it.",
+    errors: {
+      generation_busy: "Another AI request is still running. Wait for it to finish and retry.",
+      duplicate_request: "This request was already submitted.",
+      daily_limit: "You have used today's 10 AI edits. Continue tomorrow.",
+      turn_limit: "This project has used all 10 AI edits. Start a new project to continue.",
+      unauthorized: "Your session expired. Refresh and sign in again.",
+      registered_required: "The AI workshop is available to registered users only.",
+      generation_failed: "The AI response was incomplete. Try a shorter request.",
+      server_error: "The service is temporarily unavailable. Please retry later.",
+    } as Record<string, string>,
   },
 } as const;
 
@@ -200,7 +220,8 @@ export function WorkshopEditor({
         setPrompt("");
         setNonce((n) => n + 1);
       } else {
-        setErr(lang === "zh" ? "这次没生成成功，换个说法再试一次。" : "Generation failed, try rephrasing.");
+        const code = String(body?.error || "");
+        setErr(t.errors[code] || (lang === "zh" ? "这次没生成成功，换个说法再试一次。" : "Generation failed, try rephrasing."));
       }
     } catch {
       setErr(lang === "zh" ? "网络异常，请稍后重试。" : "Network error, please retry.");

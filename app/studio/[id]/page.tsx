@@ -87,6 +87,7 @@ export default function EditorPage() {
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved">("idle");
   const [aiPrompt, setAiPrompt] = useState("");
   const [aiBusy, setAiBusy] = useState(false);
+  const [aiError, setAiError] = useState("");
   const [email, setEmail] = useState<string | null>(null);
   const [creatorHandle, setCreatorHandle] = useState<string | null>(null);
   const t = C[lang];
@@ -141,6 +142,8 @@ export default function EditorPage() {
   async function generateDraft() {
     if (!aiPrompt.trim()) return;
     setAiBusy(true);
+    setAiError("");
+    setSaveState("idle");
     try {
       const { data } = await dx3xb().auth.getSession();
       const token = data.session?.access_token;
@@ -159,7 +162,16 @@ export default function EditorPage() {
         if (body.title) setTitle(String(body.title).slice(0, 60));
         if (body.meta) setMeta(normalizeMicroMeta({ ...meta, ...body.meta, aiPrompt }));
         setSaveState("idle");
+      } else {
+        const messages: Record<string, Record<"zh" | "en", string>> = {
+          generation_busy: { zh: "已有 AI 任务正在生成，请稍后再试。", en: "Another AI request is still running. Try again shortly." },
+          daily_limit: { zh: "今天的 AI 生成额度已用完，明天再继续。", en: "Today's AI generation quota is used up. Continue tomorrow." },
+          unauthorized: { zh: "登录已失效，请刷新后重新登录。", en: "Your session expired. Refresh and sign in again." },
+        };
+        setAiError(messages[String(body?.error || "")]?.[lang] || (lang === "zh" ? "生成失败，请稍后重试。" : "Generation failed. Please retry."));
       }
+    } catch {
+      setAiError(lang === "zh" ? "网络异常，请稍后重试。" : "Network error. Please retry.");
     } finally {
       setAiBusy(false);
     }
@@ -208,6 +220,7 @@ export default function EditorPage() {
               <textarea className="ein grow" rows={2} placeholder={t.aiPh} value={aiPrompt} maxLength={240} onChange={(e) => { setAiPrompt(e.target.value); setSaveState("idle"); }} />
               <button className="ebig teal" onClick={generateDraft} disabled={aiBusy || !aiPrompt.trim()}>{aiBusy ? t.aiBusy : t.aiBtn}</button>
             </div>
+            {aiError && <p className="ewarn" role="alert">{aiError}</p>}
           </div>}
 
           <div className="epanel">
