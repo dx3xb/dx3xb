@@ -19,12 +19,23 @@ const nextConfig = {
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
           { key: "X-XSS-Protection", value: "1; mode=block" },
           { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
+          { key: "X-DNS-Prefetch-Control", value: "off" },
+          { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
         ],
+      },
+      {
+        source: "/api/admin/:path*",
+        headers: [{ key: "Cache-Control", value: "private, no-store" }],
+      },
+      {
+        source: "/admin",
+        headers: [{ key: "Cache-Control", value: "private, no-store" }],
       },
       {
         source: "/trio/bridge",
         headers: [
           { key: "X-Frame-Options", value: "ALLOWALL" },
+          { key: "Cross-Origin-Opener-Policy", value: "unsafe-none" },
           {
             key: "Content-Security-Policy",
             value: "default-src 'self'; script-src 'self' 'unsafe-inline'; connect-src 'self' https://lesowftrotytmlvdyilc.supabase.co; frame-ancestors https://color-hunter.dx3xb.com https://dont-click-wrong.dx3xb.com https://instant-memory.dx3xb.com",
