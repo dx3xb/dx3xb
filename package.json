@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "db:migrate": "supabase db push --linked"
+    "db:migrate": "supabase db push --linked",
+    "test:security": "node scripts/security-regression.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.4",

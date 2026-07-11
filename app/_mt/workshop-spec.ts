@@ -83,9 +83,10 @@ function stripDangerousHtml(html: string) {
 }
 
 export function workshopJsPolicyIssue(js: string): string | null {
-  if (/\b(?:fetch|XMLHttpRequest|WebSocket|EventSource|Worker|SharedWorker)\b/.test(js)) return "network_api";
+  if (/\b(?:fetch|XMLHttpRequest|WebSocket|EventSource|Worker|SharedWorker|sendBeacon)\b/.test(js)) return "network_api";
   if (/\b(?:localStorage|sessionStorage|indexedDB)\b|\bdocument\s*\.\s*cookie\b/.test(js)) return "storage_api";
-  if (/\b(?:window|parent|top|opener)\s*\.\s*location\b|\bwindow\s*\.\s*opener\b/.test(js)) return "navigation_api";
+  if (/\b(?:(?:window|document|parent|top|opener)\s*\.\s*)?location\b|\bhistory\s*\.|\bwindow\s*\.\s*opener\b|\bwindow\s*\.\s*open\b/.test(js)) return "navigation_api";
+  if (/createElement\s*\(\s*["'](?:a|form|iframe|object|embed|script|link)["']\s*\)/i.test(js)) return "dynamic_element";
   if (/\b(?:eval|Function)\s*\(/.test(js)) return "dynamic_code";
   return null;
 }
@@ -151,6 +152,9 @@ export function buildWorkshopSrcDoc(config: WorkshopConfig) {
   window.addEventListener('error',function(event){report(event.error||event.message)});
   window.addEventListener('unhandledrejection',function(event){report(event.reason)});
   ['fetch','XMLHttpRequest','WebSocket','EventSource','Worker','SharedWorker','open','alert','prompt','confirm'].forEach(function(key){try{Object.defineProperty(window,key,{value:undefined,writable:false,configurable:false})}catch(_){window[key]=undefined}});
+  try{Object.defineProperty(navigator,'sendBeacon',{value:undefined,writable:false,configurable:false})}catch(_){}
+  document.addEventListener('click',function(event){var node=event.target;while(node&&node.nodeType===1){if(node.tagName==='A'){event.preventDefault();return}node=node.parentElement}},true);
+  document.addEventListener('submit',function(event){event.preventDefault()},true);
 })();
 </script><script>
 try{
