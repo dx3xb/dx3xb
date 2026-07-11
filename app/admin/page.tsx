@@ -69,8 +69,6 @@ type UserSummary = {
   reports: number;
 };
 
-const ADMIN_STORAGE_KEY = "dx3xb_admin";
-
 function bjTime(iso: string) {
   try {
     return new Date(iso).toLocaleString("zh-CN", { timeZone: "Asia/Shanghai", hour12: false });
@@ -80,7 +78,6 @@ function bjTime(iso: string) {
 }
 
 export default function AdminPage() {
-  const [token, setToken] = useState("");
   const [pwd, setPwd] = useState("");
   const [authed, setAuthed] = useState(false);
   const [err, setErr] = useState("");
@@ -92,20 +89,39 @@ export default function AdminPage() {
   const [edit, setEdit] = useState<Record<number, { name: string; message: string }>>({});
 
   useEffect(() => {
-    const saved = sessionStorage.getItem(ADMIN_STORAGE_KEY);
-    if (saved) {
-      setToken(saved);
-      void load(saved);
-    }
+    sessionStorage.removeItem("dx3xb_admin");
+    void load();
   }, []);
 
-  async function load(tk: string) {
+  async function login() {
     setErr("");
-    const res = await fetch("/api/admin/guestbook", { headers: { Authorization: `Bearer ${tk}` }, cache: "no-store" });
+    const res = await fetch("/api/admin/session", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password: pwd }),
+    });
+    setPwd("");
+    if (!res.ok) {
+      setAuthed(false);
+      setErr(res.status === 429 ? "尝试次数过多，请稍后再试" : "登录失败");
+      return;
+    }
+    await load();
+  }
+
+  async function logout() {
+    await fetch("/api/admin/session", { method: "DELETE" });
+    setAuthed(false);
+    setRows([]);
+    setApps([]);
+    setUsers([]);
+  }
+
+  async function load() {
+    setErr("");
+    const res = await fetch("/api/admin/guestbook", { cache: "no-store" });
     if (res.status === 401) {
       setAuthed(false);
-      setErr("密码错误");
-      sessionStorage.removeItem(ADMIN_STORAGE_KEY);
       return;
     }
     if (!res.ok) {
@@ -115,21 +131,19 @@ export default function AdminPage() {
     const data = await res.json();
     setRows(data.messages || []);
     setAuthed(true);
-    sessionStorage.setItem(ADMIN_STORAGE_KEY, tk);
-    setToken(tk);
-    void loadApps(tk);
-    void loadUsers(tk);
+    void loadApps();
+    void loadUsers();
   }
-  async function loadApps(tk: string) {
-    const res = await fetch("/api/admin/microapps", { headers: { Authorization: `Bearer ${tk}` }, cache: "no-store" });
+  async function loadApps() {
+    const res = await fetch("/api/admin/microapps", { cache: "no-store" });
     if (res.ok) {
       setApps((await res.json()).apps || []);
     } else {
       setErr("读取微应用失败");
     }
   }
-  async function loadUsers(tk: string) {
-    const res = await fetch("/api/admin/users", { headers: { Authorization: `Bearer ${tk}` }, cache: "no-store" });
+  async function loadUsers() {
+    const res = await fetch("/api/admin/users", { cache: "no-store" });
     if (res.ok) {
       const data = await res.json();
       setUsers(data.users || []);
@@ -141,21 +155,21 @@ export default function AdminPage() {
 
   async function actGb(method: string, payload: Record<string, unknown>) {
     setErr("");
-    const res = await fetch("/api/admin/guestbook", { method, headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+    const res = await fetch("/api/admin/guestbook", { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
     if (!res.ok) {
       setErr("留言操作失败");
       return;
     }
-    await load(token);
+    await load();
   }
   async function actMa(id: string, status: string) {
     setErr("");
-    const res = await fetch("/api/admin/microapps", { method: "PATCH", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, body: JSON.stringify({ id, status }) });
+    const res = await fetch("/api/admin/microapps", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, status }) });
     if (!res.ok) {
       setErr("微应用操作失败");
       return;
     }
-    await loadApps(token);
+    await loadApps();
   }
 
   if (!authed) {
@@ -164,8 +178,8 @@ export default function AdminPage() {
         <style dangerouslySetInnerHTML={{ __html: STYLE }} />
         <div className="alogin">
           <h1 className="pixel">dx3xb 管理后台</h1>
-          <input className="ain" type="password" placeholder="管理密码" value={pwd} onChange={(e) => setPwd(e.target.value)} onKeyDown={(e) => e.key === "Enter" && load(pwd)} />
-          <button className="abtn coral" onClick={() => load(pwd)}>登录</button>
+          <input className="ain" type="password" placeholder="管理密码" value={pwd} onChange={(e) => setPwd(e.target.value)} onKeyDown={(e) => e.key === "Enter" && void login()} />
+          <button className="abtn coral" onClick={() => void login()}>登录</button>
           {err && <p className="aerr">{err}</p>}
         </div>
       </main>
@@ -184,7 +198,7 @@ export default function AdminPage() {
           <button className={`atab ${tab === "ma" ? "on" : ""}`} onClick={() => setTab("ma")}>微应用{pending ? ` · ${pending}待审` : ""}</button>
           <button className={`atab ${tab === "users" ? "on" : ""}`} onClick={() => setTab("users")}>用户 {claimed}/{users.length}</button>
         </div>
-        <button className="abtn" onClick={() => { sessionStorage.removeItem(ADMIN_STORAGE_KEY); setAuthed(false); }}>退出</button>
+        <button className="abtn" onClick={() => void logout()}>退出</button>
       </div>
       {err && <p className="aerr">{err}</p>}
 
