@@ -21,6 +21,17 @@ const nextConfig = {
           { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
         ],
       },
+      {
+        source: "/trio/bridge",
+        headers: [
+          { key: "X-Frame-Options", value: "ALLOWALL" },
+          {
+            key: "Content-Security-Policy",
+            value: "default-src 'self'; script-src 'self' 'unsafe-inline'; connect-src 'self' https://lesowftrotytmlvdyilc.supabase.co; frame-ancestors https://color-hunter.dx3xb.com https://dont-click-wrong.dx3xb.com https://instant-memory.dx3xb.com",
+          },
+          { key: "Cache-Control", value: "no-store" },
+        ],
+      },
     ];
   },
 };

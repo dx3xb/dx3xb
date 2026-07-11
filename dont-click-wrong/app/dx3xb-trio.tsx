@@ -4,13 +4,7 @@
 // 每个游戏：npm i @supabase/supabase-js，复制本文件，战报页放 <TrioFooter .../> 即可。
 // anon key 是公开 key（数据由 RLS 保护）。
 import { useEffect, useRef, useState } from "react";
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-
-const SUPABASE_URL = "https://lesowftrotytmlvdyilc.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxlc293ZnRyb3R5dG1sdmR5aWxjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU5NzIzMzgsImV4cCI6MjA4MTU0ODMzOH0._uHc7n1tgM6t8xO4o3rOkZHk-eV869rzjCMpi9sILNA";
-const COOKIE_DOMAIN = ".dx3xb.com";
-const STORAGE_KEY = "dx3xb-auth";
-const CHUNK = 3200;
+import { trioBridgeCall } from "./trio-bridge-client";
 
 export const TRIO_GAMES = ["color-hunter", "dont-click-wrong", "instant-memory"] as const;
 export type TrioGame = (typeof TRIO_GAMES)[number];
@@ -54,88 +48,9 @@ const GAME_TEASER: Record<Lang, Record<TrioGame, string>> = {
   },
 };
 
-/* ---------- 跨子域 cookie 会话存储 ---------- */
-const isLocal =
-  typeof window !== "undefined" && /localhost|127\.0\.0\.1/.test(window.location.hostname);
-const domainAttr = isLocal ? "" : `; domain=${COOKIE_DOMAIN}`;
-const secureAttr = isLocal ? "" : "; Secure";
-
-function writeCookie(name: string, value: string) {
-  document.cookie = `${name}=${value}; path=/; max-age=${365 * 864e2}${domainAttr}; SameSite=Lax${secureAttr}`;
-}
-function deleteCookie(name: string) {
-  document.cookie = `${name}=; path=/; max-age=0${domainAttr}`;
-}
-function readCookie(name: string): string | null {
-  const esc = name.replace(/([.$?*|{}()[\]\\/+^])/g, "\\$1");
-  const m = document.cookie.match(new RegExp("(?:^|; )" + esc + "=([^;]*)"));
-  return m ? m[1] : null;
-}
-
-const cookieStorage = {
-  getItem(key: string): string | null {
-    const head = readCookie(key);
-    if (head == null) return null;
-    if (head.startsWith("chunks:")) {
-      const n = parseInt(head.slice(7), 10);
-      let out = "";
-      for (let i = 0; i < n; i += 1) {
-        const part = readCookie(`${key}.${i}`);
-        if (part == null) return null;
-        out += part;
-      }
-      return decodeURIComponent(out);
-    }
-    return decodeURIComponent(head);
-  },
-  setItem(key: string, value: string) {
-    const old = readCookie(key);
-    if (old && old.startsWith("chunks:")) {
-      const n = parseInt(old.slice(7), 10);
-      for (let i = 0; i < n; i += 1) deleteCookie(`${key}.${i}`);
-    }
-    const enc = encodeURIComponent(value);
-    if (enc.length <= CHUNK) {
-      writeCookie(key, enc);
-    } else {
-      const n = Math.ceil(enc.length / CHUNK);
-      for (let i = 0; i < n; i += 1) writeCookie(`${key}.${i}`, enc.slice(i * CHUNK, (i + 1) * CHUNK));
-      writeCookie(key, `chunks:${n}`);
-    }
-  },
-  removeItem(key: string) {
-    const old = readCookie(key);
-    if (old && old.startsWith("chunks:")) {
-      const n = parseInt(old.slice(7), 10);
-      for (let i = 0; i < n; i += 1) deleteCookie(`${key}.${i}`);
-    }
-    deleteCookie(key);
-  },
-};
-
-let _client: SupabaseClient | null = null;
-export function dx3xb(): SupabaseClient {
-  if (_client) return _client;
-  _client = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-    auth: {
-      storage: cookieStorage as unknown as Storage,
-      storageKey: STORAGE_KEY,
-      persistSession: true,
-      autoRefreshToken: true,
-      detectSessionInUrl: true,
-      flowType: "pkce",
-    },
-  });
-  return _client;
-}
-
 export async function ensureSession(): Promise<string | null> {
-  const c = dx3xb();
-  const { data } = await c.auth.getSession();
-  if (data.session) return data.session.user.id;
-  const { data: anon, error } = await c.auth.signInAnonymously();
-  if (error) return null;
-  return anon.user?.id ?? null;
+  const result = await trioBridgeCall<{ userId: string | null }>("session");
+  return result.userId;
 }
 
 export type RunPayload = {
@@ -148,30 +63,7 @@ export type RunPayload = {
 };
 
 export async function recordRun(game: TrioGame, p: RunPayload): Promise<void> {
-  try {
-    const c = dx3xb();
-    const id = await ensureSession();
-    if (!id) return;
-    await c.from("dx3xb_runs").insert({
-      user_id: id,
-      game,
-      score: Math.round(p.score),
-      pct: Math.round(p.pct),
-      title: p.title,
-      lang: p.lang,
-      stats: p.stats ?? {},
-    });
-    const handle = p.handle?.trim().slice(0, 24);
-    if (handle) {
-      const { data: auth } = await c.auth.getUser();
-      const { data: existing } = await c.from("dx3xb_profiles").select("handle").eq("user_id", id).maybeSingle();
-      if (auth.user?.is_anonymous || !existing?.handle) {
-        await c.from("dx3xb_profiles").upsert({ user_id: id, handle });
-      }
-    }
-  } catch {
-    /* 记录失败不影响游戏体验 */
-  }
+  await trioBridgeCall("recordRun", { game, run: p });
 }
 
 export type TrioBest = { score: number; pct: number; title: string };
@@ -184,68 +76,25 @@ export type TrioProgress = {
 };
 
 export async function getTrioProgress(): Promise<TrioProgress> {
-  try {
-    const c = dx3xb();
-    await ensureSession();
-    const { data: u } = await c.auth.getUser();
-    const isAnonymous = !!u.user?.is_anonymous;
-    const { data } = await c.from("dx3xb_runs").select("game,score,pct,title");
-    const best: Partial<Record<TrioGame, TrioBest>> = {};
-    for (const row of (data ?? []) as { game: TrioGame; score: number; pct: number; title: string }[]) {
-      const cur = best[row.game];
-      if (!cur || row.score > cur.score) best[row.game] = { score: row.score, pct: row.pct, title: row.title };
-    }
-    const done = TRIO_GAMES.filter((g) => best[g]).length;
-    const nextGame = TRIO_GAMES.find((g) => !best[g]) ?? null;
-    return { done, best, nextGame, isAnonymous, allDone: done >= TRIO_GAMES.length };
-  } catch {
-    return { done: 0, best: {}, nextGame: TRIO_GAMES[0], isAnonymous: true, allDone: false };
-  }
+  return trioBridgeCall<TrioProgress>("progress");
 }
 
-export async function claimAccount(email: string, redirectTo: string) {
-  const c = dx3xb();
-  await ensureSession();
-  return c.auth.updateUser({ email }, { emailRedirectTo: redirectTo });
+export type TrioProfile = { handle: string | null; email: string | null; isAnonymous: boolean };
+export async function getTrioProfile(): Promise<TrioProfile> {
+  return trioBridgeCall<TrioProfile>("profile");
 }
 
 export async function getProfileHandle(): Promise<string | null> {
-  try {
-    const c = dx3xb();
-    const id = await ensureSession();
-    if (!id) return null;
-    const { data } = await c.from("dx3xb_profiles").select("handle").eq("user_id", id).maybeSingle();
-    return data?.handle ?? null;
-  } catch {
-    return null;
-  }
+  return (await getTrioProfile()).handle;
 }
 
 export type MyRun = { game: TrioGame; score: number; pct: number; title: string; created_at: string };
-export async function getMyRuns(limit = 40): Promise<MyRun[]> {
-  try {
-    const c = dx3xb();
-    await ensureSession();
-    const { data } = await c
-      .from("dx3xb_runs")
-      .select("game,score,pct,title,created_at")
-      .order("created_at", { ascending: false })
-      .limit(limit);
-    return (data ?? []) as MyRun[];
-  } catch {
-    return [];
-  }
+export async function getMyRuns(): Promise<MyRun[]> {
+  return [];
 }
 
 export async function getEmail(): Promise<string | null> {
-  try {
-    const c = dx3xb();
-    await ensureSession();
-    const { data } = await c.auth.getUser();
-    return data.user?.email ?? null;
-  } catch {
-    return null;
-  }
+  return (await getTrioProfile()).email;
 }
 
 /* ---------- UI 文案 ---------- */

@@ -258,7 +258,7 @@ export default function ColorHunter() {
     setChallengerName(sanitizeName(params.get("from") || ""));
     const storedName = window.localStorage.getItem("dx3xb_name");
     if (storedName) setNameDraft(sanitizeName(storedName));
-    void ensureSession(); // 首访即建匿名会话（跨子域 cookie）
+    void ensureSession();
     // 跨子域取统一称呼，自动预填，不让用户重输
     getProfileHandle().then((h) => {
       if (h) setNameDraft(sanitizeName(h));

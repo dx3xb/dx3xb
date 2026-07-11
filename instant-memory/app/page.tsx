@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import QRCode from "qrcode";
 import { toPng } from "html-to-image";
-import { TrioFooter, dx3xb, ensureSession, getProfileHandle } from "./dx3xb-trio";
+import { TrioFooter, ensureSession, getTrioProfile } from "./dx3xb-trio";
 
 type Phase = "ready" | "preview" | "input" | "naming" | "finished";
 type Lang = "zh" | "en";
@@ -312,18 +312,17 @@ export default function InstantMemory() {
     if (storedName) setNameDraft(sanitizeName(storedName));
 
     (async () => {
-      await ensureSession(); // 首访即建匿名会话（跨子域 cookie）
-      const [{ data: auth }, handle] = await Promise.all([dx3xb().auth.getUser(), getProfileHandle()]);
-      const user = auth.user;
-      const profileName = sanitizeName(handle ?? "").trim();
-      const emailName = sanitizeName(user?.email?.split("@")[0] ?? "").trim();
+      await ensureSession();
+      const profile = await getTrioProfile();
+      const profileName = sanitizeName(profile.handle ?? "").trim();
+      const emailName = sanitizeName(profile.email?.split("@")[0] ?? "").trim();
       const automaticName = profileName || emailName;
 
       if (automaticName) {
         setNameDraft(automaticName);
         setAccountName(automaticName);
       }
-      if (user && !user.is_anonymous) {
+      if (!profile.isAnonymous) {
         setIsRegisteredUser(true);
         setPlayerName(automaticName || COPY[initialLang].anon);
       }

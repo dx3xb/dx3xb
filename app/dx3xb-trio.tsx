@@ -1,6 +1,6 @@
 "use client";
 // ===== dx3xb 感官与脑力三件套 · 共享 drop-in 组件 =====
-// 跨 *.dx3xb.com 共享匿名会话 + 记录战报 + 三件套进度 + 邮箱认领。
+// 主域会话 + 记录战报 + 三件套进度 + 邮箱认领。
 // 每个游戏：npm i @supabase/supabase-js，复制本文件，战报页放 <TrioFooter .../> 即可。
 // anon key 是公开 key（数据由 RLS 保护）。
 import { useEffect, useRef, useState } from "react";
@@ -8,7 +8,6 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 const SUPABASE_URL = "https://lesowftrotytmlvdyilc.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxlc293ZnRyb3R5dG1sdmR5aWxjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU5NzIzMzgsImV4cCI6MjA4MTU0ODMzOH0._uHc7n1tgM6t8xO4o3rOkZHk-eV869rzjCMpi9sILNA";
-const COOKIE_DOMAIN = ".dx3xb.com";
 const STORAGE_KEY = "dx3xb-auth";
 const CHUNK = 3200;
 const AVATAR_BUCKET = "dx3xb-avatars";
@@ -56,17 +55,12 @@ const GAME_TEASER: Record<Lang, Record<TrioGame, string>> = {
   },
 };
 
-/* ---------- 跨子域 cookie 会话存储 ---------- */
+/* ---------- 从旧宽域 Cookie 一次性迁移到主域 localStorage ---------- */
 const isLocal =
   typeof window !== "undefined" && /localhost|127\.0\.0\.1/.test(window.location.hostname);
-const domainAttr = isLocal ? "" : `; domain=${COOKIE_DOMAIN}`;
-const secureAttr = isLocal ? "" : "; Secure";
-
-function writeCookie(name: string, value: string) {
-  document.cookie = `${name}=${value}; path=/; max-age=${365 * 864e2}${domainAttr}; SameSite=Lax${secureAttr}`;
-}
 function deleteCookie(name: string) {
-  document.cookie = `${name}=; path=/; max-age=0${domainAttr}`;
+  document.cookie = `${name}=; path=/; max-age=0`;
+  if (!isLocal) document.cookie = `${name}=; path=/; max-age=0; domain=.dx3xb.com; Secure; SameSite=Lax`;
 }
 function readCookie(name: string): string | null {
   const esc = name.replace(/([.$?*|{}()[\]\\/+^])/g, "\\$1");
@@ -74,53 +68,31 @@ function readCookie(name: string): string | null {
   return m ? m[1] : null;
 }
 
-const cookieStorage = {
-  getItem(key: string): string | null {
-    const head = readCookie(key);
-    if (head == null) return null;
-    if (head.startsWith("chunks:")) {
-      const n = parseInt(head.slice(7), 10);
-      let out = "";
-      for (let i = 0; i < n; i += 1) {
-        const part = readCookie(`${key}.${i}`);
-        if (part == null) return null;
-        out += part;
-      }
-      return decodeURIComponent(out);
-    }
-    return decodeURIComponent(head);
-  },
-  setItem(key: string, value: string) {
-    const old = readCookie(key);
-    if (old && old.startsWith("chunks:")) {
-      const n = parseInt(old.slice(7), 10);
-      for (let i = 0; i < n; i += 1) deleteCookie(`${key}.${i}`);
-    }
-    const enc = encodeURIComponent(value);
-    if (enc.length <= CHUNK) {
-      writeCookie(key, enc);
-    } else {
-      const n = Math.ceil(enc.length / CHUNK);
-      for (let i = 0; i < n; i += 1) writeCookie(`${key}.${i}`, enc.slice(i * CHUNK, (i + 1) * CHUNK));
-      writeCookie(key, `chunks:${n}`);
-    }
-  },
-  removeItem(key: string) {
-    const old = readCookie(key);
-    if (old && old.startsWith("chunks:")) {
-      const n = parseInt(old.slice(7), 10);
-      for (let i = 0; i < n; i += 1) deleteCookie(`${key}.${i}`);
-    }
-    deleteCookie(key);
-  },
-};
+function migrateLegacyCookie() {
+  if (typeof window === "undefined" || window.localStorage.getItem(STORAGE_KEY)) return;
+  const head = readCookie(STORAGE_KEY);
+  if (!head) return;
+  let encoded = head;
+  if (head.startsWith("chunks:")) {
+    const count = Math.min(8, Math.max(0, parseInt(head.slice(7), 10) || 0));
+    encoded = "";
+    for (let i = 0; i < count; i += 1) encoded += readCookie(`${STORAGE_KEY}.${i}`) || "";
+    for (let i = 0; i < count; i += 1) deleteCookie(`${STORAGE_KEY}.${i}`);
+  }
+  try {
+    window.localStorage.setItem(STORAGE_KEY, decodeURIComponent(encoded));
+  } finally {
+    deleteCookie(STORAGE_KEY);
+  }
+}
 
 let _client: SupabaseClient | null = null;
 export function dx3xb(): SupabaseClient {
   if (_client) return _client;
+  migrateLegacyCookie();
   _client = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     auth: {
-      storage: cookieStorage as unknown as Storage,
+      storage: window.localStorage,
       storageKey: STORAGE_KEY,
       persistSession: true,
       autoRefreshToken: true,
