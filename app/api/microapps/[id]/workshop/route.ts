@@ -224,6 +224,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       const blocked = aiReservationResponse(reservation);
       return NextResponse.json({ ok: false, error: blocked.error }, { status: blocked.status });
     }
+    await supabase.rpc("dx3xb_record_funnel_event", { p_event: "generation_start", p_user_id: auth.user.id, p_microapp_id: id, p_request_id: requestId });
 
     let succeeded = false;
     try {
@@ -246,6 +247,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         ].slice(-10),
       });
       const nextTitle = cleanText(generated.title || title || String(app.title || ""), 60);
+      await supabase.rpc("dx3xb_record_funnel_event", { p_event: "generation_success", p_user_id: auth.user.id, p_microapp_id: id, p_request_id: requestId });
 
       const { error: updateError } = await supabase
         .from("dx3xb_microapps")

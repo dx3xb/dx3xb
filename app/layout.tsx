@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Press_Start_2P, VT323 } from "next/font/google";
 import "./globals.css";
+import { cookies } from "next/headers";
 
 const press = Press_Start_2P({
   weight: "400",
@@ -38,9 +39,10 @@ export const viewport: Viewport = {
   themeColor: "#fff6e6",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const lang = (await cookies()).get("dx3xb_lang")?.value === "en" ? "en" : "zh";
   return (
-    <html lang="zh">
+    <html lang={lang}>
       <body className={`${press.variable} ${vt.variable}`}>{children}</body>
     </html>
   );

@@ -17,8 +17,9 @@ import {
   type MicroMeta,
 } from "../../_mt/micro-meta";
 import { getMicroapp, updateMicroapp, deleteMicroapp, type Microapp, type MicroStatus } from "../../dx3xb-apps";
-import { dx3xb, getEmail, getProfileHandle } from "../../dx3xb-trio";
+import { dx3xb, getEmail, getProfileHandle, startPasswordSignup } from "../../dx3xb-trio";
 import { checkWorkshopPlayability, type WorkshopConfig } from "../../_mt/workshop-spec";
+import { persistLanguage } from "@/lib/language";
 
 type Lang = "zh" | "en";
 function initialLang(): Lang {
@@ -92,6 +93,9 @@ export default function EditorPage() {
   const [publishCheck, setPublishCheck] = useState<"idle" | "checking" | "failed">("idle");
   const [email, setEmail] = useState<string | null>(null);
   const [creatorHandle, setCreatorHandle] = useState<string | null>(null);
+  const [registerOpen, setRegisterOpen] = useState(false);
+  const [registerForm, setRegisterForm] = useState({ handle: "", email: "", password: "" });
+  const [registerState, setRegisterState] = useState<"idle" | "busy" | "sent" | "error">("idle");
   const t = C[lang];
 
   useEffect(() => {
@@ -115,10 +119,26 @@ export default function EditorPage() {
     })();
   }, [id]);
 
+  useEffect(() => {
+    if (!loaded || tpl !== "workshop") return;
+    void (async () => {
+      const { data } = await dx3xb().auth.getSession();
+      const token = data.session?.access_token;
+      if (token) await fetch("/api/funnel", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify({ event: "workshop_enter", microappId: id }) });
+    })();
+  }, [id, loaded, tpl]);
+
+  useEffect(() => {
+    if (!registerOpen) return;
+    const close = (event: KeyboardEvent) => { if (event.key === "Escape") setRegisterOpen(false); };
+    window.addEventListener("keydown", close);
+    return () => window.removeEventListener("keydown", close);
+  }, [registerOpen]);
+
   function toggleLang() {
     setLang((prev) => {
       const next: Lang = prev === "zh" ? "en" : "zh";
-      window.localStorage.setItem("dx3xb_lang", next);
+      persistLanguage(next);
       const url = new URL(window.location.href);
       url.searchParams.set("lang", next);
       window.history.replaceState(null, "", url.toString());
@@ -192,6 +212,26 @@ export default function EditorPage() {
     if (!window.confirm(t.delConfirm)) return;
     await deleteMicroapp(id);
     window.location.href = `/studio?lang=${lang}`;
+  }
+
+  async function registerHere() {
+    if (!registerForm.handle.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(registerForm.email) || registerForm.password.length < 8) {
+      setRegisterState("error");
+      return;
+    }
+    setRegisterState("busy");
+    const result = await startPasswordSignup(registerForm.email.trim(), registerForm.handle.trim(), registerForm.password);
+    if (result.error) {
+      setRegisterState("error");
+      return;
+    }
+    const [nextEmail, nextHandle] = await Promise.all([getEmail(), getProfileHandle()]);
+    if (nextEmail && nextHandle) {
+      setEmail(nextEmail);
+      setCreatorHandle(nextHandle);
+      setRegisterOpen(false);
+      setRegisterState("idle");
+    } else setRegisterState("sent");
   }
 
   if (!loaded) return <main className="wrap"><style dangerouslySetInnerHTML={{ __html: STYLE }} /><p className="enote">…</p></main>;
@@ -271,7 +311,20 @@ export default function EditorPage() {
           {!publishable && <p className="ewarn">{t.needPublishable}</p>}
           {publishCheck === "failed" && <p className="ewarn" role="alert">{lang === "zh" ? "桌面或手机预览未能正常运行，请让 AI 修复画面溢出或脚本错误后再提交。" : "The desktop or mobile preview failed. Ask AI to fix overflow or script errors before submitting."}</p>}
           {publishable && (!email || !creatorHandle) && (
-            <p className="ewarn">{t.needEmail} <a href={`/me?lang=${lang}`}>{t.goClaim}</a></p>
+            <p className="ewarn">{t.needEmail} <button className="elink" onClick={() => setRegisterOpen(true)}>{lang === "zh" ? "在这里注册 →" : "Register here →"}</button></p>
+          )}
+          {registerOpen && (
+            <div className="emodal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setRegisterOpen(false); }}>
+              <section className="emodal" role="dialog" aria-modal="true" aria-labelledby="register-title">
+                <div className="emodal-head"><h2 id="register-title">{lang === "zh" ? "注册并继续发布" : "Register and keep publishing"}</h2><button aria-label={lang === "zh" ? "关闭" : "Close"} onClick={() => setRegisterOpen(false)}>×</button></div>
+                <input autoFocus className="ein" placeholder={lang === "zh" ? "用户名" : "Username"} maxLength={24} value={registerForm.handle} onChange={(e) => setRegisterForm({ ...registerForm, handle: e.target.value })} />
+                <input className="ein" type="email" placeholder={lang === "zh" ? "邮箱" : "Email"} value={registerForm.email} onChange={(e) => setRegisterForm({ ...registerForm, email: e.target.value })} />
+                <input className="ein" type="password" placeholder={lang === "zh" ? "密码（至少 8 位）" : "Password (8+ characters)"} value={registerForm.password} onChange={(e) => setRegisterForm({ ...registerForm, password: e.target.value })} />
+                {registerState === "error" && <p className="ewarn" role="alert">{lang === "zh" ? "请检查用户名、邮箱和密码，或换一个用户名。" : "Check the username, email and password, or choose another username."}</p>}
+                {registerState === "sent" && <p role="status">{lang === "zh" ? "确认邮件已发送。打开邮件完成注册后，回到本页即可继续。" : "Confirmation sent. Open the email, then return here to continue."}</p>}
+                <button className="ebig teal" disabled={registerState === "busy" || registerState === "sent"} onClick={registerHere}>{registerState === "busy" ? (lang === "zh" ? "注册中…" : "Registering…") : (lang === "zh" ? "注册" : "Register")}</button>
+              </section>
+            </div>
           )}
           {status !== "draft" && (
             <>
@@ -289,6 +342,12 @@ export default function EditorPage() {
 const STYLE = `
 .wrap { max-width: 720px; margin: 0 auto; padding: 22px 16px 60px; }
 .wrap.workshop { max-width: 1180px; }
+.elink { border: 0; padding: 0; background: transparent; color: var(--blue); text-decoration: underline; font: inherit; cursor: pointer; }
+.emodal-backdrop { position: fixed; inset: 0; z-index: 1000; display: grid; place-items: center; padding: 16px; background: rgba(43,34,51,.72); }
+.emodal { width: min(440px,100%); display: grid; gap: 12px; padding: 18px; border: 4px solid var(--line); background: var(--cream); box-shadow: 8px 8px 0 var(--ink); }
+.emodal-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.emodal-head h2 { margin: 0; font-family: var(--font-press), "FpxCJK", monospace; font-size: 13px; line-height: 1.5; }
+.emodal-head button { width: 34px; height: 34px; flex: none; border: 3px solid var(--line); background: #fff; color: var(--ink); font-size: 22px; line-height: 1; cursor: pointer; }
 .enote { color: var(--ink-soft); }
 .ebar { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 18px; }
 .ebtn { display: inline-block; text-decoration: none; font-family: var(--font-press), monospace; font-size: 11px;

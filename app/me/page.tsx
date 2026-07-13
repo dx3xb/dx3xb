@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { persistLanguage } from "@/lib/language";
 import {
   DEFAULT_AVATAR_URL,
   getAvatarUrl,
@@ -314,7 +315,7 @@ export default function MePage() {
   function toggleLang() {
     setLang((prev) => {
       const next: Lang = prev === "zh" ? "en" : "zh";
-      window.localStorage.setItem("dx3xb_lang", next);
+      persistLanguage(next);
       const url = new URL(window.location.href);
       url.searchParams.set("lang", next);
       window.history.replaceState(null, "", url.toString());

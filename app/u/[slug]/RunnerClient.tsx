@@ -6,6 +6,7 @@ import { MicroThemeShell } from "../../_mt/micro-shell";
 import { CommunityGameCard, CreatorLink } from "../../_mt/community-card";
 import { applyAdvancedConfig, extractMicroMeta, stripMicroMeta, type MicroEvent } from "../../_mt/micro-meta";
 import { favoriteState, getMicroappBySlug, rememberRecentPlay, reportMicroapp, setFavorite, startPlaySession, trackMicroappEvent, TEMPLATE_META, type Microapp } from "../../dx3xb-apps";
+import { persistLanguage } from "@/lib/language";
 
 type Lang = "zh" | "en";
 function initialLang(): Lang {
@@ -38,7 +39,7 @@ export function RunnerClient({ slug }: { slug: string }) {
   function toggleLang() {
     setLang((prev) => {
       const next: Lang = prev === "zh" ? "en" : "zh";
-      window.localStorage.setItem("dx3xb_lang", next);
+      persistLanguage(next);
       const url = new URL(window.location.href);
       url.searchParams.set("lang", next);
       window.history.replaceState(null, "", url.toString());

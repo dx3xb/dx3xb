@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { CommunityGameCard } from "./_mt/community-card";
 import type { PublicMicroappSummary } from "./_mt/creator-types";
+import { persistLanguage } from "@/lib/language";
 
 type Msg = { id: number; name: string; message: string; created_at: string; parent_id: number | null };
 type Lang = "zh" | "en";
@@ -319,7 +320,7 @@ export default function Home() {
     setLang((prev) => {
       const next = prev === "zh" ? "en" : "zh";
       try {
-        localStorage.setItem("dx3xb_lang", next);
+        persistLanguage(next);
         const url = new URL(window.location.href);
         url.searchParams.set("lang", next);
         window.history.replaceState(null, "", url.toString());

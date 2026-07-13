@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import QRCode from "qrcode";
 import { toPng } from "html-to-image";
+import { persistLanguage } from "@/lib/language";
 import {
   getTrioProgress,
   getProfileHandle,
@@ -214,7 +215,7 @@ export function TrioClient() {
   function toggleLang() {
     setLang((prev) => {
       const next: Lang = prev === "zh" ? "en" : "zh";
-      window.localStorage.setItem("dx3xb_lang", next);
+      persistLanguage(next);
       const url = new URL(window.location.href);
       url.searchParams.set("lang", next);
       window.history.replaceState(null, "", url.toString());

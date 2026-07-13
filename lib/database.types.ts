@@ -2958,6 +2958,15 @@ export type Database = {
         Args: { p_request_id: string; p_status: string; p_user_id: string }
         Returns: boolean
       }
+      dx3xb_record_funnel_event: {
+        Args: {
+          p_event: string
+          p_microapp_id?: string
+          p_request_id?: string
+          p_user_id?: string
+        }
+        Returns: boolean
+      }
       dx3xb_reserve_ai_request: {
         Args: {
           p_app_limit?: number

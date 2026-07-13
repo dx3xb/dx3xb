@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { getMyMicroapps, createMicroapp, deleteMicroapp, TEMPLATE_META, type Microapp } from "../dx3xb-apps";
 import { regFor } from "../_mt/registry";
 import { getEmail } from "../dx3xb-trio";
+import { persistLanguage } from "@/lib/language";
 
 type Lang = "zh" | "en";
 function initialLang(): Lang {
@@ -78,7 +79,7 @@ export default function StudioPage() {
   function toggleLang() {
     setLang((prev) => {
       const next: Lang = prev === "zh" ? "en" : "zh";
-      window.localStorage.setItem("dx3xb_lang", next);
+      persistLanguage(next);
       const url = new URL(window.location.href);
       url.searchParams.set("lang", next);
       window.history.replaceState(null, "", url.toString());
