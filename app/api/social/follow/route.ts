@@ -24,7 +24,7 @@ export async function GET(req: NextRequest) {
   const handle = cleanText(req.nextUrl.searchParams.get("handle"), 24);
   const ctx = await context(req, handle);
   if (!ctx) return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
-  const { data } = await (ctx.supabase as any).from("dx3xb_creator_follows").select("creator_id").eq("follower_id", ctx.followerId).eq("creator_id", ctx.creatorId).maybeSingle();
+  const { data } = await ctx.supabase.from("dx3xb_creator_follows").select("creator_id").eq("follower_id", ctx.followerId).eq("creator_id", ctx.creatorId).maybeSingle();
   return NextResponse.json({ ok: true, following: Boolean(data) });
 }
 
@@ -36,8 +36,8 @@ export async function POST(req: NextRequest) {
   if (!ctx) return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
   if (ctx.followerId === ctx.creatorId) return NextResponse.json({ ok: false, error: "self_follow" }, { status: 400 });
   const query = parsed.value.active
-    ? (ctx.supabase as any).from("dx3xb_creator_follows").upsert({ follower_id: ctx.followerId, creator_id: ctx.creatorId })
-    : (ctx.supabase as any).from("dx3xb_creator_follows").delete().eq("follower_id", ctx.followerId).eq("creator_id", ctx.creatorId);
+    ? ctx.supabase.from("dx3xb_creator_follows").upsert({ follower_id: ctx.followerId, creator_id: ctx.creatorId })
+    : ctx.supabase.from("dx3xb_creator_follows").delete().eq("follower_id", ctx.followerId).eq("creator_id", ctx.creatorId);
   const { error } = await query;
   if (error) throw error;
   return NextResponse.json({ ok: true, following: Boolean(parsed.value.active) });

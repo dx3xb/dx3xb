@@ -22,7 +22,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const supabase = getServiceClient();
     const { data: app } = await supabase.from("dx3xb_microapps").select("id").eq("id", id).maybeSingle();
     if (!app) return NextResponse.json({ ok: false, error: "not_found" }, { status: 404 });
-    const { error } = await (supabase as any).from("dx3xb_microapp_reports").insert({
+    const { error } = await supabase.from("dx3xb_microapp_reports").insert({
       microapp_id: id,
       reason,
       fingerprint_hash: requestFingerprint(req),

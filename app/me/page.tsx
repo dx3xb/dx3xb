@@ -28,6 +28,7 @@ import { getMyMicroapps, type Microapp } from "../dx3xb-apps";
 
 type Lang = "zh" | "en";
 type AccountMode = "register" | "login" | "forgot" | "reset";
+type LibraryRow = { created_at?: string; played_at?: string; kind?: string; dx3xb_microapps: { slug: string; title: string; template?: string } };
 
 const GAME_NAME: Record<Lang, Record<TrioGame, string>> = {
   zh: { "color-hunter": "色差猎人", "dont-click-wrong": "不要点错", "instant-memory": "瞬间记忆" },
@@ -66,6 +67,7 @@ const COPY = {
     microStudio: "打开微应用工厂 →",
     microEmpty: "还没做过微应用，去工厂做一个吧。",
     microStatus: { draft: "草稿", unlisted: "仅链接", pending: "审核中", public: "已公开", hidden: "已下架" } as Record<string, string>,
+    favorites: "我的收藏", recent: "最近玩过", notifications: "新作提醒", socialEmpty: "这里还没有内容。",
     trainTitle: "思维训练程序",
     trainSoon: "敬请期待",
     trainDesc: "进阶训练，系统提升感官与脑力。",
@@ -125,6 +127,7 @@ const COPY = {
     microStudio: "Open the studio →",
     microEmpty: "No micro-apps yet — go make one.",
     microStatus: { draft: "DRAFT", unlisted: "UNLISTED", pending: "IN REVIEW", public: "PUBLIC", hidden: "REMOVED" } as Record<string, string>,
+    favorites: "Favorites", recent: "Recently Played", notifications: "Creator Updates", socialEmpty: "Nothing here yet.",
     trainTitle: "Mind-Training Program",
     trainSoon: "COMING SOON",
     trainDesc: "Advanced training to systematically sharpen sense & brain.",
@@ -226,6 +229,7 @@ export default function MePage() {
   const [email, setEmail] = useState<string | null>(null);
   const [runs, setRuns] = useState<MyRun[]>([]);
   const [myApps, setMyApps] = useState<Microapp[]>([]);
+  const [library, setLibrary] = useState<{ favorites: LibraryRow[]; recent: LibraryRow[]; notifications: LibraryRow[] }>({ favorites: [], recent: [], notifications: [] });
   const [avatarUrl, setAvatarUrl] = useState(DEFAULT_AVATAR_URL);
   const [avatarBusy, setAvatarBusy] = useState(false);
   const [avatarError, setAvatarError] = useState("");
@@ -258,6 +262,15 @@ export default function MePage() {
     setEmail(e);
     setRuns(r);
     setMyApps(apps);
+    if (e) {
+      const { data: session } = await dx3xb().auth.getSession();
+      const token = session.session?.access_token;
+      if (token) {
+        const response = await fetch("/api/me/library", { headers: { Authorization: `Bearer ${token}` } });
+        const body = await response.json().catch(() => null);
+        if (response.ok) setLibrary({ favorites: body.favorites || [], recent: body.recent || [], notifications: body.notifications || [] });
+      }
+    } else setLibrary({ favorites: [], recent: [], notifications: [] });
     setAvatarUrl(avatar);
     setLoaded(true);
   }
@@ -627,6 +640,25 @@ export default function MePage() {
             )}
           </section>
 
+          {email && ([
+            ["favorites", t.favorites],
+            ["recent", t.recent],
+            ["notifications", t.notifications],
+          ] as const).map(([key, label]) => (
+            <section className="panel mcard" key={key}>
+              <h2 className="pixel mctitle">{label}</h2>
+              {library[key].length === 0 ? <p className="mdesc">{t.socialEmpty}</p> : (
+                <ul className="mhist social-list">{library[key].map((row, index) => (
+                  <li key={`${row.dx3xb_microapps.slug}-${index}`}>
+                    <span className="mbadge" style={{ background: key === "notifications" ? "var(--coral)" : "var(--teal)" }}>{key === "notifications" ? "!" : key === "favorites" ? "★" : "▶"}</span>
+                    <a className="mgame" href={`/u/${row.dx3xb_microapps.slug}?lang=${lang}`}>{row.dx3xb_microapps.title}</a>
+                    <span className="mdate">{fmtDate(row.created_at || row.played_at || "")}</span>
+                  </li>
+                ))}</ul>
+              )}
+            </section>
+          ))}
+
           {/* 思维训练入口（占位） */}
           <section className="panel mcard mtrain">
             <div>
@@ -686,6 +718,8 @@ const STYLE = `
 .mhist { list-style: none; margin: 0; padding: 0; }
 .mhist li { display: grid; grid-template-columns: auto 1fr auto auto; align-items: center; gap: 8px;
   border-bottom: 2px dashed rgba(43,34,51,0.18); padding: 10px 0; }
+.social-list li { grid-template-columns: auto 1fr auto; }
+.social-list .mgame { color: var(--ink); text-decoration: none; }
 .mbadge { font-family: var(--font-press), "FpxCJK", monospace; font-size: 9px; line-height: 1.35; color: #fff; border: 2px solid var(--line); padding: 4px 6px; }
 .mgame { font-size: var(--me-body); line-height: 1.25; min-width: 0; overflow-wrap: anywhere; }
 .mtitle { display: none; }

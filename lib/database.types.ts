@@ -12,6 +12,31 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.1"
   }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
       admission_case_snapshots: {
@@ -889,6 +914,62 @@ export type Database = {
         }
         Relationships: []
       }
+      dx3xb_creator_follows: {
+        Row: {
+          created_at: string
+          creator_id: string
+          follower_id: string
+        }
+        Insert: {
+          created_at?: string
+          creator_id: string
+          follower_id: string
+        }
+        Update: {
+          created_at?: string
+          creator_id?: string
+          follower_id?: string
+        }
+        Relationships: []
+      }
+      dx3xb_creator_notifications: {
+        Row: {
+          actor_id: string | null
+          created_at: string
+          id: number
+          kind: string
+          microapp_id: string
+          read_at: string | null
+          user_id: string
+        }
+        Insert: {
+          actor_id?: string | null
+          created_at?: string
+          id?: number
+          kind: string
+          microapp_id: string
+          read_at?: string | null
+          user_id: string
+        }
+        Update: {
+          actor_id?: string | null
+          created_at?: string
+          id?: number
+          kind?: string
+          microapp_id?: string
+          read_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dx3xb_creator_notifications_microapp_id_fkey"
+            columns: ["microapp_id"]
+            isOneToOne: false
+            referencedRelation: "dx3xb_microapps"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       dx3xb_guestbook: {
         Row: {
           city: string | null
@@ -928,21 +1009,88 @@ export type Database = {
         }
         Relationships: []
       }
+      dx3xb_microapp_events: {
+        Row: {
+          created_at: string
+          event: string
+          id: number
+          microapp_id: string
+          play_session_id: string | null
+          session_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          event: string
+          id?: number
+          microapp_id: string
+          play_session_id?: string | null
+          session_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          event?: string
+          id?: number
+          microapp_id?: string
+          play_session_id?: string | null
+          session_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dx3xb_microapp_events_microapp_id_fkey"
+            columns: ["microapp_id"]
+            isOneToOne: false
+            referencedRelation: "dx3xb_microapps"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dx3xb_microapp_favorites: {
+        Row: {
+          created_at: string
+          microapp_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          microapp_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          microapp_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dx3xb_microapp_favorites_microapp_id_fkey"
+            columns: ["microapp_id"]
+            isOneToOne: false
+            referencedRelation: "dx3xb_microapps"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       dx3xb_microapp_reports: {
         Row: {
           created_at: string | null
+          fingerprint_hash: string | null
           id: number
           microapp_id: string | null
           reason: string | null
         }
         Insert: {
           created_at?: string | null
+          fingerprint_hash?: string | null
           id?: never
           microapp_id?: string | null
           reason?: string | null
         }
         Update: {
           created_at?: string | null
+          fingerprint_hash?: string | null
           id?: never
           microapp_id?: string | null
           reason?: string | null
@@ -996,6 +1144,33 @@ export type Database = {
         }
         Relationships: []
       }
+      dx3xb_play_results: {
+        Row: {
+          created_at: string
+          id: string
+          label: string
+          microapp_id: string
+          play_session_id: string | null
+          score: number | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          label: string
+          microapp_id: string
+          play_session_id?: string | null
+          score?: number | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          label?: string
+          microapp_id?: string
+          play_session_id?: string | null
+          score?: number | null
+        }
+        Relationships: []
+      }
       dx3xb_profiles: {
         Row: {
           created_at: string | null
@@ -1013,6 +1188,32 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      dx3xb_recent_plays: {
+        Row: {
+          microapp_id: string
+          played_at: string
+          user_id: string
+        }
+        Insert: {
+          microapp_id: string
+          played_at?: string
+          user_id: string
+        }
+        Update: {
+          microapp_id?: string
+          played_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dx3xb_recent_plays_microapp_id_fkey"
+            columns: ["microapp_id"]
+            isOneToOne: false
+            referencedRelation: "dx3xb_microapps"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       dx3xb_runs: {
         Row: {
@@ -2739,7 +2940,45 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      dx3xb_accept_play_event: {
+        Args: { p_event: string; p_microapp_id: string; p_session_id: string }
+        Returns: boolean
+      }
       dx3xb_bump_play: { Args: { app_slug: string }; Returns: undefined }
+      dx3xb_create_play_session: {
+        Args: {
+          p_expires_at: string
+          p_fingerprint_hash: string
+          p_microapp_id: string
+          p_session_id: string
+        }
+        Returns: boolean
+      }
+      dx3xb_finish_ai_request: {
+        Args: { p_request_id: string; p_status: string; p_user_id: string }
+        Returns: boolean
+      }
+      dx3xb_reserve_ai_request: {
+        Args: {
+          p_app_limit?: number
+          p_daily_limit: number
+          p_input_hash: string
+          p_microapp_id?: string
+          p_request_id: string
+          p_scope: string
+          p_user_id: string
+        }
+        Returns: Json
+      }
+      dx3xb_save_play_result: {
+        Args: {
+          p_label: string
+          p_microapp_id: string
+          p_score: number
+          p_session_id: string
+        }
+        Returns: boolean
+      }
       match_memories: {
         Args: {
           filter_user_id?: string
@@ -2907,6 +3146,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {},
   },
