@@ -1,13 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createHmac } from "node:crypto";
 import { readJson, tooManyRequests } from "@/lib/request-guards";
 import { getServiceClient } from "@/lib/supabase";
+import { requestFingerprint, verifyPlayToken } from "@/lib/play-session";
 
 export const runtime = "nodejs";
 
 const EVENTS = new Set([
   "view",
-  "start",
   "complete",
   "share",
   "creator_link_click",
@@ -20,21 +19,13 @@ function cleanSlug(value: string) {
   return value.replace(/[^a-z0-9_-]/gi, "").slice(0, 32);
 }
 
-function sessionId(req: NextRequest, event: string) {
-  const ua = req.headers.get("user-agent") || "";
-  const ip = req.headers.get("x-forwarded-for")?.split(",")[0] || req.headers.get("x-real-ip") || "";
-  const secret = process.env.EVENT_HASH_SECRET || process.env.SUPABASE_SERVICE_KEY || "dx3xb-events";
-  const digest = createHmac("sha256", secret).update(`${ip}:${ua}`.slice(0, 180)).digest("base64url").slice(0, 40);
-  return CREATOR_EVENTS.has(event) ? `${event}:${digest}`.slice(0, 64) : digest;
-}
-
 export async function POST(req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
   if (tooManyRequests(req, "microapp:event", 120, 60_000)) {
     return NextResponse.json({ ok: false, error: "rate_limited" }, { status: 429 });
   }
   const { slug: rawSlug } = await params;
   const slug = cleanSlug(rawSlug);
-  const parsed = await readJson<{ event?: string }>(req, 512);
+  const parsed = await readJson<{ event?: string; playToken?: string }>(req, 1024);
   if (!parsed.ok) return parsed.response;
   const event = parsed.value.event;
   if (!slug || typeof event !== "string" || !EVENTS.has(event)) {
@@ -52,13 +43,24 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ slu
     if (appError) throw appError;
     if (!app) return NextResponse.json({ ok: false, error: "not_found" }, { status: 404 });
 
-    // The existing database constraint accepts the original event enum only.
-    // Creator events stay distinguishable by the session prefix until the analytics table is migrated.
+    if (event === "complete" || event === "share") {
+      const play = verifyPlayToken(parsed.value.playToken);
+      if (!play || play.app !== app.id) return NextResponse.json({ ok: false, error: "invalid_play_session" }, { status: 401 });
+      const { data: accepted, error } = await (supabase as any).rpc("dx3xb_accept_play_event", {
+        p_session_id: play.sid,
+        p_microapp_id: app.id,
+        p_event: event,
+      });
+      if (error) throw error;
+      if (!accepted) return NextResponse.json({ ok: false, error: "invalid_play_session" }, { status: 401 });
+      return NextResponse.json({ ok: true });
+    }
+
     const storedEvent = CREATOR_EVENTS.has(event) ? "view" : event;
     const { error } = await (supabase as any).from("dx3xb_microapp_events").insert({
       microapp_id: app.id,
       event: storedEvent,
-      session_id: sessionId(req, event),
+      session_id: CREATOR_EVENTS.has(event) ? `${event}:${requestFingerprint(req)}`.slice(0, 64) : requestFingerprint(req).slice(0, 64),
     });
     if (error) throw error;
     return NextResponse.json({ ok: true });

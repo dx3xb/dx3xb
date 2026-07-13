@@ -224,23 +224,66 @@ export async function bumpPlay(slug: string) {
   }
 }
 
+export async function startPlaySession(slug: string): Promise<string | null> {
+  try {
+    const res = await fetch(`/api/microapps/${encodeURIComponent(slug)}/session`, { method: "POST" });
+    const body = await res.json().catch(() => null);
+    return res.ok && typeof body?.token === "string" ? body.token : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function reportMicroapp(id: string, reason: string) {
   try {
-    await dx3xb().from("dx3xb_microapp_reports").insert({ microapp_id: id, reason: reason.slice(0, 200) });
+    await fetch(`/api/microapps/${encodeURIComponent(id)}/report`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ reason: reason.slice(0, 200) }),
+    });
   } catch {
     /* ignore */
   }
 }
 
-export async function trackMicroappEvent(slug: string, event: MicroEvent) {
+export async function trackMicroappEvent(slug: string, event: MicroEvent, playToken?: string | null) {
   try {
     await fetch(`/api/microapps/${encodeURIComponent(slug)}/events`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ event }),
+      body: JSON.stringify({ event, ...(playToken ? { playToken } : {}) }),
       keepalive: true,
     });
   } catch {
     /* analytics failure must not affect play */
   }
+}
+
+async function registeredUserId() {
+  const client = dx3xb();
+  const { data } = await client.auth.getUser();
+  return data.user && !data.user.is_anonymous ? data.user.id : null;
+}
+
+export async function favoriteState(microappId: string): Promise<boolean> {
+  const userId = await registeredUserId();
+  if (!userId) return false;
+  const { data } = await dx3xb().from("dx3xb_microapp_favorites").select("microapp_id").eq("user_id", userId).eq("microapp_id", microappId).maybeSingle();
+  return Boolean(data);
+}
+
+export async function setFavorite(microappId: string, active: boolean): Promise<boolean> {
+  const userId = await registeredUserId();
+  if (!userId) return false;
+  const query = active
+    ? dx3xb().from("dx3xb_microapp_favorites").upsert({ user_id: userId, microapp_id: microappId })
+    : dx3xb().from("dx3xb_microapp_favorites").delete().eq("user_id", userId).eq("microapp_id", microappId);
+  const { error } = await query;
+  return !error;
+}
+
+export async function rememberRecentPlay(microappId: string) {
+  const userId = await registeredUserId();
+  if (!userId) return;
+  await dx3xb().from("dx3xb_recent_plays").upsert({ user_id: userId, microapp_id: microappId, played_at: new Date().toISOString() });
 }

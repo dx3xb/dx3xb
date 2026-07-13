@@ -155,10 +155,63 @@ export function buildWorkshopSrcDoc(config: WorkshopConfig) {
   try{Object.defineProperty(navigator,'sendBeacon',{value:undefined,writable:false,configurable:false})}catch(_){}
   document.addEventListener('click',function(event){var node=event.target;while(node&&node.nodeType===1){if(node.tagName==='A'){event.preventDefault();return}node=node.parentElement}},true);
   document.addEventListener('submit',function(event){event.preventDefault()},true);
+  var started=false;function reportStart(){if(started)return;started=true;try{parent.postMessage({type:'dx3xb-workshop-start'},'*')}catch(_){}}
+  document.addEventListener('pointerdown',reportStart,{capture:true,once:true});
+  document.addEventListener('keydown',reportStart,{capture:true,once:true});
 })();
 </script><script>
 try{
 ${safeJs}
+requestAnimationFrame(function(){requestAnimationFrame(function(){
+  var root=document.documentElement,body=document.body;
+  var overflowX=Math.max(root.scrollWidth,body.scrollWidth)-root.clientWidth;
+  var overflowY=Math.max(root.scrollHeight,body.scrollHeight)-root.clientHeight;
+  try{parent.postMessage({type:'dx3xb-workshop-ready',overflowX:overflowX,overflowY:overflowY},'*')}catch(_){}
+})});
 }catch(e){window.__dx3xbReportError(e)}
 </script></body></html>`;
+}
+
+export type WorkshopCheck = { ok: boolean; viewport?: "desktop" | "mobile"; reason?: "runtime" | "overflow" | "timeout" };
+
+export async function checkWorkshopPlayability(config: WorkshopConfig): Promise<WorkshopCheck> {
+  if (typeof document === "undefined") return { ok: false, reason: "runtime" };
+  const srcDoc = buildWorkshopSrcDoc(config);
+  const viewports = [
+    { name: "desktop" as const, width: 960, height: 640 },
+    { name: "mobile" as const, width: 390, height: 640 },
+  ];
+
+  for (const viewport of viewports) {
+    const result = await new Promise<WorkshopCheck>((resolve) => {
+      const frame = document.createElement("iframe");
+      frame.sandbox.add("allow-scripts");
+      frame.setAttribute("aria-hidden", "true");
+      frame.style.cssText = `position:fixed;left:-10000px;top:0;width:${viewport.width}px;height:${viewport.height}px;border:0;visibility:hidden`;
+      let settled = false;
+      const finish = (value: WorkshopCheck) => {
+        if (settled) return;
+        settled = true;
+        window.clearTimeout(timer);
+        window.removeEventListener("message", onMessage);
+        frame.remove();
+        resolve(value);
+      };
+      const onMessage = (event: MessageEvent) => {
+        if (event.source !== frame.contentWindow) return;
+        const data = event.data as { type?: string; overflowX?: number; overflowY?: number };
+        if (data?.type === "dx3xb-workshop-error") finish({ ok: false, viewport: viewport.name, reason: "runtime" });
+        if (data?.type === "dx3xb-workshop-ready") {
+          const overflowing = Number(data.overflowX || 0) > 2 || Number(data.overflowY || 0) > 2;
+          finish(overflowing ? { ok: false, viewport: viewport.name, reason: "overflow" } : { ok: true });
+        }
+      };
+      const timer = window.setTimeout(() => finish({ ok: false, viewport: viewport.name, reason: "timeout" }), 5000);
+      window.addEventListener("message", onMessage);
+      document.body.appendChild(frame);
+      frame.srcdoc = srcDoc;
+    });
+    if (!result.ok) return result;
+  }
+  return { ok: true };
 }

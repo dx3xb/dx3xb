@@ -5,7 +5,7 @@ import { regFor } from "../../_mt/registry";
 import { MicroThemeShell } from "../../_mt/micro-shell";
 import { CommunityGameCard, CreatorLink } from "../../_mt/community-card";
 import { applyAdvancedConfig, extractMicroMeta, stripMicroMeta, type MicroEvent } from "../../_mt/micro-meta";
-import { getMicroappBySlug, bumpPlay, reportMicroapp, trackMicroappEvent, TEMPLATE_META, type Microapp } from "../../dx3xb-apps";
+import { favoriteState, getMicroappBySlug, rememberRecentPlay, reportMicroapp, setFavorite, startPlaySession, trackMicroappEvent, TEMPLATE_META, type Microapp } from "../../dx3xb-apps";
 
 type Lang = "zh" | "en";
 function initialLang(): Lang {
@@ -17,8 +17,8 @@ function initialLang(): Lang {
 }
 
 const C = {
-  zh: { back: "← dx3xb", langBtn: "EN", loading: "加载中…", notfound: "这个微应用不存在或已下架。", explore: "去 dx3xb 玩玩", report: "举报", reported: "已举报，谢谢", make: "我也做一个 →", more: "通关了，再玩玩这位创作者的作品", profile: "查看创作者空间" },
-  en: { back: "← dx3xb", langBtn: "中", loading: "Loading…", notfound: "This micro-app doesn't exist or was removed.", explore: "Explore dx3xb", report: "Report", reported: "Reported, thanks", make: "Make your own →", more: "Nice run. Play more from this creator", profile: "View creator space" },
+  zh: { back: "← dx3xb", langBtn: "EN", loading: "加载中…", notfound: "这个微应用不存在或已下架。", explore: "去 dx3xb 玩玩", report: "举报", reported: "已举报，谢谢", make: "我也做一个 →", more: "通关了，再玩玩这位创作者的作品", profile: "查看创作者空间", favorite: "收藏", favorited: "已收藏" },
+  en: { back: "← dx3xb", langBtn: "中", loading: "Loading…", notfound: "This micro-app doesn't exist or was removed.", explore: "Explore dx3xb", report: "Report", reported: "Reported, thanks", make: "Make your own →", more: "Nice run. Play more from this creator", profile: "View creator space", favorite: "Favorite", favorited: "Favorited" },
 };
 
 export function RunnerClient({ slug }: { slug: string }) {
@@ -29,7 +29,10 @@ export function RunnerClient({ slug }: { slug: string }) {
   const [completed, setCompleted] = useState(false);
   const [timeUp, setTimeUp] = useState(false);
   const [started, setStarted] = useState(false);
+  const [favorite, setFavoriteState] = useState(false);
   const sent = useRef<Partial<Record<MicroEvent, boolean>>>({});
+  const playToken = useRef<string | null>(null);
+  const playSession = useRef<Promise<string | null> | null>(null);
   const t = C[lang];
 
   function toggleLang() {
@@ -52,24 +55,37 @@ export function RunnerClient({ slug }: { slug: string }) {
       setApp(a);
       setLoaded(true);
       if (a) {
-        void bumpPlay(slug);
         void trackMicroappEvent(slug, "view");
+        void favoriteState(a.id).then(setFavoriteState);
       }
     })();
   }, [slug]);
 
+  const beginPlay = useCallback(() => {
+    setStarted(true);
+    if (!playSession.current) {
+      if (app) void rememberRecentPlay(app.id);
+      playSession.current = startPlaySession(slug).then((token) => {
+        playToken.current = token;
+        return token;
+      });
+    }
+    return playSession.current;
+  }, [app, slug]);
+
   const sendEvent = useCallback(
-    (event: MicroEvent) => {
+    async (event: MicroEvent) => {
       if (sent.current[event]) return;
       sent.current[event] = true;
-      void trackMicroappEvent(slug, event);
+      const token = event === "complete" || event === "share" ? await (playSession.current ?? Promise.resolve(playToken.current)) : null;
+      await trackMicroappEvent(slug, event, token);
     },
     [slug],
   );
 
   const complete = useCallback(() => {
     setCompleted(true);
-    sendEvent("complete");
+    void sendEvent("complete");
   }, [sendEvent]);
 
   // config 派生量必须 memo 锁定身份：否则任何父级重渲染（如完成时 setCompleted）
@@ -124,11 +140,27 @@ export function RunnerClient({ slug }: { slug: string }) {
                   lang={lang}
                   advanced={meta.advanced}
                   timeUp={timeUp}
-                  onRestart={() => { setCompleted(false); setTimeUp(false); }}
-                  onResult={(r) => { void fetch(`/api/microapps/${encodeURIComponent(app.id)}/results`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(r) }).catch(() => {}); }}
-                  onStart={() => { setStarted(true); sendEvent("start"); }}
+                  onRestart={() => {
+                    setCompleted(false);
+                    setTimeUp(false);
+                    setStarted(false);
+                    playToken.current = null;
+                    playSession.current = null;
+                    sent.current.complete = false;
+                    sent.current.share = false;
+                  }}
+                  onResult={(r) => { void (async () => {
+                    const token = await (playSession.current ?? Promise.resolve(playToken.current));
+                    if (!token) return;
+                    await fetch(`/api/microapps/${encodeURIComponent(app.id)}/results`, {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ ...r, playToken: token }),
+                    });
+                  })().catch(() => {}); }}
+                  onStart={() => { void beginPlay(); }}
                   onComplete={complete}
-                  onShare={() => sendEvent("share")}
+                  onShare={() => { void sendEvent("share"); }}
                 />
               </MicroThemeShell>
             );
@@ -150,6 +182,11 @@ export function RunnerClient({ slug }: { slug: string }) {
             </section>
           )}
           <div className="ufoot">
+            <button className="ufavorite" aria-pressed={favorite} onClick={async () => {
+              const next = !favorite;
+              if (await setFavorite(app.id, next)) setFavoriteState(next);
+              else window.location.href = `/me?lang=${lang}`;
+            }}>{favorite ? `★ ${t.favorited}` : `☆ ${t.favorite}`}</button>
             <button
               className="ulink"
               onClick={async () => {
@@ -182,6 +219,7 @@ const STYLE = `
 .creator-finish h2 { margin: 0; font-family: var(--font-press), monospace; font-size: 12px; line-height: 1.5; }
 .creator-more-grid { grid-template-columns: repeat(auto-fill,minmax(180px,1fr)); }
 .ufoot { margin-top: 18px; text-align: center; }
+.ufavorite { margin-right: 14px; background: var(--yellow); border: 2px solid var(--line); color: var(--ink); padding: 7px 10px; font-family: inherit; font-size: 15px; cursor: pointer; }
 .ulink { background: none; border: none; color: var(--ink-soft); font-family: inherit; font-size: 15px; cursor: pointer; text-decoration: underline; }
 @media (max-width: 560px) {
   .creator-finish-head { align-items: flex-start; flex-direction: column; }

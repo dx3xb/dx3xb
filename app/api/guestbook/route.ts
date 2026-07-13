@@ -41,9 +41,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: false, error: "rate_limited" }, { status: 429 });
   }
 
-  const parsed = await readJson<{ name?: string; message?: string; parent_id?: number }>(request);
+  const parsed = await readJson<{ name?: string; message?: string; parent_id?: number; website?: string }>(request);
   if (!parsed.ok) return parsed.response;
   const body = parsed.value;
+  if (body.website) return NextResponse.json({ ok: true });
 
   const name = cleanText(body.name, 24);
   const message = cleanText(body.message, 280);

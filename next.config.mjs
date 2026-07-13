@@ -21,6 +21,10 @@ const nextConfig = {
           { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
           { key: "X-DNS-Prefetch-Control", value: "off" },
           { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
+          {
+            key: "Content-Security-Policy",
+            value: "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https://lesowftrotytmlvdyilc.supabase.co; connect-src 'self' https://lesowftrotytmlvdyilc.supabase.co; frame-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests",
+          },
         ],
       },
       {

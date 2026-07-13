@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { CommunityGameCard } from "../../_mt/community-card";
 import type { PublicCreatorPage } from "../../_mt/creator-types";
 import { trackMicroappEvent } from "../../dx3xb-apps";
+import { dx3xb } from "../../dx3xb-trio";
 
 type Lang = "zh" | "en";
 
@@ -20,6 +21,8 @@ const C = {
     popular: "热门",
     games: "TA 的游戏",
     empty: "还没有公开作品。",
+    follow: "关注",
+    following: "已关注",
   },
   en: {
     back: "← dx3xb",
@@ -33,11 +36,14 @@ const C = {
     popular: "POPULAR",
     games: "CREATIONS",
     empty: "No public games yet.",
+    follow: "Follow",
+    following: "Following",
   },
 } as const;
 
 export function CreatorProfileClient({ data, lang }: { data: PublicCreatorPage; lang: Lang }) {
   const [sort, setSort] = useState<"latest" | "popular">("latest");
+  const [following, setFollowing] = useState(false);
   const t = C[lang];
   const apps = useMemo(() => {
     const next = [...data.apps];
@@ -52,6 +58,29 @@ export function CreatorProfileClient({ data, lang }: { data: PublicCreatorPage; 
     const anchor = data.apps[0]?.slug;
     if (anchor) void trackMicroappEvent(anchor, "creator_profile_view");
   }, [data.apps]);
+
+  useEffect(() => {
+    void (async () => {
+      const { data: session } = await dx3xb().auth.getSession();
+      const token = session.session?.access_token;
+      if (!token) return;
+      const res = await fetch(`/api/social/follow?handle=${encodeURIComponent(data.creator.handle)}`, { headers: { Authorization: `Bearer ${token}` } });
+      const body = await res.json().catch(() => null);
+      if (res.ok) setFollowing(Boolean(body?.following));
+    })();
+  }, [data.creator.handle]);
+
+  async function toggleFollow() {
+    const { data: session } = await dx3xb().auth.getSession();
+    const token = session.session?.access_token;
+    if (!token) {
+      window.location.href = `/me?lang=${lang}`;
+      return;
+    }
+    const res = await fetch("/api/social/follow", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify({ handle: data.creator.handle, active: !following }) });
+    if (res.ok) setFollowing(!following);
+    else if (res.status === 401) window.location.href = `/me?lang=${lang}`;
+  }
 
   return (
     <main className="creator-page">
@@ -76,6 +105,7 @@ export function CreatorProfileClient({ data, lang }: { data: PublicCreatorPage; 
         <div className="creator-identity">
           <span>{t.space}</span>
           <h1>@{data.creator.handle}</h1>
+          <button className="creator-follow" aria-pressed={following} onClick={toggleFollow}>{following ? `✓ ${t.following}` : `+ ${t.follow}`}</button>
         </div>
         <div className="creator-stats">
           <div><b>{data.apps.length}</b><span>{t.works}</span></div>
@@ -117,6 +147,7 @@ const STYLE = `
 .creator-identity { min-width: 0; }
 .creator-identity > span { font-family: var(--font-press), "FpxCJK", monospace; font-size: 10px; color: var(--coral); }
 .creator-identity h1 { margin: 8px 0 0; font-size: 36px; line-height: 1.15; overflow-wrap: anywhere; }
+.creator-follow { margin-top: 12px; padding: 8px 12px; border: 3px solid var(--line); background: var(--teal); color: #fff; box-shadow: 3px 3px 0 var(--ink); font-family: var(--font-press), "FpxCJK", monospace; font-size: 9px; cursor: pointer; }
 .creator-stats { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); border: 3px solid var(--line); background: #fff; }
 .creator-stats > div { min-width: 0; padding: 12px; display: grid; gap: 3px; text-align: center; }
 .creator-stats > div + div { border-left: 3px solid var(--line); }

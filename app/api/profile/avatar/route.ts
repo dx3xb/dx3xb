@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServiceClient } from "@/lib/supabase";
+import sharp from "sharp";
 
 export const runtime = "nodejs";
 
 const BUCKET = "dx3xb-avatars";
 const MAX_BYTES = 2 * 1024 * 1024;
-const ALLOWED_TYPES = new Set(["image/png", "image/jpeg", "image/webp", "image/gif"]);
+const ALLOWED_FORMATS = new Set(["png", "jpeg", "webp", "gif"]);
 
 function safeBearer(req: NextRequest) {
   return (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "").trim();
@@ -21,20 +22,18 @@ async function ensurePublicBucket() {
     const { error } = await supabase.storage.createBucket(BUCKET, {
       public: true,
       fileSizeLimit: MAX_BYTES,
-      allowedMimeTypes: Array.from(ALLOWED_TYPES),
+      allowedMimeTypes: ["image/webp"],
     });
     if (error) throw error;
     return;
   }
 
-  if (!bucket.public) {
-    const { error } = await supabase.storage.updateBucket(BUCKET, {
-      public: true,
-      fileSizeLimit: MAX_BYTES,
-      allowedMimeTypes: Array.from(ALLOWED_TYPES),
-    });
-    if (error) throw error;
-  }
+  const { error } = await supabase.storage.updateBucket(BUCKET, {
+    public: true,
+    fileSizeLimit: MAX_BYTES,
+    allowedMimeTypes: ["image/webp"],
+  });
+  if (error) throw error;
 }
 
 export async function POST(req: NextRequest) {
@@ -53,19 +52,31 @@ export async function POST(req: NextRequest) {
     if (!(file instanceof File)) {
       return NextResponse.json({ ok: false, error: "missing_file" }, { status: 400 });
     }
-    if (!ALLOWED_TYPES.has(file.type)) {
-      return NextResponse.json({ ok: false, error: "bad_file_type" }, { status: 400 });
-    }
     if (file.size <= 0 || file.size > MAX_BYTES) {
       return NextResponse.json({ ok: false, error: "file_too_large" }, { status: 400 });
     }
 
     await ensurePublicBucket();
 
-    const bytes = await file.arrayBuffer();
+    const input = Buffer.from(await file.arrayBuffer());
+    let bytes: Buffer;
+    try {
+      const image = sharp(input, { animated: false, limitInputPixels: 25_000_000, failOn: "warning" });
+      const metadata = await image.metadata();
+      if (!metadata.format || !ALLOWED_FORMATS.has(metadata.format) || !metadata.width || !metadata.height) {
+        return NextResponse.json({ ok: false, error: "bad_file_type" }, { status: 400 });
+      }
+      bytes = await image
+        .rotate()
+        .resize(512, 512, { fit: "cover", withoutEnlargement: true })
+        .webp({ quality: 82, effort: 4 })
+        .toBuffer();
+    } catch {
+      return NextResponse.json({ ok: false, error: "bad_file_type" }, { status: 400 });
+    }
     const path = `${data.user.id}/avatar`;
     const { error: uploadError } = await supabase.storage.from(BUCKET).upload(path, bytes, {
-      contentType: file.type,
+      contentType: "image/webp",
       upsert: true,
       cacheControl: "3600",
     });

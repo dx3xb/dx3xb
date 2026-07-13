@@ -18,6 +18,7 @@ import {
 } from "../../_mt/micro-meta";
 import { getMicroapp, updateMicroapp, deleteMicroapp, type Microapp, type MicroStatus } from "../../dx3xb-apps";
 import { dx3xb, getEmail, getProfileHandle } from "../../dx3xb-trio";
+import { checkWorkshopPlayability, type WorkshopConfig } from "../../_mt/workshop-spec";
 
 type Lang = "zh" | "en";
 function initialLang(): Lang {
@@ -88,6 +89,7 @@ export default function EditorPage() {
   const [aiPrompt, setAiPrompt] = useState("");
   const [aiBusy, setAiBusy] = useState(false);
   const [aiError, setAiError] = useState("");
+  const [publishCheck, setPublishCheck] = useState<"idle" | "checking" | "failed">("idle");
   const [email, setEmail] = useState<string | null>(null);
   const [creatorHandle, setCreatorHandle] = useState<string | null>(null);
   const t = C[lang];
@@ -133,6 +135,16 @@ export default function EditorPage() {
   }
   async function save(newStatus?: MicroStatus) {
     if (cfg == null) return;
+    if (tpl === "workshop" && newStatus === "pending") {
+      setPublishCheck("checking");
+      const result = await checkWorkshopPlayability(regFor(tpl).validate(cfg) as WorkshopConfig);
+      if (!result.ok) {
+        setPublishCheck("failed");
+        setSaveState("idle");
+        return;
+      }
+      setPublishCheck("idle");
+    }
     setSaveState("saving");
     const nextStatus = newStatus ?? (status === "public" ? "pending" : undefined);
     const ok = await updateMicroapp(id, { title, config: attachMicroMeta(regFor(tpl).validate(cfg), { ...meta, aiPrompt }), status: nextStatus });
@@ -251,12 +263,13 @@ export default function EditorPage() {
           <div className="esave">
             <button className="ebig" onClick={() => save()}>{saveState === "saving" ? t.saving : saveState === "saved" ? t.saved : t.save}</button>
             <button className="ebig teal" disabled={!publishable} onClick={() => save("unlisted")}>{t.makeLink}</button>
-            <button className="ebig coral" disabled={!publishable || !email || !creatorHandle} onClick={() => save("pending")}>
-              {status === "pending" || status === "public" ? t.submitted : t.submit}
+            <button className="ebig coral" disabled={!publishable || !email || !creatorHandle || publishCheck === "checking"} onClick={() => save("pending")}>
+              {publishCheck === "checking" ? (lang === "zh" ? "正在检查可玩性…" : "Checking playability…") : status === "pending" || status === "public" ? t.submitted : t.submit}
             </button>
             <button className="ebig ghost" onClick={remove}>{t.del}</button>
           </div>
           {!publishable && <p className="ewarn">{t.needPublishable}</p>}
+          {publishCheck === "failed" && <p className="ewarn" role="alert">{lang === "zh" ? "桌面或手机预览未能正常运行，请让 AI 修复画面溢出或脚本错误后再提交。" : "The desktop or mobile preview failed. Ask AI to fix overflow or script errors before submitting."}</p>}
           {publishable && (!email || !creatorHandle) && (
             <p className="ewarn">{t.needEmail} <a href={`/me?lang=${lang}`}>{t.goClaim}</a></p>
           )}

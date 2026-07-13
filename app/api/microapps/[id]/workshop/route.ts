@@ -3,6 +3,7 @@ import { cleanText, readJson, tooManyRequests } from "@/lib/request-guards";
 import { getServiceClient } from "@/lib/supabase";
 import { WORKSHOP_CODE_LIMITS, workshopJsPolicyIssue, wsValidate } from "@/app/_mt/workshop-spec";
 import { aiInputHash, aiRequestId, aiReservationResponse, finishAiRequest, reserveAiRequest } from "@/lib/ai-usage";
+import { logGeminiCall } from "@/lib/ai-observability";
 
 export const runtime = "nodejs";
 
@@ -85,11 +86,13 @@ async function generateWorkshop({
   lang,
   title,
   current,
+  requestId,
 }: {
   prompt: string;
   lang: "zh" | "en";
   title: string;
   current: ReturnType<typeof wsValidate>;
+  requestId: string;
 }) {
   const key = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY;
   if (!key) return localPlayableWorkshop(prompt, lang, title);
@@ -128,7 +131,10 @@ CONSTRAINTS:
 - Language for title/intro/note and all on-screen text: ${lang}.`;
   const callGemini = async (compact = false) => {
     const instruction = buildInstruction(compact);
-    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
+    const startedAt = Date.now();
+    let res: Response;
+    try {
+      res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
     method: "POST",
     headers: { "Content-Type": "application/json", "x-goog-api-key": key },
     signal: AbortSignal.timeout(MODEL_TIMEOUT_MS),
@@ -139,8 +145,13 @@ CONSTRAINTS:
       }],
       generationConfig: { temperature: compact ? 0.55 : 0.7, responseMimeType: "application/json", maxOutputTokens: compact ? 16384 : 24576 },
     }),
-  });
+      });
+    } catch (error) {
+      logGeminiCall({ requestId, route: "workshop", model, attempt: compact ? 2 : 1, durationMs: Date.now() - startedAt, status: 0, outcome: error instanceof DOMException && error.name === "TimeoutError" ? "timeout" : "network_error" });
+      return null;
+    }
     if (!res.ok) {
+      logGeminiCall({ requestId, route: "workshop", model, attempt: compact ? 2 : 1, durationMs: Date.now() - startedAt, status: res.status, outcome: "http_error" });
       console.warn("workshop gemini http failed", { status: res.status });
       return null;
     }
@@ -149,14 +160,17 @@ CONSTRAINTS:
     const text = candidate?.content?.parts?.map((p: { text?: string }) => p.text || "").join("") || "";
     const draft = parseJson(text);
     if (!draft) {
+      logGeminiCall({ requestId, route: "workshop", model, attempt: compact ? 2 : 1, durationMs: Date.now() - startedAt, status: res.status, outcome: "invalid_json", usage: data?.usageMetadata });
       console.warn("workshop gemini parse failed", { finishReason: candidate?.finishReason, textLength: text.length, compact });
       return null;
     }
     const checked = validateGeneratedDraft(draft);
     if (!checked.draft) {
+      logGeminiCall({ requestId, route: "workshop", model, attempt: compact ? 2 : 1, durationMs: Date.now() - startedAt, status: res.status, outcome: checked.reason, usage: data?.usageMetadata });
       console.warn("workshop gemini draft rejected", { finishReason: candidate?.finishReason, textLength: text.length, compact, reason: checked.reason });
       return null;
     }
+    logGeminiCall({ requestId, route: "workshop", model, attempt: compact ? 2 : 1, durationMs: Date.now() - startedAt, status: res.status, outcome: "success", usage: data?.usageMetadata });
     return { ...checked.draft, source: `gemini:${model}` };
   };
   return (await callGemini(false)) ?? (await callGemini(true)) ?? localPlayableWorkshop(prompt, lang, title);
@@ -215,7 +229,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     try {
       const nextCount = reservation.appUsed ?? 10;
       const current = wsValidate({ ...(app.config as Record<string, unknown>), turnsUsed: Math.max(0, nextCount - 1) });
-      const generated = await generateWorkshop({ prompt, lang, title: title || String(app.title || ""), current });
+      const generated = await generateWorkshop({ prompt, lang, title: title || String(app.title || ""), current, requestId });
       if (!generated?.html || !generated?.css || !generated?.js) return NextResponse.json({ ok: false, error: "generation_failed" }, { status: 502 });
 
       const nextConfig = wsValidate({

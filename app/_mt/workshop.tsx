@@ -99,14 +99,12 @@ export function WorkshopPlayer({
   const srcDoc = useMemo(() => buildWorkshopSrcDoc(cfg), [cfg]);
 
   useEffect(() => {
-    onStart?.();
-  }, [onStart]);
-
-  useEffect(() => {
     function onMessage(event: MessageEvent) {
       if (event.source !== frameRef.current?.contentWindow) return;
       const type = (event.data as { type?: string })?.type;
-      if (type === "dx3xb-workshop-complete") {
+      if (type === "dx3xb-workshop-start") {
+        onStart?.();
+      } else if (type === "dx3xb-workshop-complete") {
         onComplete?.();
       } else if (type === "dx3xb-workshop-error") {
         setRuntimeError(true);
@@ -114,7 +112,7 @@ export function WorkshopPlayer({
     }
     window.addEventListener("message", onMessage);
     return () => window.removeEventListener("message", onMessage);
-  }, [onComplete]);
+  }, [onComplete, onStart]);
 
   useEffect(() => {
     setRuntimeError(false);
@@ -122,9 +120,14 @@ export function WorkshopPlayer({
 
   async function share() {
     if (preview) return;
+    const url = slug ? `https://dx3xb.com/u/${slug}` : "https://dx3xb.com";
     try {
       onShare?.();
-      await navigator.clipboard.writeText(`${title || "dx3xb AI game"}\n${slug ? `https://dx3xb.com/u/${slug}` : "https://dx3xb.com"}`);
+      if (navigator.share) {
+        await navigator.share({ title: title || "dx3xb AI game", url });
+        return;
+      }
+      await navigator.clipboard.writeText(`${title || "dx3xb AI game"}\n${url}`);
       setCopied(true);
       window.setTimeout(() => setCopied(false), 1800);
     } catch {
@@ -170,6 +173,7 @@ export function WorkshopEditor({
   const cfg = wsValidate(config);
   const [prompt, setPrompt] = useState("");
   const [busy, setBusy] = useState(false);
+  const [generationStage, setGenerationStage] = useState<"building" | "validating">("building");
   const [err, setErr] = useState("");
   const [nonce, setNonce] = useState(0);
   const [runtimeError, setRuntimeError] = useState(false);
@@ -196,6 +200,15 @@ export function WorkshopEditor({
   useEffect(() => {
     setRuntimeError(false);
   }, [nonce, srcDoc]);
+
+  useEffect(() => {
+    if (!busy) {
+      setGenerationStage("building");
+      return;
+    }
+    const timer = window.setTimeout(() => setGenerationStage("validating"), 12000);
+    return () => window.clearTimeout(timer);
+  }, [busy]);
 
   async function askAi() {
     if (!appId || !prompt.trim() || busy || left <= 0) return;
@@ -265,7 +278,7 @@ export function WorkshopEditor({
             {busy && (
               <div className="ws-msg ai pending">
                 <span className="ws-msg-who">{t.ai}</span>
-                <p>{t.thinking}<i className="ws-dots"><b /><b /><b /></i></p>
+                <p role="status" aria-live="polite">{generationStage === "validating" ? (lang === "zh" ? "AI 正在检查脚本与画面适配…" : "AI is validating the script and layout…") : t.thinking}<i className="ws-dots"><b /><b /><b /></i></p>
               </div>
             )}
           </div>

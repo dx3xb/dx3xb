@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { cleanText, readJson, tooManyRequests } from "@/lib/request-guards";
 import { getServiceClient } from "@/lib/supabase";
 import { aiInputHash, aiRequestId, aiReservationResponse, finishAiRequest, reserveAiRequest } from "@/lib/ai-usage";
+import { logGeminiCall } from "@/lib/ai-observability";
 
 export const runtime = "nodejs";
 
@@ -130,7 +131,7 @@ function parseJsonDraft(content: unknown) {
   return JSON.parse(json) as { title?: string; config?: unknown; meta?: unknown };
 }
 
-async function geminiDraft(template: string, prompt: string, lang: "zh" | "en") {
+async function geminiDraft(template: string, prompt: string, lang: "zh" | "en", requestId: string) {
   const key = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY;
   if (!key) return null;
   const model = process.env.GEMINI_MODEL || "gemini-3.5-flash";
@@ -142,7 +143,10 @@ For thisorthat use {intro,pairs:[{a,b,mine}]}.
 For higherlower use {intro,unit,items:[{label,value}]}.
 For madlibs use {intro,story} with blanks like {地点}.
 For escape use {intro,riddles:[{q,answer,hint}]}.`;
-  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
+  const startedAt = Date.now();
+  let res: Response;
+  try {
+    res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
     method: "POST",
     headers: { "Content-Type": "application/json", "x-goog-api-key": key },
     signal: AbortSignal.timeout(MODEL_TIMEOUT_MS),
@@ -153,11 +157,19 @@ For escape use {intro,riddles:[{q,answer,hint}]}.`;
         responseMimeType: "application/json",
       },
     }),
-  });
-  if (!res.ok) return null;
+    });
+  } catch (error) {
+    logGeminiCall({ requestId, route: "generate", model, attempt: 1, durationMs: Date.now() - startedAt, status: 0, outcome: error instanceof DOMException && error.name === "TimeoutError" ? "timeout" : "network_error" });
+    throw error;
+  }
+  if (!res.ok) {
+    logGeminiCall({ requestId, route: "generate", model, attempt: 1, durationMs: Date.now() - startedAt, status: res.status, outcome: "http_error" });
+    return null;
+  }
   const data = await res.json();
   const text = data?.candidates?.[0]?.content?.parts?.map((p: { text?: string }) => p.text || "").join("");
   const draft = parseJsonDraft(text);
+  logGeminiCall({ requestId, route: "generate", model, attempt: 1, durationMs: Date.now() - startedAt, status: res.status, outcome: draft ? "success" : "invalid_output", usage: data?.usageMetadata });
   return draft ? { ...draft, source: `gemini:${model}` } : null;
 }
 
@@ -186,8 +198,8 @@ Template: ${template}. Language: ${lang}. Make safe, playful content for a no-co
   return draft ? { ...draft, source: `openai:${process.env.OPENAI_MODEL || "gpt-4o-mini"}` } : null;
 }
 
-async function modelDraft(template: string, prompt: string, lang: "zh" | "en") {
-  return (await geminiDraft(template, prompt, lang)) ?? (await openaiDraft(template, prompt, lang));
+async function modelDraft(template: string, prompt: string, lang: "zh" | "en", requestId: string) {
+  return (await geminiDraft(template, prompt, lang, requestId)) ?? (await openaiDraft(template, prompt, lang));
 }
 
 export async function POST(req: NextRequest) {
@@ -223,7 +235,7 @@ export async function POST(req: NextRequest) {
     }
     let succeeded = false;
     try {
-      const draft = (await modelDraft(template, prompt, lang).catch(() => null)) ?? localDraft(template, prompt, lang);
+      const draft = (await modelDraft(template, prompt, lang, requestId).catch(() => null)) ?? localDraft(template, prompt, lang);
       const fallback = localDraft(template, prompt, lang);
       succeeded = true;
       return NextResponse.json({

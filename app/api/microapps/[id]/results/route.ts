@@ -1,23 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cleanText, readJson, tooManyRequests } from "@/lib/request-guards";
 import { getServiceClient } from "@/lib/supabase";
+import { verifyPlayToken } from "@/lib/play-session";
 
 export const runtime = "nodejs";
 
-// 玩家测试结果：只保留 24 小时。无 pg_cron，采用读写双侧惰性清理——
-// 过期行在任何一次写入/读取时被物理删除，且查询侧永远带时间窗过滤。
 const WINDOW = "24 hours";
 
 function cleanId(value: string) {
   return value.replace(/[^a-f0-9-]/gi, "").slice(0, 40);
 }
 
-async function purgeExpired(supabase: ReturnType<typeof getServiceClient>) {
-  const cutoff = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
-  await (supabase as any).from("dx3xb_play_results").delete().lt("created_at", cutoff);
-}
-
-type Body = { label?: string; score?: number };
+type Body = { label?: string; score?: number; playToken?: string };
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   if (tooManyRequests(req, "microapp:result", 30, 60_000)) {
@@ -39,9 +33,16 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const { data: app } = await supabase.from("dx3xb_microapps").select("id").eq("id", id).maybeSingle();
     if (!app) return NextResponse.json({ ok: false, error: "not_found" }, { status: 404 });
 
-    await purgeExpired(supabase);
-    const { error } = await (supabase as any).from("dx3xb_play_results").insert({ microapp_id: id, label, score });
+    const play = verifyPlayToken(parsed.value.playToken);
+    if (!play || play.app !== id) return NextResponse.json({ ok: false, error: "invalid_play_session" }, { status: 401 });
+    const { data: saved, error } = await (supabase as any).rpc("dx3xb_save_play_result", {
+      p_session_id: play.sid,
+      p_microapp_id: id,
+      p_label: label,
+      p_score: score,
+    });
     if (error) throw error;
+    if (!saved) return NextResponse.json({ ok: false, error: "invalid_play_session" }, { status: 401 });
     return NextResponse.json({ ok: true });
   } catch (error) {
     console.error("play result save failed", error);
@@ -67,7 +68,6 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       return NextResponse.json({ ok: false, error: "not_found" }, { status: 404 });
     }
 
-    await purgeExpired(supabase);
     const cutoff = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
     const { data, error } = await (supabase as any)
       .from("dx3xb_play_results")
