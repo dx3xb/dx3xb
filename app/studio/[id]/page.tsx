@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { regFor } from "../../_mt/registry";
 import { SharePoster } from "../../_mt/share-poster";
@@ -96,6 +96,8 @@ export default function EditorPage() {
   const [registerOpen, setRegisterOpen] = useState(false);
   const [registerForm, setRegisterForm] = useState({ handle: "", email: "", password: "" });
   const [registerState, setRegisterState] = useState<"idle" | "busy" | "sent" | "error">("idle");
+  const registerDialogRef = useRef<HTMLElement>(null);
+  const registerTriggerRef = useRef<HTMLButtonElement>(null);
   const t = C[lang];
 
   useEffect(() => {
@@ -130,9 +132,20 @@ export default function EditorPage() {
 
   useEffect(() => {
     if (!registerOpen) return;
-    const close = (event: KeyboardEvent) => { if (event.key === "Escape") setRegisterOpen(false); };
-    window.addEventListener("keydown", close);
-    return () => window.removeEventListener("keydown", close);
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setRegisterOpen(false);
+      if (event.key !== "Tab") return;
+      const items = Array.from(registerDialogRef.current?.querySelectorAll<HTMLElement>('button:not([disabled]),input:not([disabled]),[href],[tabindex]:not([tabindex="-1"])') || []);
+      if (!items.length) return;
+      const first = items[0];
+      const last = items[items.length - 1];
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => { window.removeEventListener("keydown", onKey); document.body.style.overflow = previousOverflow; registerTriggerRef.current?.focus(); };
   }, [registerOpen]);
 
   function toggleLang() {
@@ -311,11 +324,11 @@ export default function EditorPage() {
           {!publishable && <p className="ewarn">{t.needPublishable}</p>}
           {publishCheck === "failed" && <p className="ewarn" role="alert">{lang === "zh" ? "桌面或手机预览未能正常运行，请让 AI 修复画面溢出或脚本错误后再提交。" : "The desktop or mobile preview failed. Ask AI to fix overflow or script errors before submitting."}</p>}
           {publishable && (!email || !creatorHandle) && (
-            <p className="ewarn">{t.needEmail} <button className="elink" onClick={() => setRegisterOpen(true)}>{lang === "zh" ? "在这里注册 →" : "Register here →"}</button></p>
+            <p className="ewarn">{t.needEmail} <button ref={registerTriggerRef} className="elink" onClick={() => setRegisterOpen(true)}>{lang === "zh" ? "在这里注册 →" : "Register here →"}</button></p>
           )}
           {registerOpen && (
             <div className="emodal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setRegisterOpen(false); }}>
-              <section className="emodal" role="dialog" aria-modal="true" aria-labelledby="register-title">
+              <section ref={registerDialogRef} className="emodal" role="dialog" aria-modal="true" aria-labelledby="register-title">
                 <div className="emodal-head"><h2 id="register-title">{lang === "zh" ? "注册并继续发布" : "Register and keep publishing"}</h2><button aria-label={lang === "zh" ? "关闭" : "Close"} onClick={() => setRegisterOpen(false)}>×</button></div>
                 <input autoFocus className="ein" placeholder={lang === "zh" ? "用户名" : "Username"} maxLength={24} value={registerForm.handle} onChange={(e) => setRegisterForm({ ...registerForm, handle: e.target.value })} />
                 <input className="ein" type="email" placeholder={lang === "zh" ? "邮箱" : "Email"} value={registerForm.email} onChange={(e) => setRegisterForm({ ...registerForm, email: e.target.value })} />

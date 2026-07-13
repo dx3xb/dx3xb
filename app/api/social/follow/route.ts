@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { cleanText, readJson, tooManyRequests } from "@/lib/request-guards";
+import { cleanText, readJsonSchema, tooManyRequests } from "@/lib/request-guards";
+import { followBodySchema } from "@/lib/api-schemas";
 import { getServiceClient } from "@/lib/supabase";
 
 export const runtime = "nodejs";
@@ -30,7 +31,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   if (tooManyRequests(req, "social:follow", 20, 60_000)) return NextResponse.json({ ok: false, error: "rate_limited" }, { status: 429 });
-  const parsed = await readJson<{ handle?: string; active?: boolean }>(req, 1024);
+  const parsed = await readJsonSchema(req, followBodySchema, 1024);
   if (!parsed.ok) return parsed.response;
   const ctx = await context(req, cleanText(parsed.value.handle, 24));
   if (!ctx) return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });

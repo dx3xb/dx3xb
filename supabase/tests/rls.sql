@@ -1,0 +1,11 @@
+begin;
+select '1..8';
+select case when to_regclass('public.dx3xb_microapp_favorites') is not null then 'ok 1 - favorites table' else 'not ok 1 - favorites table' end;
+select case when to_regclass('public.dx3xb_recent_plays') is not null then 'ok 2 - recent table' else 'not ok 2 - recent table' end;
+select case when to_regclass('public.dx3xb_creator_notifications') is not null then 'ok 3 - notifications table' else 'not ok 3 - notifications table' end;
+select case when to_regprocedure('public.dx3xb_create_play_session(uuid,uuid,text,timestamptz)') is not null then 'ok 4 - play session function' else 'not ok 4 - play session function' end;
+select case when (select array_agg(policyname::text order by policyname) from pg_policies where schemaname='public' and tablename='dx3xb_microapp_favorites') = array['favorites own'] then 'ok 5 - favorites RLS' else 'not ok 5 - favorites RLS' end;
+select case when (select array_agg(policyname::text order by policyname) from pg_policies where schemaname='public' and tablename='dx3xb_recent_plays') = array['recent own'] then 'ok 6 - recent RLS' else 'not ok 6 - recent RLS' end;
+select case when (select array_agg(policyname::text order by policyname) from pg_policies where schemaname='public' and tablename='dx3xb_creator_notifications') = array['notifications own read','notifications own update'] then 'ok 7 - notifications RLS' else 'not ok 7 - notifications RLS' end;
+select case when not has_function_privilege('anon', 'public.dx3xb_record_funnel_event(text,uuid,uuid,uuid)', 'EXECUTE') then 'ok 8 - funnel RPC denied to anon' else 'not ok 8 - funnel RPC denied to anon' end;
+rollback;

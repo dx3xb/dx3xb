@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requestFingerprint } from "@/lib/play-session";
-import { cleanText, readJson, tooManyRequests } from "@/lib/request-guards";
+import { cleanText, readJsonSchema, tooManyRequests } from "@/lib/request-guards";
+import { reportBodySchema } from "@/lib/api-schemas";
 import { getServiceClient } from "@/lib/supabase";
 
 export const runtime = "nodejs";
@@ -9,12 +10,12 @@ function cleanId(value: string) {
   return value.replace(/[^a-f0-9-]/gi, "").slice(0, 40);
 }
 
-export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function POST(req: NextRequest, { params }: { params: Promise<{ key: string }> }) {
   if (tooManyRequests(req, "microapp:report", 5, 24 * 60 * 60_000)) {
     return NextResponse.json({ ok: false, error: "rate_limited" }, { status: 429 });
   }
-  const id = cleanId((await params).id);
-  const parsed = await readJson<{ reason?: string }>(req, 1024);
+  const id = cleanId((await params).key);
+  const parsed = await readJsonSchema(req, reportBodySchema, 1024);
   if (!parsed.ok) return parsed.response;
   const reason = cleanText(parsed.value.reason, 200) || "user-report";
   if (!id) return NextResponse.json({ ok: false, error: "not_found" }, { status: 404 });

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { cleanText, readJson, tooManyRequests } from "@/lib/request-guards";
+import { cleanText, readJsonSchema, tooManyRequests } from "@/lib/request-guards";
+import { playResultBodySchema } from "@/lib/api-schemas";
 import { getServiceClient } from "@/lib/supabase";
 import { verifyPlayToken } from "@/lib/play-session";
 
@@ -13,18 +14,18 @@ function cleanId(value: string) {
 
 type Body = { label?: string; score?: number; playToken?: string };
 
-export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function POST(req: NextRequest, { params }: { params: Promise<{ key: string }> }) {
   if (tooManyRequests(req, "microapp:result", 30, 60_000)) {
     return NextResponse.json({ ok: false, error: "rate_limited" }, { status: 429 });
   }
-  const parsed = await readJson<Body>(req, 1024);
+  const parsed = await readJsonSchema(req, playResultBodySchema, 1024);
   if (!parsed.ok) return parsed.response;
   const label = cleanText(parsed.value.label, 60);
   const scoreRaw = Number(parsed.value.score);
   const score = Number.isFinite(scoreRaw) ? Math.max(0, Math.min(100, Math.round(scoreRaw))) : null;
   if (!label) return NextResponse.json({ ok: false, error: "bad_request" }, { status: 400 });
 
-  const { id: rawId } = await params;
+  const { key: rawId } = await params;
   const id = cleanId(rawId);
   if (!id) return NextResponse.json({ ok: false, error: "not_found" }, { status: 404 });
 
@@ -35,11 +36,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     const play = verifyPlayToken(parsed.value.playToken);
     if (!play || play.app !== id) return NextResponse.json({ ok: false, error: "invalid_play_session" }, { status: 401 });
-    const { data: saved, error } = await (supabase as any).rpc("dx3xb_save_play_result", {
+    const { data: saved, error } = await supabase.rpc("dx3xb_save_play_result", {
       p_session_id: play.sid,
       p_microapp_id: id,
       p_label: label,
-      p_score: score,
+      p_score: score ?? 0,
     });
     if (error) throw error;
     if (!saved) return NextResponse.json({ ok: false, error: "invalid_play_session" }, { status: 401 });
@@ -50,11 +51,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   }
 }
 
-export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ key: string }> }) {
   const token = req.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
   if (!token) return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
 
-  const { id: rawId } = await params;
+  const { key: rawId } = await params;
   const id = cleanId(rawId);
   if (!id) return NextResponse.json({ ok: false, error: "not_found" }, { status: 404 });
 

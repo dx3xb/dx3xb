@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import type { ZodType } from "zod";
 
 type JsonResult<T> =
   | { ok: true; value: T }
@@ -57,4 +58,14 @@ export async function readJson<T>(req: NextRequest, maxBytes = 4096): Promise<Js
   } catch {
     return { ok: false, response: NextResponse.json({ ok: false, error: "bad_request" }, { status: 400 }) };
   }
+}
+
+export async function readJsonSchema<T>(req: NextRequest, schema: ZodType<T>, maxBytes = 4096): Promise<JsonResult<T>> {
+  const parsed = await readJson<unknown>(req, maxBytes);
+  if (!parsed.ok) return parsed;
+  const result = schema.safeParse(parsed.value);
+  if (!result.success) {
+    return { ok: false, response: NextResponse.json({ ok: false, error: "bad_request" }, { status: 400 }) };
+  }
+  return { ok: true, value: result.data };
 }

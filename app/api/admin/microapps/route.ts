@@ -33,7 +33,7 @@ export async function GET(req: NextRequest) {
     const { data: reports } = await supabase.from("dx3xb_microapp_reports").select("microapp_id");
     const counts: Record<string, number> = {};
     for (const r of reports ?? []) counts[(r as { microapp_id: string }).microapp_id] = (counts[(r as { microapp_id: string }).microapp_id] ?? 0) + 1;
-    const { data: events } = await (supabase as any).from("dx3xb_microapp_events").select("microapp_id,event").limit(20000);
+    const { data: events } = await supabase.from("dx3xb_microapp_events").select("microapp_id,event").limit(20000);
     const eventCounts: Record<string, Record<string, number>> = {};
     for (const e of events ?? []) {
       const id = String(e.microapp_id);

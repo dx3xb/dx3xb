@@ -43,7 +43,7 @@ export async function reserveAiRequest({
   microappId?: string;
   appLimit?: number;
 }): Promise<AiReservation> {
-  const { data, error } = await (supabase as any).rpc("dx3xb_reserve_ai_request", {
+  const { data, error } = await supabase.rpc("dx3xb_reserve_ai_request", {
     p_request_id: requestId,
     p_user_id: userId,
     p_scope: scope,
@@ -65,7 +65,7 @@ export async function reserveAiRequest({
 }
 
 export async function finishAiRequest(supabase: SupabaseClient, requestId: string, userId: string, succeeded: boolean) {
-  const { error } = await (supabase as any).rpc("dx3xb_finish_ai_request", {
+  const { error } = await supabase.rpc("dx3xb_finish_ai_request", {
     p_request_id: requestId,
     p_user_id: userId,
     p_status: succeeded ? "succeeded" : "failed",

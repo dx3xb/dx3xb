@@ -10,8 +10,8 @@ function cleanSlug(value: string) {
   return value.replace(/[^a-z0-9_-]/gi, "").slice(0, 32);
 }
 
-export async function GET(_req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
-  const { slug: rawSlug } = await params;
+export async function GET(_req: NextRequest, { params }: { params: Promise<{ key: string }> }) {
+  const { key: rawSlug } = await params;
   const slug = cleanSlug(rawSlug);
   if (!slug) return NextResponse.json({ ok: false, error: "not_found" }, { status: 404 });
 

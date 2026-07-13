@@ -7,24 +7,33 @@
     "build": "next build",
     "start": "next start",
     "db:migrate": "supabase db push --linked",
-    "test:security": "node scripts/security-regression.mjs"
+    "test:security": "node scripts/security-regression.mjs",
+    "test:unit": "vitest run",
+    "test:e2e": "playwright test",
+    "test:migrations": "node scripts/check-migrations.mjs",
+    "test": "npm run test:security && npm run test:unit && npm run test:migrations",
+    "release:check": "npm test && tsc --noEmit && npm run build"
   },
   "dependencies": {
+    "@sentry/nextjs": "^10.65.0",
     "@supabase/supabase-js": "^2.45.4",
     "html-to-image": "^1.11.13",
     "next": "^16.2.9",
     "qrcode": "^1.5.4",
     "react": "19.0.0",
     "react-dom": "19.0.0",
-    "sharp": "^0.35.3"
+    "sharp": "^0.35.3",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@playwright/test": "^1.61.1",
     "@types/node": "^20",
     "@types/qrcode": "^1.5.5",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "supabase": "^2.109.1",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^4.1.10"
   },
   "overrides": {
     "postcss": "^8.5.10"

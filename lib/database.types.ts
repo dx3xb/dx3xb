@@ -2944,6 +2944,7 @@ export type Database = {
         Args: { p_event: string; p_microapp_id: string; p_session_id: string }
         Returns: boolean
       }
+      dx3xb_ai_cost_summary: { Args: { p_days?: number }; Returns: Json }
       dx3xb_bump_play: { Args: { app_slug: string }; Returns: undefined }
       dx3xb_create_play_session: {
         Args: {
@@ -2956,6 +2957,22 @@ export type Database = {
       }
       dx3xb_finish_ai_request: {
         Args: { p_request_id: string; p_status: string; p_user_id: string }
+        Returns: boolean
+      }
+      dx3xb_record_ai_call: {
+        Args: {
+          p_attempt: number
+          p_duration_ms: number
+          p_estimated_cost_usd: number
+          p_http_status: number
+          p_input_tokens: number
+          p_model: string
+          p_outcome: string
+          p_output_tokens: number
+          p_request_id: string
+          p_route: string
+          p_total_tokens: number
+        }
         Returns: boolean
       }
       dx3xb_record_funnel_event: {

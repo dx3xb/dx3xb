@@ -68,6 +68,7 @@ type UserSummary = {
   totalPlays: number;
   reports: number;
 };
+type AiCostSummary = { calls: number; failures: number; inputTokens: number; outputTokens: number; totalTokens: number; estimatedCostUsd: number | string; averageDurationMs: number; byDay: Array<{ day: string; calls: number; costUsd: number | string; tokens: number }> };
 
 function bjTime(iso: string) {
   try {
@@ -81,11 +82,12 @@ export default function AdminPage() {
   const [pwd, setPwd] = useState("");
   const [authed, setAuthed] = useState(false);
   const [err, setErr] = useState("");
-  const [tab, setTab] = useState<"gb" | "ma" | "users">("gb");
+  const [tab, setTab] = useState<"gb" | "ma" | "users" | "ai">("gb");
   const [rows, setRows] = useState<Row[]>([]);
   const [apps, setApps] = useState<App[]>([]);
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [summary, setSummary] = useState<UserSummary | null>(null);
+  const [aiCosts, setAiCosts] = useState<AiCostSummary | null>(null);
   const [edit, setEdit] = useState<Record<number, { name: string; message: string }>>({});
 
   useEffect(() => {
@@ -133,6 +135,7 @@ export default function AdminPage() {
     setAuthed(true);
     void loadApps();
     void loadUsers();
+    void loadAiCosts();
   }
   async function loadApps() {
     const res = await fetch("/api/admin/microapps", { cache: "no-store" });
@@ -151,6 +154,10 @@ export default function AdminPage() {
     } else {
       setErr("读取用户失败");
     }
+  }
+  async function loadAiCosts() {
+    const res = await fetch("/api/admin/ai-costs?days=30", { cache: "no-store" });
+    if (res.ok) setAiCosts((await res.json()).summary || null);
   }
 
   async function actGb(method: string, payload: Record<string, unknown>) {
@@ -197,6 +204,7 @@ export default function AdminPage() {
           <button className={`atab ${tab === "gb" ? "on" : ""}`} onClick={() => setTab("gb")}>留言 {rows.length}</button>
           <button className={`atab ${tab === "ma" ? "on" : ""}`} onClick={() => setTab("ma")}>微应用{pending ? ` · ${pending}待审` : ""}</button>
           <button className={`atab ${tab === "users" ? "on" : ""}`} onClick={() => setTab("users")}>用户 {claimed}/{users.length}</button>
+          <button className={`atab ${tab === "ai" ? "on" : ""}`} onClick={() => setTab("ai")}>AI 成本</button>
         </div>
         <button className="abtn" onClick={() => void logout()}>退出</button>
       </div>
@@ -307,6 +315,24 @@ export default function AdminPage() {
           ))}
         </div>
       )}
+      {tab === "ai" && (
+        <div className="alist">
+          {!aiCosts ? <p className="note">暂无 AI 调用数据。</p> : <>
+            <div className="agrid">
+              <div><b>{aiCosts.calls}</b><span>30 天调用</span></div>
+              <div><b>{aiCosts.failures}</b><span>失败</span></div>
+              <div><b>{aiCosts.totalTokens}</b><span>总 token</span></div>
+              <div><b>${Number(aiCosts.estimatedCostUsd).toFixed(4)}</b><span>估算成本</span></div>
+              <div><b>{aiCosts.averageDurationMs}ms</b><span>平均耗时</span></div>
+            </div>
+            <div className="acard">
+              {aiCosts.byDay.length === 0 ? <p className="note">新日志将在下一次 AI 调用后出现。</p> : aiCosts.byDay.map((day) => (
+                <div className="costrow" key={day.day}><span>{day.day}</span><span>{day.calls} 次</span><span>{day.tokens} token</span><b>${Number(day.costUsd).toFixed(4)}</b></div>
+              ))}
+            </div>
+          </>}
+        </div>
+      )}
     </main>
   );
 }
@@ -359,6 +385,7 @@ const STYLE = `
 .uapp b { font-size: 16px; }
 .uapp span { font-size: 13px; color: var(--ink-soft); }
 .uapp a { color: var(--teal); font-weight: 700; white-space: nowrap; }
+.costrow { display: grid; grid-template-columns: 1fr auto auto auto; gap: 12px; padding: 8px 0; border-bottom: 2px dashed rgba(43,34,51,.18); font-size: 15px; }
 @media (max-width: 720px) {
   .agrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .abar { align-items: flex-start; }

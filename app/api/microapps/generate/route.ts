@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { cleanText, readJson, tooManyRequests } from "@/lib/request-guards";
+import { cleanText, readJsonSchema, tooManyRequests } from "@/lib/request-guards";
+import { generateBodySchema } from "@/lib/api-schemas";
 import { getServiceClient } from "@/lib/supabase";
 import { aiInputHash, aiRequestId, aiReservationResponse, finishAiRequest, reserveAiRequest } from "@/lib/ai-usage";
-import { logGeminiCall } from "@/lib/ai-observability";
+import { recordGeminiOutcome, requestGeminiJson } from "@/lib/ai/gemini-service";
 
 export const runtime = "nodejs";
 
@@ -132,9 +133,6 @@ function parseJsonDraft(content: unknown) {
 }
 
 async function geminiDraft(template: string, prompt: string, lang: "zh" | "en", requestId: string) {
-  const key = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY;
-  if (!key) return null;
-  const model = process.env.GEMINI_MODEL || "gemini-3.5-flash";
   const instruction = `Return only JSON: {"title":string,"config":object,"meta":{"coverEmoji":string,"accent":"#RRGGBB"}}.
 Template: ${template}. Language: ${lang}. Make safe, playful content for a no-code micro-game. Keep arrays valid and small.
 For quiz config use {intro, results:[{key,emoji,title,desc}], questions:[{q,options:[{label,scores}]}]}.
@@ -143,34 +141,11 @@ For thisorthat use {intro,pairs:[{a,b,mine}]}.
 For higherlower use {intro,unit,items:[{label,value}]}.
 For madlibs use {intro,story} with blanks like {地点}.
 For escape use {intro,riddles:[{q,answer,hint}]}.`;
-  const startedAt = Date.now();
-  let res: Response;
-  try {
-    res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "x-goog-api-key": key },
-    signal: AbortSignal.timeout(MODEL_TIMEOUT_MS),
-    body: JSON.stringify({
-      contents: [{ role: "user", parts: [{ text: `${instruction}\n\nUser prompt: ${prompt}` }] }],
-      generationConfig: {
-        temperature: 0.7,
-        responseMimeType: "application/json",
-      },
-    }),
-    });
-  } catch (error) {
-    logGeminiCall({ requestId, route: "generate", model, attempt: 1, durationMs: Date.now() - startedAt, status: 0, outcome: error instanceof DOMException && error.name === "TimeoutError" ? "timeout" : "network_error" });
-    throw error;
-  }
-  if (!res.ok) {
-    logGeminiCall({ requestId, route: "generate", model, attempt: 1, durationMs: Date.now() - startedAt, status: res.status, outcome: "http_error" });
-    return null;
-  }
-  const data = await res.json();
-  const text = data?.candidates?.[0]?.content?.parts?.map((p: { text?: string }) => p.text || "").join("");
-  const draft = parseJsonDraft(text);
-  logGeminiCall({ requestId, route: "generate", model, attempt: 1, durationMs: Date.now() - startedAt, status: res.status, outcome: draft ? "success" : "invalid_output", usage: data?.usageMetadata });
-  return draft ? { ...draft, source: `gemini:${model}` } : null;
+  const response = await requestGeminiJson({ route: "generate", requestId, attempt: 1, prompt: `${instruction}\n\nUser prompt: ${prompt}`, temperature: 0.7, timeoutMs: MODEL_TIMEOUT_MS });
+  if (!response) return null;
+  const draft = parseJsonDraft(response.text);
+  recordGeminiOutcome({ response, route: "generate", requestId, attempt: 1, outcome: draft ? "success" : "invalid_output" });
+  return draft ? { ...draft, source: `gemini:${response.model}` } : null;
 }
 
 async function openaiDraft(template: string, prompt: string, lang: "zh" | "en") {
@@ -209,7 +184,7 @@ export async function POST(req: NextRequest) {
   const token = req.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
   if (!token) return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
 
-  const parsed = await readJson<Body>(req, 2048);
+  const parsed = await readJsonSchema(req, generateBodySchema, 2048);
   if (!parsed.ok) return parsed.response;
   const template = cleanText(parsed.value.template, 24);
   const prompt = cleanText(parsed.value.prompt, 240);

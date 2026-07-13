@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { cleanText, readJson, tooManyRequests } from "@/lib/request-guards";
+import { cleanText, readJsonSchema, tooManyRequests } from "@/lib/request-guards";
+import { workshopBodySchema } from "@/lib/api-schemas";
 import { getServiceClient } from "@/lib/supabase";
 import { WORKSHOP_CODE_LIMITS, workshopJsPolicyIssue, wsValidate } from "@/app/_mt/workshop-spec";
 import { aiInputHash, aiRequestId, aiReservationResponse, finishAiRequest, reserveAiRequest } from "@/lib/ai-usage";
-import { logGeminiCall } from "@/lib/ai-observability";
+import { recordGeminiOutcome, requestGeminiJson } from "@/lib/ai/gemini-service";
 
 export const runtime = "nodejs";
 
@@ -94,9 +95,6 @@ async function generateWorkshop({
   current: ReturnType<typeof wsValidate>;
   requestId: string;
 }) {
-  const key = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY;
-  if (!key) return localPlayableWorkshop(prompt, lang, title);
-  const model = process.env.GEMINI_MODEL || "gemini-3.5-flash";
   const buildInstruction = (compact = false) => `You are dx3xb AI Game Workshop, a senior game & UI designer. Return only JSON: {"title":string,"intro":string,"html":string,"css":string,"js":string,"note":string}.
 Build ONE polished, self-contained browser mini game that runs inside a fixed-size sandbox iframe (a framed canvas box, landscape on desktop and portrait on mobile).
 
@@ -131,65 +129,45 @@ CONSTRAINTS:
 - Language for title/intro/note and all on-screen text: ${lang}.`;
   const callGemini = async (compact = false) => {
     const instruction = buildInstruction(compact);
-    const startedAt = Date.now();
-    let res: Response;
-    try {
-      res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "x-goog-api-key": key },
-    signal: AbortSignal.timeout(MODEL_TIMEOUT_MS),
-    body: JSON.stringify({
-      contents: [{
-        role: "user",
-        parts: [{ text: `${instruction}\n\nCurrent title: ${title}\nCurrent intro: ${current.intro}\nCurrent html:\n${current.html.slice(0, 9000)}\n\nCurrent css:\n${current.css.slice(0, 8000)}\n\nCurrent js:\n${current.js.slice(0, 12000)}\n\nUser request: ${prompt}` }],
-      }],
-      generationConfig: { temperature: compact ? 0.55 : 0.7, responseMimeType: "application/json", maxOutputTokens: compact ? 16384 : 24576 },
-    }),
-      });
-    } catch (error) {
-      logGeminiCall({ requestId, route: "workshop", model, attempt: compact ? 2 : 1, durationMs: Date.now() - startedAt, status: 0, outcome: error instanceof DOMException && error.name === "TimeoutError" ? "timeout" : "network_error" });
-      return null;
-    }
-    if (!res.ok) {
-      logGeminiCall({ requestId, route: "workshop", model, attempt: compact ? 2 : 1, durationMs: Date.now() - startedAt, status: res.status, outcome: "http_error" });
-      console.warn("workshop gemini http failed", { status: res.status });
-      return null;
-    }
-    const data = await res.json();
-    const candidate = data?.candidates?.[0];
-    const text = candidate?.content?.parts?.map((p: { text?: string }) => p.text || "").join("") || "";
-    const draft = parseJson(text);
+    const attempt = compact ? 2 : 1;
+    const response = await requestGeminiJson({
+      route: "workshop", requestId, attempt, timeoutMs: MODEL_TIMEOUT_MS, temperature: compact ? 0.55 : 0.7,
+      maxOutputTokens: compact ? 16384 : 24576,
+      prompt: `${instruction}\n\nCurrent title: ${title}\nCurrent intro: ${current.intro}\nCurrent html:\n${current.html.slice(0, 9000)}\n\nCurrent css:\n${current.css.slice(0, 8000)}\n\nCurrent js:\n${current.js.slice(0, 12000)}\n\nUser request: ${prompt}`,
+    });
+    if (!response) return null;
+    const draft = parseJson(response.text);
     if (!draft) {
-      logGeminiCall({ requestId, route: "workshop", model, attempt: compact ? 2 : 1, durationMs: Date.now() - startedAt, status: res.status, outcome: "invalid_json", usage: data?.usageMetadata });
-      console.warn("workshop gemini parse failed", { finishReason: candidate?.finishReason, textLength: text.length, compact });
+      recordGeminiOutcome({ response, route: "workshop", requestId, attempt, outcome: "invalid_json" });
+      console.warn("workshop gemini parse failed", { finishReason: response.finishReason, textLength: response.text.length, compact });
       return null;
     }
     const checked = validateGeneratedDraft(draft);
     if (!checked.draft) {
-      logGeminiCall({ requestId, route: "workshop", model, attempt: compact ? 2 : 1, durationMs: Date.now() - startedAt, status: res.status, outcome: checked.reason, usage: data?.usageMetadata });
-      console.warn("workshop gemini draft rejected", { finishReason: candidate?.finishReason, textLength: text.length, compact, reason: checked.reason });
+      recordGeminiOutcome({ response, route: "workshop", requestId, attempt, outcome: checked.reason });
+      console.warn("workshop gemini draft rejected", { finishReason: response.finishReason, textLength: response.text.length, compact, reason: checked.reason });
       return null;
     }
-    logGeminiCall({ requestId, route: "workshop", model, attempt: compact ? 2 : 1, durationMs: Date.now() - startedAt, status: res.status, outcome: "success", usage: data?.usageMetadata });
-    return { ...checked.draft, source: `gemini:${model}` };
+    recordGeminiOutcome({ response, route: "workshop", requestId, attempt, outcome: "success" });
+    return { ...checked.draft, source: `gemini:${response.model}` };
   };
   return (await callGemini(false)) ?? (await callGemini(true)) ?? localPlayableWorkshop(prompt, lang, title);
 }
 
-export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function POST(req: NextRequest, { params }: { params: Promise<{ key: string }> }) {
   if (tooManyRequests(req, "microapp:workshop", 20, 60_000)) {
     return NextResponse.json({ ok: false, error: "rate_limited" }, { status: 429 });
   }
   const token = req.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
   if (!token) return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
-  const parsed = await readJson<Body>(req, 2048);
+  const parsed = await readJsonSchema(req, workshopBodySchema, 2048);
   if (!parsed.ok) return parsed.response;
   const prompt = cleanText(parsed.value.prompt, 600);
   const lang = parsed.value.lang === "zh" ? "zh" : "en";
   const title = cleanText(parsed.value.title, 60);
   if (!prompt) return NextResponse.json({ ok: false, error: "bad_request" }, { status: 400 });
 
-  const { id: rawId } = await params;
+  const { key: rawId } = await params;
   const id = cleanId(rawId);
   if (!id) return NextResponse.json({ ok: false, error: "not_found" }, { status: 404 });
 

@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { issuePlayToken, requestFingerprint } from "@/lib/play-session";
 import { tooManyRequests } from "@/lib/request-guards";
 import { getServiceClient } from "@/lib/supabase";
+import { microappsRepository } from "@/lib/data/microapps-repository";
 
 export const runtime = "nodejs";
 
@@ -10,26 +11,20 @@ function cleanSlug(value: string) {
   return value.replace(/[^a-z0-9_-]/gi, "").slice(0, 32);
 }
 
-export async function POST(req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
+export async function POST(req: NextRequest, { params }: { params: Promise<{ key: string }> }) {
   if (tooManyRequests(req, "microapp:play-session", 20, 60_000)) {
     return NextResponse.json({ ok: false, error: "rate_limited" }, { status: 429 });
   }
-  const slug = cleanSlug((await params).slug);
+  const slug = cleanSlug((await params).key);
   if (!slug) return NextResponse.json({ ok: false, error: "not_found" }, { status: 404 });
   try {
     const supabase = getServiceClient();
-    const { data: app, error: appError } = await supabase
-      .from("dx3xb_microapps")
-      .select("id")
-      .eq("slug", slug)
-      .in("status", ["unlisted", "pending", "public"])
-      .maybeSingle();
-    if (appError) throw appError;
+    const app = await microappsRepository(supabase).playableBySlug(slug);
     if (!app) return NextResponse.json({ ok: false, error: "not_found" }, { status: 404 });
 
     const sessionId = randomUUID();
     const expiresAt = Date.now() + 2 * 60 * 60_000;
-    const { data: created, error: sessionError } = await (supabase as any).rpc("dx3xb_create_play_session", {
+    const { data: created, error: sessionError } = await supabase.rpc("dx3xb_create_play_session", {
       p_session_id: sessionId,
       p_microapp_id: app.id,
       p_fingerprint_hash: requestFingerprint(req),

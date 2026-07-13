@@ -1,7 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Press_Start_2P, VT323 } from "next/font/google";
 import "./globals.css";
-import { cookies } from "next/headers";
 
 const press = Press_Start_2P({
   weight: "400",
@@ -39,11 +38,15 @@ export const viewport: Viewport = {
   themeColor: "#fff6e6",
 };
 
-export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const lang = (await cookies()).get("dx3xb_lang")?.value === "en" ? "en" : "zh";
+const languageBootstrap = `(function(){try{var q=new URLSearchParams(location.search).get('lang');var c=document.cookie.match(/(?:^|; )dx3xb_lang=(zh|en)/);var s=localStorage.getItem('dx3xb_lang');document.documentElement.lang=q==='en'||q==='zh'?q:c?c[1]:s==='en'?'en':'zh'}catch(_){}})()`;
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang={lang}>
-      <body className={`${press.variable} ${vt.variable}`}>{children}</body>
+    <html lang="zh" suppressHydrationWarning>
+      <body className={`${press.variable} ${vt.variable}`}>
+        <script dangerouslySetInnerHTML={{ __html: languageBootstrap }} />
+        {children}
+      </body>
     </html>
   );
 }
