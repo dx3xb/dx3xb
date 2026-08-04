@@ -158,12 +158,12 @@ const COPY = {
 } satisfies Record<Lang, Record<string, unknown>>;
 
 function getInitialLang(): Lang {
-  if (typeof window === "undefined") return "en";
+  if (typeof window === "undefined") return "zh";
   const fromUrl = new URLSearchParams(window.location.search).get("lang");
   if (fromUrl === "zh" || fromUrl === "en") return fromUrl;
   const stored = window.localStorage.getItem("dx3xb_lang");
   if (stored === "zh" || stored === "en") return stored;
-  return "en";
+  return "zh";
 }
 
 function hashString(input: string) {
@@ -238,7 +238,7 @@ function formatMs(ms: number) {
 }
 
 export default function InstantMemory() {
-  const [lang, setLang] = useState<Lang>("en");
+  const [lang, setLang] = useState<Lang>("zh");
   const [seed, setSeed] = useState("dx3xb-memory");
   const [phase, setPhase] = useState<Phase>("ready");
   const [level, setLevel] = useState(1);
@@ -265,6 +265,7 @@ export default function InstantMemory() {
   const [copied, setCopied] = useState(false);
   const [qrDataUrl, setQrDataUrl] = useState("");
   const [saving, setSaving] = useState(false);
+  const [hydrated, setHydrated] = useState(false);
 
   const reportRef = useRef<HTMLDivElement>(null);
   const feedbackTimerRef = useRef<number | null>(null);
@@ -283,6 +284,10 @@ export default function InstantMemory() {
         : t.feedback.correct
       : `${t.feedback.wrong} · ${t.feedback.expected((feedback.expected ?? 0) + 1)}`
     : "";
+
+  useEffect(() => {
+    document.documentElement.lang = lang;
+  }, [lang]);
 
   function clearFeedbackTimer() {
     if (feedbackTimerRef.current === null) return;
@@ -327,6 +332,7 @@ export default function InstantMemory() {
         setPlayerName(automaticName || COPY[initialLang].anon);
       }
     })();
+    setHydrated(true);
   }, []);
 
   useEffect(() => {
@@ -434,6 +440,7 @@ export default function InstantMemory() {
       const next: Lang = prev === "zh" ? "en" : "zh";
       if (typeof window !== "undefined") {
         window.localStorage.setItem("dx3xb_lang", next);
+        document.cookie = `dx3xb_lang=${next}; Path=/; Max-Age=31536000; SameSite=Lax; Domain=.dx3xb.com; Secure`;
         const url = new URL(window.location.href);
         url.searchParams.set("lang", next);
         window.history.replaceState(null, "", url.toString());
@@ -588,7 +595,7 @@ export default function InstantMemory() {
   const reportName = playerName || (isRegisteredUser ? accountName : "") || t.anon;
 
   return (
-    <main className="wrap">
+    <main className="wrap" data-testid="game-root" data-hydrated={hydrated ? "true" : "false"}>
       <div className="backbar">
         <a className="backbtn" href="https://dx3xb.com">
           {t.back}

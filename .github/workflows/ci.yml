@@ -44,9 +44,17 @@ jobs:
         with:
           node-version: 22
           cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            color-hunter/package-lock.json
+            dont-click-wrong/package-lock.json
+            instant-memory/package-lock.json
       - run: npm ci
+      - run: npm ci --prefix color-hunter
+      - run: npm ci --prefix dont-click-wrong
+      - run: npm ci --prefix instant-memory
       - run: npx playwright install --with-deps chromium
-      - run: npm run test:e2e -- --project=desktop
+      - run: npm run test:e2e
 
   audit:
     runs-on: ubuntu-latest

@@ -77,12 +77,15 @@ export function CommunityGameCard({
   const onGameClick: MouseEventHandler<HTMLAnchorElement> = () => {
     if (context !== "wall") void trackMicroappEvent(app.slug, "creator_work_click");
   };
+  const playLabel = context === "wall" && app.plays < 20
+    ? (lang === "zh" ? "新作" : "NEW")
+    : `▶ ${app.plays}`;
   return (
     <article className="toy live community-card">
       <a className="community-game-link" href={`/u/${app.slug}?lang=${lang}`} onClick={onGameClick}>
         <span className="emoji" aria-hidden="true">{TEMPLATE_EMOJI[app.template] || "🎲"}</span>
         <span className="pixel community-title">{app.title || (lang === "zh" ? "未命名游戏" : "Untitled game")}</span>
-        <span className="soon">▶ {app.plays}</span>
+        <span className="soon">{playLabel}</span>
       </a>
       {showCreator && <CreatorLink creator={app.creator} lang={lang} sourceSlug={app.slug} compact />}
     </article>

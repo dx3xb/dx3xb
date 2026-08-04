@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toPng } from "html-to-image";
 import { QRCodeSVG } from "qrcode.react";
 import { TrioFooter, ensureSession, getProfileHandle } from "./dx3xb-trio";
 
 type Shape = "circle" | "square" | "triangle";
 type ColorCode = "#e74c3c" | "#3498db" | "#2ecc71" | "#f1c40f";
+type Language = "zh" | "en";
 
 interface ShapeData {
   shape: Shape;
@@ -37,7 +38,7 @@ const DICTIONARY = {
     readyTitle: "不要点错",
     readyDesc: "根据指令快速点击目标！点对加分，点错扣1秒时间，看你能坚持多久？",
     challengeNotice: (name: string, s: number) =>
-      name ? `${name} 甩来一张 ${s} 分的战书，敢不敢应战？` : `有人留下了 ${s} 分的挑战，超过他！`,
+      name ? `${name} 甩来一张 ${s} 分的同题战书，敢不敢应战？` : `有人留下了 ${s} 分的同题挑战，超过他！`,
     rules: {
       time: "限时",
       penalty: "点错",
@@ -50,14 +51,18 @@ const DICTIONARY = {
     demoHint: "指令千变万化，看清颜色和形状再下手——点错倒扣时间！",
     issuedTo: "签发给",
     rankLabel: "称号",
-    beatCaption: "的人类被你的手速击败",
+    beatCaption: "本局估算超过的玩家比例",
+    percentileNote: "娱乐性估算，不代表真实玩家分布，也不用于评价个人能力。",
+    choiceGroup: "图形选项",
+    correctFeedback: "点对了，下一题。",
+    wrongFeedback: "点错了，扣一秒。",
     perSec: "每秒命中",
     qrCta: "扫码应战，看朋友能不能超过你",
     time: "时间",
     score: "得分",
     gameOver: "游戏结束",
     generating: "生成大脑报告",
-    namingHint: "输入你的代号，看看你的反应力超越了多少人",
+    namingHint: "输入你的代号，生成这局的趣味反应报告",
     namingPlaceholder: "例如：无敌暴龙神",
     viewReport: "查看战报",
     anonPlayer: "匿名玩家",
@@ -85,7 +90,7 @@ const DICTIONARY = {
     readyTitle: "Don't Tap Wrong",
     readyDesc: "Tap the correct shape fast! +1 point per hit, -1s per mistake.",
     challengeNotice: (name: string, s: number) =>
-      name ? `${name} threw down a ${s}-point gauntlet. Beat it!` : `Someone left a ${s}-point challenge. Beat it!`,
+      name ? `${name} left a ${s}-point same-puzzle challenge. Beat it!` : `Someone left a ${s}-point same-puzzle challenge. Beat it!`,
     rules: {
       time: "Time Limit",
       penalty: "Mistake",
@@ -98,14 +103,18 @@ const DICTIONARY = {
     demoHint: "Instructions keep flipping — read the color AND shape before you tap. Wrong taps cost time!",
     issuedTo: "ISSUED TO",
     rankLabel: "RANK",
-    beatCaption: "of humanity, out-tapped",
+    beatCaption: "estimated player percentile for this run",
+    percentileNote: "For entertainment only. This is an estimate, not a real player distribution or an ability assessment.",
+    choiceGroup: "Shape choices",
+    correctFeedback: "Correct. Next instruction.",
+    wrongFeedback: "Wrong choice. One second deducted.",
     perSec: "HITS / SEC",
     qrCta: "Scan to duel — can your friends beat you?",
     time: "Time",
     score: "Score",
     gameOver: "Game Over",
     generating: "Brain Report",
-    namingHint: "Enter your codename to see your global rank",
+    namingHint: "Enter your codename to generate a playful reaction report",
     namingPlaceholder: "e.g. Invincible T-Rex",
     viewReport: "View Report",
     anonPlayer: "Anonymous",
@@ -127,7 +136,7 @@ const DICTIONARY = {
   }
 };
 
-const getRank = (pct: number, lang: "zh" | "en") => {
+const getRank = (pct: number, lang: Language) => {
   if (pct >= 95) return {
     title: lang === "zh" ? "神经元霸主" : "Neuron Overlord",
     desc: lang === "zh" ? "大脑运算速度已超越人类极限。" : "Brain processing speed beyond human limits."
@@ -177,36 +186,36 @@ const getRank = (pct: number, lang: "zh" | "en") => {
     desc: lang === "zh" ? "反射弧绕地球一圈，建议喝杯咖啡。" : "Reflex arc circled the earth. Have some coffee."
   };
   if (pct >= 35) return {
-    title: lang === "zh" ? "帕金森早期" : "Shaky Hands",
-    desc: lang === "zh" ? "建议去医院挂个号检查一下手抖。" : "Might want to check those shaky hands."
+    title: lang === "zh" ? "手忙脚乱" : "Button Juggler",
+    desc: lang === "zh" ? "颜色和形状同时排队，大脑临时堵车。" : "Colors and shapes queued up at the same time."
   };
   if (pct >= 30) return {
     title: lang === "zh" ? "懵逼果实" : "Confused Fruit",
     desc: lang === "zh" ? "你的眼睛看到了，但你的手表示“我没看到”。" : "Eyes saw it, hands said 'nope'."
   };
   if (pct >= 25) return {
-    title: lang === "zh" ? "眼神涣散者" : "Wandering Eyes",
-    desc: lang === "zh" ? "你的注意力大概已经飞到了外太空。" : "Your attention flew to outer space."
+    title: lang === "zh" ? "注意力出走" : "Focus Wanderer",
+    desc: lang === "zh" ? "注意力刚刚去外太空兜了一圈。" : "Your focus took a quick trip to outer space."
   };
   if (pct >= 20) return {
-    title: lang === "zh" ? "老奶奶过马路" : "Granny Crossing",
-    desc: lang === "zh" ? "小心点，别闪了腰。" : "Be careful not to pull a muscle."
+    title: lang === "zh" ? "慢半拍选手" : "One Beat Behind",
+    desc: lang === "zh" ? "答案到了，手指还在路上。" : "The answer arrived before your finger did."
   };
   if (pct >= 15) return {
-    title: lang === "zh" ? "盲人摸象" : "Blind Guess",
-    desc: lang === "zh" ? "你确定你是睁着眼睛在玩吗？" : "Are you playing with your eyes closed?"
+    title: lang === "zh" ? "方向感离线" : "Compass Offline",
+    desc: lang === "zh" ? "每个选项看起来都像正确答案。" : "Every option briefly looked like the right one."
   };
   if (pct >= 10) return {
-    title: lang === "zh" ? "植物人前兆" : "Flatline",
-    desc: lang === "zh" ? "你的脑电波几乎是一条直线。" : "Your brainwaves are basically a flatline."
+    title: lang === "zh" ? "加载中玩家" : "Still Loading",
+    desc: lang === "zh" ? "反应模块正在缓慢启动，请稍候。" : "Reaction module is booting. Please wait."
   };
   if (pct >= 5) return {
     title: lang === "zh" ? "史莱姆转世" : "Slime Reborn",
     desc: lang === "zh" ? "你的思考速度堪比一坨史莱姆。" : "Thinking speed of a blob of slime."
   };
   return {
-    title: lang === "zh" ? "薛定谔的玩家" : "Schrödinger's Player",
-    desc: lang === "zh" ? "你是在用脚趾头按屏幕吗？" : "Are you tapping the screen with your toes?"
+    title: lang === "zh" ? "量子犹豫者" : "Quantum Hesitator",
+    desc: lang === "zh" ? "每次决定都在平行宇宙里绕了个弯。" : "Every decision took a detour through a parallel universe."
   };
 };
 
@@ -229,18 +238,62 @@ const PixelTriangle = ({ color }: { color: string }) => (
 );
 
 const SITE = "https://dont-click-wrong.dx3xb.com";
+const SEED_PATTERN = /^[a-zA-Z0-9_-]{1,64}$/;
 
-function getInitialLang(): "zh" | "en" {
-  if (typeof window === "undefined") return "en";
+function normalizeSeed(value: string | null) {
+  return value && SEED_PATTERN.test(value) ? value : "";
+}
+
+function createSeed() {
+  try {
+    const values = new Uint32Array(2);
+    window.crypto.getRandomValues(values);
+    return Array.from(values, (value) => value.toString(36)).join("");
+  } catch {
+    return `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
+  }
+}
+
+function createSeededRandom(seed: string) {
+  let hash = 2166136261;
+  for (let index = 0; index < seed.length; index += 1) {
+    hash ^= seed.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  let state = hash >>> 0;
+  return () => {
+    state = (state + 0x6d2b79f5) >>> 0;
+    let value = state;
+    value = Math.imul(value ^ (value >>> 15), value | 1);
+    value ^= value + Math.imul(value ^ (value >>> 7), value | 61);
+    return ((value ^ (value >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function pick<T>(items: readonly T[], random: () => number) {
+  return items[Math.floor(random() * items.length)]!;
+}
+
+function optionLabel(option: ShapeData, lang: Language, index: number) {
+  const shape = SHAPES.find((candidate) => candidate.type === option.shape);
+  const color = lang === "zh" ? option.colorNameZh : option.colorNameEn;
+  const shapeName = lang === "zh" ? shape?.zh : shape?.en;
+  return lang === "zh"
+    ? `选项 ${index + 1}：${color}色${shapeName ?? option.shape}`
+    : `Option ${index + 1}: ${color} ${shapeName ?? option.shape}`;
+}
+
+function getInitialLang(): Language {
+  if (typeof window === "undefined") return "zh";
   const fromUrl = new URLSearchParams(window.location.search).get("lang");
   if (fromUrl === "zh" || fromUrl === "en") return fromUrl;
   const stored = window.localStorage.getItem("dx3xb_lang");
   if (stored === "zh" || stored === "en") return stored;
-  return "en";
+  return "zh";
 }
 
 export default function DontClickWrong() {
-  const [lang, setLang] = useState<"zh" | "en">("en");
+  const [lang, setLang] = useState<Language>("zh");
   const t = DICTIONARY[lang];
 
   const [phase, setPhase] = useState<"idle" | "playing" | "naming" | "finished">("idle");
@@ -256,14 +309,26 @@ export default function DontClickWrong() {
   const [playerName, setPlayerName] = useState("");
   const [copied, setCopied] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [hydrated, setHydrated] = useState(false);
   const reportRef = useRef<HTMLDivElement>(null);
   
   const [beatPct, setBeatPct] = useState(0);
   const [challengeScore, setChallengeScore] = useState(0);
   const [challengerName, setChallengerName] = useState("");
+  const [runSeed, setRunSeed] = useState("");
 
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const knownNameRef = useRef("");
+  const challengeSeedRef = useRef("");
+  const scoreRef = useRef(0);
+  const randomRef = useRef<() => number>(() => 0.5);
+
+  const finishGame = useCallback(() => {
+    if (knownNameRef.current) setPlayerName(knownNameRef.current);
+    const finalScore = scoreRef.current;
+    setBeatPct(finalScore === 0 ? 3 : Math.min(99, Math.round(12 + finalScore * 1.7)));
+    setPhase("naming");
+  }, []);
 
   useEffect(() => {
     setLang(getInitialLang());
@@ -273,38 +338,40 @@ export default function DontClickWrong() {
     });
     const params = new URLSearchParams(window.location.search);
     setChallengeScore(Number(params.get("score") || 0));
-    setChallengerName((params.get("from") || "").replace(/[ -<>]/g, "").slice(0, 16));
+    setChallengerName((params.get("from") || "").replace(/[\u0000-\u001f<>]/g, "").slice(0, 16));
+    challengeSeedRef.current = normalizeSeed(params.get("seed"));
+    setHydrated(true);
     return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
+      if (timerRef.current) clearTimeout(timerRef.current);
     };
   }, []);
 
   useEffect(() => {
-    if (phase === "playing" && timeLeft > 0) {
-      timerRef.current = setInterval(() => {
-        setTimeLeft((prev) => {
-          if (prev <= 1) {
-            endGame();
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-    } else if (timeLeft <= 0 && phase === "playing") {
-      endGame();
+    document.documentElement.lang = lang;
+  }, [lang]);
+
+  useEffect(() => {
+    if (phase !== "playing") return;
+    if (timeLeft <= 0) {
+      finishGame();
+      return;
     }
+    timerRef.current = setTimeout(() => {
+      setTimeLeft((previous) => Math.max(0, previous - 1));
+    }, 1000);
     return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
+      if (timerRef.current) clearTimeout(timerRef.current);
     };
-  }, [phase, timeLeft]);
+  }, [finishGame, phase, timeLeft]);
 
   const generateRound = () => {
-    const r = Math.random();
+    const random = randomRef.current;
+    const r = random();
     let condition: (s: ShapeData) => boolean = () => false;
     let text = "";
 
-    const randColor = COLORS[Math.floor(Math.random() * COLORS.length)];
-    const randShape = SHAPES[Math.floor(Math.random() * SHAPES.length)];
+    const randColor = pick(COLORS, random);
+    const randShape = pick(SHAPES, random);
 
     if (r < 0.33) {
       text = lang === "zh" ? `点击${randColor.zh}色的${randShape.zh}` : `Tap the ${randColor.en} ${randShape.en}`;
@@ -324,8 +391,8 @@ export default function DontClickWrong() {
     let hasCorrect = false;
 
     for (let i = 0; i < 4; i++) {
-      const c = COLORS[Math.floor(Math.random() * COLORS.length)];
-      const s = SHAPES[Math.floor(Math.random() * SHAPES.length)];
+      const c = pick(COLORS, random);
+      const s = pick(SHAPES, random);
       const shapeData = { shape: s.type, colorCode: c.code, colorNameZh: c.zh, colorNameEn: c.en };
       newOptions.push(shapeData);
       if (condition(shapeData)) {
@@ -336,10 +403,10 @@ export default function DontClickWrong() {
     if (!hasCorrect) {
       let matchFound = false;
       for(let iter=0; iter<50; iter++) {
-        const testColor = COLORS[Math.floor(Math.random() * COLORS.length)];
-        const testShape = SHAPES[Math.floor(Math.random() * SHAPES.length)];
+        const testColor = pick(COLORS, random);
+        const testShape = pick(SHAPES, random);
         if (condition({shape: testShape.type, colorCode: testColor.code, colorNameZh: testColor.zh, colorNameEn: testColor.en})) {
-            newOptions[Math.floor(Math.random() * 4)] = {shape: testShape.type, colorCode: testColor.code, colorNameZh: testColor.zh, colorNameEn: testColor.en};
+            newOptions[Math.floor(random() * 4)] = {shape: testShape.type, colorCode: testColor.code, colorNameZh: testColor.zh, colorNameEn: testColor.en};
             matchFound = true;
             break;
         }
@@ -349,7 +416,7 @@ export default function DontClickWrong() {
         condition = (s) => s.colorCode === COLORS[0].code && s.shape === SHAPES[0].type;
         setInstruction(text);
         setTargetCondition(() => condition);
-        newOptions[Math.floor(Math.random() * 4)] = {shape: SHAPES[0].type, colorCode: COLORS[0].code, colorNameZh: COLORS[0].zh, colorNameEn: COLORS[0].en};
+        newOptions[Math.floor(random() * 4)] = {shape: SHAPES[0].type, colorCode: COLORS[0].code, colorNameZh: COLORS[0].zh, colorNameEn: COLORS[0].en};
       }
     }
 
@@ -361,6 +428,7 @@ export default function DontClickWrong() {
       const newLang = l === "zh" ? "en" : "zh";
       if (typeof window !== "undefined") {
         window.localStorage.setItem("dx3xb_lang", newLang);
+        document.cookie = `dx3xb_lang=${newLang}; Path=/; Max-Age=31536000; SameSite=Lax; Domain=.dx3xb.com; Secure`;
         const url = new URL(window.location.href);
         url.searchParams.set("lang", newLang);
         window.history.replaceState(null, "", url.toString());
@@ -374,11 +442,16 @@ export default function DontClickWrong() {
     const params = new URLSearchParams();
     if (score > 0) params.set("score", String(score));
     if (playerName) params.set("from", playerName);
+    if (runSeed) params.set("seed", runSeed);
     params.set("lang", lang);
     return `${SITE}/?${params.toString()}`;
   };
 
   const startGame = () => {
+    const nextSeed = challengeSeedRef.current || createSeed();
+    randomRef.current = createSeededRandom(nextSeed);
+    setRunSeed(nextSeed);
+    scoreRef.current = 0;
     setScore(0);
     setTimeLeft(60);
     setPhase("playing");
@@ -387,19 +460,15 @@ export default function DontClickWrong() {
     generateRound();
   };
 
-  const endGame = () => {
-    if (knownNameRef.current) setPlayerName(knownNameRef.current); // 已有称呼则自动预填
-    setPhase("naming");
-    // 确定性百分位：同样分数永远同样结果，挑战才公平
-    const pct = score === 0 ? 3 : Math.min(99, Math.round(12 + score * 1.7));
-    setBeatPct(pct);
-  };
-
   const handleShapeClick = (shapeData: ShapeData) => {
     if (phase !== "playing") return;
 
     if (targetCondition(shapeData)) {
-      setScore(s => s + 1);
+      setScore((previous) => {
+        const next = previous + 1;
+        scoreRef.current = next;
+        return next;
+      });
       setFeedback("correct");
       generateRound();
     } else {
@@ -420,8 +489,8 @@ export default function DontClickWrong() {
   const rankInfo = getRank(beatPct, lang);
 
   const shareText = () => lang === "zh"
-    ? `我「${playerName || t.anonPlayer}」在 dx3xb 不要点错坚持60秒拿了 ${score} 分，反应力击败了 ${beatPct}% 的人，称号「${rankInfo.title}」！来挑战我：${challengeUrl()}`
-    : `${playerName || t.anonPlayer} scored ${score} in 60s on dx3xb Don't Tap Wrong — beat ${beatPct}% of players, title "${rankInfo.title}"! Take me on: ${challengeUrl()}`;
+    ? `我「${playerName || t.anonPlayer}」在 dx3xb 不要点错坚持 60 秒拿了 ${score} 分，本局估算超过 ${beatPct}% 的玩家，称号「${rankInfo.title}」！来挑战同一套题：${challengeUrl()}`
+    : `${playerName || t.anonPlayer} scored ${score} in 60s on dx3xb Don't Tap Wrong — an estimated ${beatPct}th percentile for this run, title "${rankInfo.title}"! Take the same puzzle: ${challengeUrl()}`;
 
   const copyResult = async () => {
     try {
@@ -471,13 +540,18 @@ export default function DontClickWrong() {
   };
 
   return (
-    <main className={`wrap ${feedback === "wrong" ? "shake-effect" : ""}`}>
+    <main
+      className={`wrap ${feedback === "wrong" ? "shake-effect" : ""}`}
+      data-testid="game-root"
+      data-hydrated={hydrated ? "true" : "false"}
+    >
       <style dangerouslySetInnerHTML={{__html: `
         .shake-effect { animation: shake 0.3s cubic-bezier(.36,.07,.19,.97) both; }
         @keyframes shake { 10%, 90% { transform: translate3d(-1px, 0, 0); } 20%, 80% { transform: translate3d(2px, 0, 0); } 30%, 50%, 70% { transform: translate3d(-4px, 0, 0); } 40%, 60% { transform: translate3d(4px, 0, 0); } }
         @keyframes bob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
         @keyframes radar { 0%, 100% { height: 8px; } 50% { height: 30px; } }
         @keyframes pop { 0% { transform: scale(0.6); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+        .srOnly { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 
         /* ----- hero ----- */
         .heroLab { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; margin: 6px 0 22px; }
@@ -518,9 +592,10 @@ export default function DontClickWrong() {
         .instrPanel.good { background: #e8f8f1; }
         .instrPanel h2 { margin: 0; font-size: 22px; }
         .grid-container { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 8px auto 0; max-width: 320px; }
-        .shape-btn { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; background: #fff; border: 4px solid var(--line); cursor: pointer; box-shadow: 4px 4px 0 var(--ink); transition: transform 0.08s, box-shadow 0.08s; }
+        .shape-btn { appearance: none; width: 100%; aspect-ratio: 1; padding: 0; display: flex; align-items: center; justify-content: center; background: #fff; border: 4px solid var(--line); cursor: pointer; box-shadow: 4px 4px 0 var(--ink); transition: transform 0.08s, box-shadow 0.08s; }
         .shape-btn:hover { transform: translate(-1px,-1px); box-shadow: 5px 5px 0 var(--ink); }
         .shape-btn:active { transform: translate(4px, 4px); box-shadow: none; }
+        .shape-btn:focus-visible { outline: 4px solid var(--teal); outline-offset: 5px; }
 
         /* ----- naming ----- */
         .nameInput { width: 100%; padding: 12px 14px; margin: 16px 0; border: 3px solid var(--line); background: var(--cream); box-shadow: inset 3px 3px 0 rgba(43,34,51,.10); font-family: inherit; font-size: 22px; outline: none; }
@@ -546,6 +621,7 @@ export default function DontClickWrong() {
         .pctCaption { font-size: 16px; color: var(--ink-soft); margin: 8px 0 12px; }
         .pctBar { height: 18px; border: 3px solid var(--line); background: #fff; overflow: hidden; }
         .pctBar i { display: block; height: 100%; background: repeating-linear-gradient(45deg, var(--coral) 0 8px, #ffa3a3 8px 16px); }
+        .percentileNote { font-size: 14px; line-height: 1.35; color: var(--ink-soft); margin: 10px 0 0; }
         .statStrip { display: flex; gap: 10px; margin-bottom: 16px; }
         .statStrip div { flex: 1; background: var(--cream); border: 3px solid var(--line); padding: 9px; }
         .statStrip span { display: block; font-size: 13px; color: var(--ink-soft); text-transform: uppercase; }
@@ -559,11 +635,22 @@ export default function DontClickWrong() {
         .actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
         .btn.ghost { background: #fff; color: var(--ink); }
         .btn.link { background: transparent; color: var(--ink-soft); border: none; box-shadow: none; text-decoration: underline; }
+
+        @media (prefers-reduced-motion: reduce) {
+          .shake-effect, .showcase .chip, .rankTitle { animation: none !important; }
+          .shape-btn { transition: none; }
+        }
       `}} />
 
       <div className="backbar" style={{ display: phase === "finished" ? "none" : "flex" }}>
         <a className="backbtn" href="https://dx3xb.com">{t.back}</a>
-        <button className="langbtn" onClick={toggleLang} style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", color: "#666", fontWeight: "bold" }}>
+        <button
+          className="langbtn"
+          type="button"
+          aria-label={lang === "zh" ? "Switch to English" : "切换到中文"}
+          onClick={toggleLang}
+          style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", color: "#666", fontWeight: "bold" }}
+        >
           [{t.langBtn}]
         </button>
       </div>
@@ -633,17 +720,26 @@ export default function DontClickWrong() {
             <div className="hud-chip score pixel">{t.score} {score}</div>
           </div>
 
-          <div className={`panel instrPanel ${feedback === "correct" ? "good" : ""}`}>
-            <h2>{instruction}</h2>
+          <div className={`panel instrPanel ${feedback === "correct" ? "good" : ""}`} aria-live="polite">
+            <h2 id="game-instruction">{instruction}</h2>
           </div>
+          <p className="srOnly" role="status" aria-live="assertive">
+            {feedback === "correct" ? t.correctFeedback : feedback === "wrong" ? t.wrongFeedback : ""}
+          </p>
 
-          <div className="grid-container">
+          <div className="grid-container" role="group" aria-label={t.choiceGroup} aria-describedby="game-instruction">
             {options.map((opt, i) => (
-              <div key={i} className="shape-btn" onClick={() => handleShapeClick(opt)}>
+              <button
+                key={i}
+                className="shape-btn"
+                type="button"
+                aria-label={optionLabel(opt, lang, i)}
+                onClick={() => handleShapeClick(opt)}
+              >
                 {opt.shape === "circle" && <PixelCircle color={opt.colorCode} />}
                 {opt.shape === "square" && <PixelSquare color={opt.colorCode} />}
                 {opt.shape === "triangle" && <PixelTriangle color={opt.colorCode} />}
-              </div>
+              </button>
             ))}
           </div>
         </div>
@@ -653,9 +749,10 @@ export default function DontClickWrong() {
         <div className="panel introPanel" style={{ textAlign: "center" }}>
           <span className="sectionTag">{t.reportKicker}</span>
           <h2 className="pixel" style={{ fontSize: 24, margin: "8px 0 0" }}>{t.generating}</h2>
-          <p style={{ marginTop: 10 }}>{t.namingHint}</p>
+          <p id="naming-hint" style={{ marginTop: 10 }}>{t.namingHint}</p>
           <input
             className="nameInput pixel"
+            aria-describedby="naming-hint"
             value={playerName}
             maxLength={10}
             placeholder={t.namingPlaceholder}
@@ -685,9 +782,10 @@ export default function DontClickWrong() {
               <p className="rankDesc">&ldquo;{rankInfo.desc}&rdquo;</p>
 
               <div className="pctWrap">
-                <div className="pctNum">{beatPct}<span>%</span></div>
+                <div className="pctNum" aria-label={`${beatPct}%`}>{beatPct}<span>%</span></div>
                 <p className="pctCaption">{t.beatCaption}</p>
-                <div className="pctBar"><i style={{ width: `${beatPct}%` }} /></div>
+                <div className="pctBar" aria-hidden="true"><i style={{ width: `${beatPct}%` }} /></div>
+                <p className="percentileNote">{t.percentileNote}</p>
               </div>
 
               <div className="statStrip">

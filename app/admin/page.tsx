@@ -220,7 +220,7 @@ export default function AdminPage() {
                   <span>#{r.id}{r.parent_id ? ` ↳回复 #${r.parent_id}` : ""}</span>
                   <span>{bjTime(r.created_at)}</span>
                   <span className="aloc">{[r.country, r.region, r.city].filter(Boolean).join(" / ") || "—"}</span>
-                  <span className="aip">IP {r.ip || "—"}</span>
+                  <span className="aip">访客键 {r.ip || "—"}</span>
                   {r.hidden && <span className="ahid">已隐藏</span>}
                 </div>
                 <input className="ain" value={e.name} placeholder="（匿名）" onChange={(ev) => setEdit({ ...edit, [r.id]: { ...e, name: ev.target.value } })} />
