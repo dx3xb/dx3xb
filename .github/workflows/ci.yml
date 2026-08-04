@@ -19,7 +19,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        project: [., color-hunter, dont-click-wrong, instant-memory, ai-truth-detective]
+        project: [., color-hunter, dont-click-wrong, instant-memory, ai-truth-detective, data-monster, prompt-commander, recommendation-tamer, ai-court]
     defaults:
       run:
         working-directory: ${{ matrix.project }}
@@ -50,11 +50,19 @@ jobs:
             dont-click-wrong/package-lock.json
             instant-memory/package-lock.json
             ai-truth-detective/package-lock.json
+            data-monster/package-lock.json
+            prompt-commander/package-lock.json
+            recommendation-tamer/package-lock.json
+            ai-court/package-lock.json
       - run: npm ci
       - run: npm ci --prefix color-hunter
       - run: npm ci --prefix dont-click-wrong
       - run: npm ci --prefix instant-memory
       - run: npm ci --prefix ai-truth-detective
+      - run: npm ci --prefix data-monster
+      - run: npm ci --prefix prompt-commander
+      - run: npm ci --prefix recommendation-tamer
+      - run: npm ci --prefix ai-court
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e
 
@@ -70,4 +78,8 @@ jobs:
       - run: npm ci
       - run: npm audit --audit-level=moderate
       - run: npm audit --prefix ai-truth-detective --audit-level=moderate
+      - run: npm audit --prefix data-monster --audit-level=moderate
+      - run: npm audit --prefix prompt-commander --audit-level=moderate
+      - run: npm audit --prefix recommendation-tamer --audit-level=moderate
+      - run: npm audit --prefix ai-court --audit-level=moderate
       - run: npm run test:migrations

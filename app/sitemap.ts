@@ -9,6 +9,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: "https://dx3xb.com", lastModified: now, changeFrequency: "weekly", priority: 1 },
     { url: "https://dx3xb.com/trio", lastModified: now, changeFrequency: "weekly", priority: 0.8 },
     { url: "https://dx3xb.com/studio", lastModified: now, changeFrequency: "monthly", priority: 0.7 },
+    { url: "https://dx3xb.com/class", lastModified: now, changeFrequency: "monthly", priority: 0.7 },
+    { url: "https://dx3xb.com/class/activity-pack", lastModified: now, changeFrequency: "monthly", priority: 0.6 },
   ];
 
   if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_KEY) return staticEntries;

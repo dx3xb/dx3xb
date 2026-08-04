@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <pattern id="paper" width="18" height="18" patternUnits="userSpaceOnUse"><rect width="18" height="18" fill="#fff3d6"/><rect x="2" y="3" width="2" height="2" fill="#ead9b5"/><rect x="13" y="12" width="2" height="2" fill="#f3dfbb"/></pattern>
+    <pattern id="dots" width="24" height="24" patternUnits="userSpaceOnUse"><rect width="24" height="24" fill="none"/><rect x="2" y="2" width="5" height="5" fill="#2b2233"/></pattern>
+  </defs>
+  <rect width="1200" height="630" fill="url(#paper)"/>
+  <rect x="18" y="18" width="1164" height="594" fill="none" stroke="#2b2233" stroke-width="8"/>
+  <path d="M18 70h38V18M1182 70h-38V18M18 560h38v52M1182 560h-38v52" fill="none" stroke="#ff5f57" stroke-width="13"/>
+  <rect x="56" y="75" width="36" height="9" fill="#12b7a6"/><rect x="99" y="75" width="16" height="9" fill="#ffd044"/><rect x="122" y="75" width="16" height="9" fill="#4564ff"/>
+  <text x="65" y="192" fill="#ff5f57" font-family="Arial Black, PingFang SC, sans-serif" font-size="82" font-weight="900">推荐算法</text>
+  <text x="65" y="286" fill="#2b2233" font-family="Arial Black, PingFang SC, sans-serif" font-size="96" font-weight="900">驯兽师</text>
+  <rect x="65" y="317" width="438" height="7" fill="#2b2233"/>
+  <text x="68" y="367" fill="#2b2233" font-family="ui-monospace, SFMono-Regular, monospace" font-size="30" font-weight="700">dx3xb · AI 探险 04</text>
+  <g transform="translate(67 414)">
+    <rect width="382" height="118" fill="#fffdf8" stroke="#2b2233" stroke-width="6"/>
+    <rect x="18" y="20" width="22" height="72" fill="#12b7a6"/><rect x="48" y="40" width="22" height="52" fill="#4564ff"/><rect x="78" y="56" width="22" height="36" fill="#ffd044"/><rect x="108" y="68" width="22" height="24" fill="#ff5f57"/>
+    <path d="M158 33h55l-14-14m14 14-14 14" fill="none" stroke="#2b2233" stroke-width="8"/>
+    <text x="236" y="45" fill="#2b2233" font-family="Arial, PingFang SC, sans-serif" font-size="22" font-weight="700">反馈循环</text>
+    <text x="158" y="82" fill="#5f5368" font-family="Arial, PingFang SC, sans-serif" font-size="19">看见信号 · 主动拓宽</text>
+  </g>
+  <g transform="translate(555 72)">
+    <rect x="0" y="0" width="565" height="486" rx="4" fill="#f9e8c2" stroke="#2b2233" stroke-width="7"/>
+    <rect x="24" y="24" width="517" height="48" fill="#2b2233"/>
+    <text x="44" y="56" fill="#fff3d6" font-family="ui-monospace, monospace" font-size="22" font-weight="700">FEED CONTROL LAB</text>
+    <g transform="translate(36 104)">
+      <rect width="122" height="112" fill="#ff5f57" stroke="#2b2233" stroke-width="6"/><circle cx="61" cy="48" r="24" fill="#fff3d6"/><path d="M46 48h30M61 33v30" stroke="#2b2233" stroke-width="7"/><rect x="24" y="83" width="74" height="10" fill="#2b2233"/>
+      <rect x="142" width="122" height="112" fill="#ff5f57" stroke="#2b2233" stroke-width="6"/><circle cx="203" cy="48" r="24" fill="#fff3d6"/><path d="M188 48h30M203 33v30" stroke="#2b2233" stroke-width="7"/><rect x="166" y="83" width="74" height="10" fill="#2b2233"/>
+      <rect x="284" width="122" height="112" fill="#ff5f57" stroke="#2b2233" stroke-width="6"/><circle cx="345" cy="48" r="24" fill="#fff3d6"/><path d="M330 48h30M345 33v30" stroke="#2b2233" stroke-width="7"/><rect x="308" y="83" width="74" height="10" fill="#2b2233"/>
+      <path d="M415 52h62m-20-20 20 20-20 20" fill="none" stroke="#2b2233" stroke-width="10"/>
+    </g>
+    <path d="M472 188c74 73 43 173-67 186" fill="none" stroke="#ff5f57" stroke-width="12" stroke-dasharray="18 12"/>
+    <path d="M419 347l-19 28 33 10" fill="#ff5f57"/>
+    <g transform="translate(35 278)">
+      <rect width="112" height="102" fill="#4564ff" stroke="#2b2233" stroke-width="6"/><circle cx="56" cy="48" r="25" fill="#fff3d6"/><circle cx="56" cy="48" r="12" fill="#4564ff"/>
+      <rect x="128" width="112" height="102" fill="#12b7a6" stroke="#2b2233" stroke-width="6"/><path d="M151 67l21-39 18 27 19-31 10 43z" fill="#fff3d6"/>
+      <rect x="256" width="112" height="102" fill="#ffd044" stroke="#2b2233" stroke-width="6"/><circle cx="312" cy="51" r="26" fill="none" stroke="#2b2233" stroke-width="8"/><path d="M312 18v15M312 69v15M279 51h15M330 51h15" stroke="#2b2233" stroke-width="7"/>
+    </g>
+    <g transform="translate(111 399)">
+      <circle cx="72" cy="52" r="48" fill="#fffdf8" stroke="#2b2233" stroke-width="7"/><circle cx="72" cy="52" r="12" fill="#ffd044" stroke="#2b2233" stroke-width="5"/><path d="M72 11l13 33-13 8-13-8z" fill="#ff5f57" stroke="#2b2233" stroke-width="4"/><path d="M72 93L59 60l13-8 13 8z" fill="#12b7a6" stroke="#2b2233" stroke-width="4"/>
+      <text x="145" y="47" fill="#2b2233" font-family="Arial, PingFang SC, sans-serif" font-size="23" font-weight="700">别把方向盘</text><text x="145" y="77" fill="#2b2233" font-family="Arial, PingFang SC, sans-serif" font-size="23" font-weight="700">全交出去</text>
+    </g>
+  </g>
+  <rect x="1090" y="575" width="62" height="16" fill="url(#dots)"/>
+</svg>
