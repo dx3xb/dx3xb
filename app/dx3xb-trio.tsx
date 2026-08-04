@@ -15,7 +15,7 @@ export const DEFAULT_AVATAR_URL = "/icon-192.png";
 
 export const TRIO_GAMES = ["color-hunter", "dont-click-wrong", "instant-memory"] as const;
 export type TrioGame = (typeof TRIO_GAMES)[number];
-export const AI_QUEST_GAMES = ["ai-truth-detective"] as const;
+export const AI_QUEST_GAMES = ["ai-truth-detective", "data-monster", "prompt-commander", "recommendation-tamer", "ai-court"] as const;
 export type AiQuestGame = (typeof AI_QUEST_GAMES)[number];
 export type OfficialGame = TrioGame | AiQuestGame;
 type Lang = "zh" | "en";
@@ -28,7 +28,33 @@ export const GAME_URL: Record<TrioGame, string> = {
 export const TRIO_REPORT_URL = "https://dx3xb.com/trio";
 export const AI_QUEST_URL: Record<AiQuestGame, string> = {
   "ai-truth-detective": "https://ai-detective.dx3xb.com",
+  "data-monster": "https://data-monster.dx3xb.com",
+  "prompt-commander": "https://prompt-commander.dx3xb.com",
+  "recommendation-tamer": "https://recommendation-tamer.dx3xb.com",
+  "ai-court": "https://ai-court.dx3xb.com",
 };
+
+export const AI_QUEST_META: Record<AiQuestGame, {
+  emoji: string;
+  chip: Record<Lang, string>;
+  name: Record<Lang, string>;
+  dimension: Record<Lang, string>;
+}> = {
+  "ai-truth-detective": { emoji: "🔎", chip: { zh: "证据芯片", en: "EVIDENCE CHIP" }, name: { zh: "AI 侦探社", en: "AI Detective" }, dimension: { zh: "核验", en: "VERIFY" } },
+  "data-monster": { emoji: "🧬", chip: { zh: "数据芯片", en: "DATA CHIP" }, name: { zh: "数据怪兽训练营", en: "Data Monster Camp" }, dimension: { zh: "训练", en: "TRAIN" } },
+  "prompt-commander": { emoji: "⌨️", chip: { zh: "指令芯片", en: "PROMPT CHIP" }, name: { zh: "提示词指挥官", en: "Prompt Commander" }, dimension: { zh: "表达", en: "PROMPT" } },
+  "recommendation-tamer": { emoji: "🧭", chip: { zh: "多元芯片", en: "DIVERSITY CHIP" }, name: { zh: "推荐算法驯兽师", en: "Recommendation Tamer" }, dimension: { zh: "推荐", en: "RECOMMEND" } },
+  "ai-court": { emoji: "⚖️", chip: { zh: "公平芯片", en: "FAIRNESS CHIP" }, name: { zh: "AI 法庭", en: "AI Court" }, dimension: { zh: "责任", en: "RESPONSIBLE" } },
+};
+
+function shanghaiDateKey(now = new Date()) {
+  return new Date(now.getTime() + 8 * 60 * 60 * 1000).toISOString().slice(0, 10);
+}
+
+export function dailyAiQuest(dateKey = shanghaiDateKey()): AiQuestGame {
+  const day = Math.floor(Date.parse(`${dateKey}T00:00:00Z`) / 86_400_000);
+  return AI_QUEST_GAMES[Math.abs(day) % AI_QUEST_GAMES.length];
+}
 
 const GAME_NAME: Record<Lang, Record<TrioGame, string>> = {
   zh: { "color-hunter": "色差猎人", "dont-click-wrong": "不要点错", "instant-memory": "瞬间记忆" },
@@ -186,31 +212,67 @@ export async function getTrioProgress(): Promise<TrioProgress> {
 export type AiQuestProgress = {
   done: number;
   total: number;
-  best: { score: number; pct: number; title: string } | null;
+  best: Partial<Record<AiQuestGame, { score: number; pct: number; title: string }>>;
+  nextGame: AiQuestGame | null;
+  daily: { date: string; game: AiQuestGame; completed: boolean; streak: number };
   isAnonymous: boolean;
 };
 
 export async function getAiQuestProgress(): Promise<AiQuestProgress> {
+  const date = shanghaiDateKey();
+  const dailyGame = dailyAiQuest(date);
   try {
     const c = dx3xb();
     await ensureSession();
     const [{ data: user }, { data }] = await Promise.all([
       c.auth.getUser(),
-      c.from("dx3xb_runs").select("game,score,pct,title").in("game", [...AI_QUEST_GAMES]),
+      c.from("dx3xb_runs").select("game,score,pct,title,stats,created_at").in("game", [...AI_QUEST_GAMES]),
     ]);
-    let best: AiQuestProgress["best"] = null;
-    for (const row of (data ?? []) as { game: AiQuestGame; score: number; pct: number; title: string }[]) {
-      if (!AI_QUEST_GAMES.includes(row.game) || (best && row.score <= best.score)) continue;
-      best = { score: row.score, pct: row.pct, title: row.title };
+    const best: AiQuestProgress["best"] = {};
+    const dailyDates = new Set<string>();
+    for (const row of (data ?? []) as { game: AiQuestGame; score: number; pct: number; title: string; stats: Record<string, unknown> | null; created_at: string }[]) {
+      if (!AI_QUEST_GAMES.includes(row.game)) continue;
+      const current = best[row.game];
+      if (!current || row.score > current.score) best[row.game] = { score: row.score, pct: row.pct, title: row.title };
+      const runDate = typeof row.stats?.dailyDate === "string" ? row.stats.dailyDate : "";
+      if (/^\d{4}-\d{2}-\d{2}$/.test(runDate)) dailyDates.add(runDate);
     }
+    let streak = 0;
+    const cursor = new Date(`${date}T00:00:00Z`);
+    while (dailyDates.has(cursor.toISOString().slice(0, 10))) {
+      streak += 1;
+      cursor.setUTCDate(cursor.getUTCDate() - 1);
+    }
+    const done = AI_QUEST_GAMES.filter((game) => best[game]).length;
     return {
-      done: best ? 1 : 0,
-      total: 5,
+      done,
+      total: AI_QUEST_GAMES.length,
       best,
+      nextGame: AI_QUEST_GAMES.find((game) => !best[game]) ?? null,
+      daily: { date, game: dailyGame, completed: dailyDates.has(date), streak },
       isAnonymous: user.user?.is_anonymous !== false,
     };
   } catch {
-    return { done: 0, total: 5, best: null, isAnonymous: true };
+    return { done: 0, total: AI_QUEST_GAMES.length, best: {}, nextGame: AI_QUEST_GAMES[0], daily: { date, game: dailyGame, completed: false, streak: 0 }, isAnonymous: true };
+  }
+}
+
+export type AiGameStats = { plays: number; averageMastery: number; dailyCompletions: number };
+
+export async function getAiGameStats(game: AiQuestGame): Promise<AiGameStats> {
+  try {
+    const c = dx3xb();
+    await ensureSession();
+    const { data, error } = await c.rpc("dx3xb_ai_game_stats", { p_game: game });
+    if (error) throw error;
+    const row = (Array.isArray(data) ? data[0] : data) as { play_count?: number | string; avg_mastery?: number | string; daily_count?: number | string } | null;
+    return {
+      plays: Math.max(0, Number(row?.play_count) || 0),
+      averageMastery: Math.max(0, Math.min(100, Math.round(Number(row?.avg_mastery) || 0))),
+      dailyCompletions: Math.max(0, Number(row?.daily_count) || 0),
+    };
+  } catch {
+    return { plays: 0, averageMastery: 0, dailyCompletions: 0 };
   }
 }
 

@@ -2945,6 +2945,14 @@ export type Database = {
         Returns: boolean
       }
       dx3xb_ai_cost_summary: { Args: { p_days?: number }; Returns: Json }
+      dx3xb_ai_game_stats: {
+        Args: { p_game: string }
+        Returns: {
+          avg_mastery: number
+          daily_count: number
+          play_count: number
+        }[]
+      }
       dx3xb_bump_play: { Args: { app_slug: string }; Returns: undefined }
       dx3xb_create_play_session: {
         Args: {

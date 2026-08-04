@@ -1,0 +1,390 @@
+:root {
+  --paper: #fff7e7;
+  --paper-deep: #f5dfbd;
+  --ink: #221a2b;
+  --ink-soft: #5f5368;
+  --line: #221a2b;
+  --coral: #ff5f57;
+  --teal: #12b7a6;
+  --yellow: #ffd044;
+  --blue: #4564ff;
+  --green: #61c96f;
+  --white: #fffdf8;
+  --shadow: 4px 4px 0 var(--ink);
+  --shadow-lg: 8px 8px 0 var(--ink);
+}
+
+* { box-sizing: border-box; }
+
+html, body { margin: 0; min-height: 100%; }
+
+body {
+  background:
+    linear-gradient(90deg, rgba(34, 26, 43, .045) 1px, transparent 1px),
+    linear-gradient(rgba(34, 26, 43, .045) 1px, transparent 1px),
+    radial-gradient(circle at 18% 8%, rgba(255, 208, 68, .3), transparent 25%),
+    radial-gradient(circle at 82% 6%, rgba(69, 100, 255, .15), transparent 27%),
+    var(--paper);
+  background-size: 28px 28px, 28px 28px, auto, auto, auto;
+  color: var(--ink);
+  font-family: var(--font-vt323), ui-monospace, "PingFang SC", "Microsoft YaHei", monospace;
+  font-size: 22px;
+  line-height: 1.45;
+  -webkit-font-smoothing: none;
+}
+
+button, a { -webkit-tap-highlight-color: transparent; }
+
+:where(a, button):focus-visible {
+  outline: 4px solid var(--blue);
+  outline-offset: 3px;
+}
+
+.pixel {
+  font-family: var(--font-press), "PingFang SC", monospace;
+  letter-spacing: 0;
+}
+
+.wrap {
+  width: min(100%, 880px);
+  margin: 0 auto;
+  padding: 18px 14px 58px;
+}
+
+.backbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.backbtn, .langbtn {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-press), monospace;
+  font-size: 10px;
+  text-decoration: none;
+  border: 3px solid var(--line);
+  box-shadow: 3px 3px 0 var(--ink);
+  padding: 9px 13px;
+  color: var(--ink);
+}
+
+.backbtn { background: var(--white); }
+.langbtn { background: var(--yellow); cursor: pointer; }
+
+.backbtn:hover, .langbtn:hover { transform: translate(-1px, -1px); box-shadow: var(--shadow); }
+.backbtn:active, .langbtn:active { transform: translate(3px, 3px); box-shadow: none; }
+
+.heroLab {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 18px;
+  margin: 18px 0 22px;
+}
+
+.labKicker {
+  margin: 0 0 8px;
+  color: var(--ink-soft);
+  font-family: var(--font-press), monospace;
+  font-size: 9px;
+  line-height: 1.5;
+  text-transform: uppercase;
+}
+
+.title {
+  margin: 0;
+  font-size: clamp(30px, 8vw, 62px);
+  line-height: 1.08;
+}
+
+.subtitle {
+  display: inline-block;
+  margin: 8px 0 0;
+  padding: 6px 9px;
+  background: var(--ink);
+  color: var(--yellow);
+  font-size: clamp(11px, 2.8vw, 16px);
+  line-height: 1.4;
+  box-shadow: 4px 4px 0 var(--coral);
+}
+
+.detectiveMark {
+  flex: none;
+  width: 118px;
+  aspect-ratio: 1;
+  position: relative;
+  display: grid;
+  place-items: center;
+  background: var(--yellow);
+  border: 4px solid var(--line);
+  box-shadow: var(--shadow-lg);
+  transform: rotate(2deg);
+  overflow: hidden;
+}
+
+.detectiveMark::before,
+.detectiveMark::after {
+  content: "";
+  position: absolute;
+  background: rgba(34, 26, 43, .12);
+}
+
+.detectiveMark::before { width: 100%; height: 5px; transform: rotate(-45deg); }
+.detectiveMark::after { width: 5px; height: 100%; transform: rotate(45deg); }
+.detectiveMark span { position: absolute; top: 4px; left: 9px; font-family: var(--font-press); font-size: 35px; color: var(--coral); }
+.detectiveMark b { position: relative; z-index: 1; font-size: 48px; filter: grayscale(.2); }
+
+.panel, .gamePanel, .reportCard, .passport {
+  background: var(--white);
+  border: 3px solid var(--line);
+  box-shadow: var(--shadow-lg);
+}
+
+.introPanel { padding: clamp(18px, 4vw, 26px); }
+.introText { margin: 0; font-size: clamp(21px, 3.5vw, 26px); }
+
+.challengeNotice {
+  margin: 0 0 17px;
+  padding: 10px 12px;
+  background: var(--yellow);
+  border: 3px solid var(--line);
+  box-shadow: var(--shadow);
+}
+
+.rules {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin: 20px 0;
+}
+
+.rules div, .hud div, .reportGrid div {
+  background: var(--paper);
+  border: 3px solid var(--line);
+  padding: 10px;
+}
+
+.rules b, .hud b, .reportGrid b {
+  display: block;
+  font-family: var(--font-press), monospace;
+  font-size: 14px;
+  line-height: 1.2;
+}
+
+.rules span, .hud span, .reportGrid span {
+  display: block;
+  color: var(--ink-soft);
+  font-size: 16px;
+  margin-top: 4px;
+}
+
+.actions { display: flex; flex-wrap: wrap; gap: 10px; }
+
+.btn {
+  min-height: 46px;
+  font-family: var(--font-press), "PingFang SC", monospace;
+  font-size: 10px;
+  line-height: 1.35;
+  color: var(--white);
+  border: 3px solid var(--line);
+  box-shadow: var(--shadow);
+  padding: 12px 14px;
+  cursor: pointer;
+  transition: transform .05s, box-shadow .05s;
+}
+
+.btn:hover:not(:disabled) { transform: translate(-1px, -1px); box-shadow: 5px 5px 0 var(--ink); }
+.btn:active:not(:disabled) { transform: translate(4px, 4px); box-shadow: none; }
+.btn:disabled { opacity: .58; cursor: not-allowed; }
+.btn.coral { background: var(--coral); }
+.btn.teal { background: var(--teal); }
+.btn.ghost { background: var(--white); color: var(--ink); }
+
+.hud {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 9px;
+  margin-bottom: 14px;
+}
+
+.hud div { background: var(--white); box-shadow: 3px 3px 0 var(--ink); }
+.hud b { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hud .danger { background: #ffe0dc; animation: dangerPulse .8s steps(2) infinite; }
+
+.gamePanel { padding: clamp(15px, 3.5vw, 24px); }
+
+.caseMeta { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.caseMeta span {
+  padding: 5px 8px;
+  background: var(--yellow);
+  border: 2px solid var(--line);
+  font-family: var(--font-press), monospace;
+  font-size: 9px;
+}
+
+.gamePanel h2 { margin: 0; font-size: clamp(22px, 4vw, 30px); line-height: 1.25; }
+.question { margin: 15px 0 10px; color: var(--coral); font-size: 10px; line-height: 1.45; }
+
+.claimList { display: grid; gap: 10px; }
+
+.claim {
+  width: 100%;
+  min-height: 64px;
+  display: grid;
+  grid-template-columns: 42px 1fr;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 13px;
+  text-align: left;
+  background: var(--white);
+  color: var(--ink);
+  border: 3px solid var(--line);
+  box-shadow: 4px 4px 0 var(--ink);
+  font: inherit;
+  line-height: 1.35;
+  cursor: pointer;
+  transition: transform .05s, box-shadow .05s, background .12s;
+}
+
+.claim:hover:not(:disabled) { transform: translate(-2px, -2px); box-shadow: 6px 6px 0 var(--ink); background: #fffdf1; }
+.claim:active:not(:disabled) { transform: translate(4px, 4px); box-shadow: none; }
+.claim:disabled { opacity: 1; cursor: default; }
+.claimNo { width: 38px; height: 38px; display: grid; place-items: center; background: var(--ink); color: var(--white); font-family: var(--font-press); font-size: 12px; }
+.claim.weak { background: #dcf8e2; border-color: var(--ink); }
+.claim.weak .claimNo { background: var(--green); color: var(--ink); }
+.claim.picked:not(.weak) { background: #ffe2df; }
+.claim.picked:not(.weak) .claimNo { background: var(--coral); }
+.claim.weak.picked { box-shadow: 6px 6px 0 var(--green); }
+
+.evidenceBar { margin-top: 15px; display: grid; gap: 10px; }
+.evidenceBar p { margin: 0; padding: 11px 13px; border: 3px dashed var(--line); background: #ecfbf8; }
+
+.feedback { margin-top: 17px; padding: 15px; border: 3px solid var(--line); }
+.feedback.ok { background: #e7f8dc; }
+.feedback.no { background: #ffe5df; }
+.feedback h3 { margin: 0 0 10px; font-size: 13px; }
+.feedback p { margin: 7px 0; font-size: 19px; }
+
+.lesson {
+  margin: 13px 0;
+  padding: 11px;
+  background: var(--yellow);
+  border: 3px solid var(--line);
+  box-shadow: var(--shadow);
+}
+.lesson span { display: block; font-family: var(--font-press); font-size: 8px; margin-bottom: 5px; }
+.lesson strong { display: block; font-size: 22px; line-height: 1.3; }
+
+.resultShell { display: grid; gap: 17px; }
+.reportCard { position: relative; overflow: hidden; padding: clamp(18px, 4vw, 27px); }
+.reportCard::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: .18;
+  background:
+    linear-gradient(90deg, transparent 0 48%, var(--ink) 48% 52%, transparent 52%),
+    linear-gradient(0deg, transparent 0 48%, var(--ink) 48% 52%, transparent 52%);
+  background-size: 36px 36px;
+}
+
+.reportCard > * { position: relative; }
+.reportTop { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+.reportTop span { padding: 5px 7px; background: var(--green); border: 2px solid var(--line); font-family: var(--font-press); font-size: 8px; }
+.issued { margin: 10px 0 0; color: var(--ink-soft); font-size: 16px; }
+.resultName { margin: 0; font-size: clamp(18px, 5vw, 28px); }
+.resultTitle { margin: 15px 0 5px; color: var(--coral); font-size: clamp(23px, 6vw, 40px); line-height: 1.2; }
+.resultDesc { margin: 0 0 15px; font-size: 20px; }
+
+.mastery {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 14px;
+  margin: 17px 0;
+  padding: 14px;
+  background: var(--yellow);
+  border: 4px solid var(--line);
+  box-shadow: var(--shadow);
+}
+.mastery b { font-family: var(--font-press); font-size: clamp(40px, 12vw, 68px); line-height: 1; }
+.mastery b span { color: var(--coral); font-size: .48em; }
+.mastery p { margin: 0; font-family: var(--font-press); font-size: 10px; line-height: 1.5; }
+
+.reportGrid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.reportGrid div { background: var(--white); }
+.reportGrid b { font-size: 13px; }
+.reportGrid span { font-size: 14px; }
+
+.learningCard { margin-top: 15px; padding: 13px; background: var(--ink); color: var(--white); border: 3px solid var(--line); }
+.learningCard span { display: block; color: var(--yellow); font-size: 8px; margin-bottom: 6px; }
+.learningCard strong { display: block; font-size: 20px; line-height: 1.35; }
+
+.challengeResult { padding: 10px 12px; border: 3px solid var(--line); font-weight: 700; }
+.challengeResult.win { background: #dff6d6; }
+.challengeResult.lose { background: #ffe3df; }
+
+.reportShare { display: flex; align-items: center; gap: 14px; margin-top: 16px; padding-top: 15px; border-top: 3px dashed var(--line); }
+.reportShare img { width: 96px; height: 96px; image-rendering: pixelated; border: 3px solid var(--line); }
+.reportShare p { margin: 0 0 4px; font-size: 9px; line-height: 1.5; }
+.reportShare small { font-size: 16px; color: var(--ink-soft); }
+.fineprint { margin: 14px 0 0; font-size: 14px; color: var(--ink-soft); }
+
+.passport {
+  display: grid;
+  grid-template-columns: 82px 1fr;
+  align-items: center;
+  gap: 15px;
+  padding: 15px;
+  background: #ecfbf8;
+}
+.passportChip { width: 74px; height: 74px; display: grid; place-items: center; background: var(--teal); border: 3px solid var(--line); box-shadow: var(--shadow); font-size: 37px; }
+.passportLabel { margin: 0 0 5px; color: var(--teal); font-size: 9px; }
+.passportBody h3 { margin: 0; font-size: 24px; }
+.passportBody p { margin: 3px 0 6px; color: var(--ink-soft); font-size: 17px; }
+.passportBody a { color: var(--ink); font-family: var(--font-press); font-size: 9px; }
+.resultActions { justify-content: center; }
+
+@keyframes dangerPulse { 50% { background: var(--coral); color: var(--white); } }
+
+@media (max-width: 640px) {
+  body { font-size: 20px; }
+  .wrap { padding: 12px 10px 42px; }
+  .heroLab { align-items: center; }
+  .detectiveMark { width: 84px; }
+  .detectiveMark b { font-size: 34px; }
+  .detectiveMark span { font-size: 25px; }
+  .rules, .hud { gap: 6px; }
+  .rules div, .hud div, .reportGrid div { padding: 8px 6px; }
+  .rules b, .hud b { font-size: 10px; }
+  .rules span, .hud span { font-size: 13px; }
+  .claim { grid-template-columns: 36px 1fr; padding: 9px; font-size: 18px; }
+  .claimNo { width: 34px; height: 34px; }
+  .reportGrid { grid-template-columns: repeat(2, 1fr); }
+  .mastery { grid-template-columns: 1fr; }
+  .reportShare { align-items: flex-start; }
+  .passport { grid-template-columns: 62px 1fr; }
+  .passportChip { width: 58px; height: 58px; font-size: 29px; }
+  .resultActions .btn { flex: 1 1 145px; }
+}
+
+@media (max-width: 390px) {
+  .detectiveMark { display: none; }
+  .hud { grid-template-columns: repeat(2, 1fr); }
+  .reportShare { flex-direction: column; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: .01ms !important;
+  }
+}

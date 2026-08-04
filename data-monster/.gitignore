@@ -1,0 +1,9 @@
+.vercel
+.next
+node_modules
+test-results
+playwright-report
+*.png
+!public/og.png
+*.log
+*.tsbuildinfo

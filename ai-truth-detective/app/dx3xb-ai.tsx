@@ -17,7 +17,9 @@ export type AiRunPayload = {
 export type AiQuestProgress = {
   done: number;
   total: number;
-  best: { score: number; pct: number; title: string } | null;
+  best: Partial<Record<"ai-truth-detective" | "data-monster" | "prompt-commander" | "recommendation-tamer" | "ai-court", { score: number; pct: number; title: string }>>;
+  nextGame: "ai-truth-detective" | "data-monster" | "prompt-commander" | "recommendation-tamer" | "ai-court" | null;
+  daily: { date: string; game: string; completed: boolean; streak: number };
   isAnonymous: boolean;
 };
 
@@ -67,7 +69,7 @@ export function AiQuestFooter({ lang, run }: { lang: "zh" | "en"; run: AiRunPayl
         await recordAiRun(run);
         setProgress(await getAiProgress());
       } catch {
-        setProgress({ done: 1, total: 5, best: { score: run.score, pct: run.pct, title: run.title }, isAnonymous: true });
+        setProgress({ done: 1, total: 5, best: { [AI_GAME]: { score: run.score, pct: run.pct, title: run.title } }, nextGame: "data-monster", daily: { date: "", game: AI_GAME, completed: false, streak: 0 }, isAnonymous: true });
       }
     })();
   }, [run]);

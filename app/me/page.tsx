@@ -5,6 +5,7 @@ import { persistLanguage } from "@/lib/language";
 import {
   DEFAULT_AVATAR_URL,
   AI_QUEST_GAMES,
+  AI_QUEST_META,
   AI_QUEST_URL,
   getAvatarUrl,
   getAiQuestProgress,
@@ -37,18 +38,22 @@ type AccountMode = "register" | "login" | "forgot" | "reset";
 type LibraryRow = { created_at?: string; played_at?: string; kind?: string; dx3xb_microapps: { slug: string; title: string; template?: string } };
 
 const GAME_NAME: Record<Lang, Record<OfficialGame, string>> = {
-  zh: { "color-hunter": "色差猎人", "dont-click-wrong": "不要点错", "instant-memory": "瞬间记忆", "ai-truth-detective": "AI 侦探社" },
-  en: { "color-hunter": "color hunter", "dont-click-wrong": "Don't Tap Wrong", "instant-memory": "instant memory", "ai-truth-detective": "AI Detective" },
+  zh: { "color-hunter": "色差猎人", "dont-click-wrong": "不要点错", "instant-memory": "瞬间记忆", "ai-truth-detective": "AI 侦探社", "data-monster": "数据怪兽训练营", "prompt-commander": "提示词指挥官", "recommendation-tamer": "推荐算法驯兽师", "ai-court": "AI 法庭" },
+  en: { "color-hunter": "color hunter", "dont-click-wrong": "Don't Tap Wrong", "instant-memory": "instant memory", "ai-truth-detective": "AI Detective", "data-monster": "Data Monster Camp", "prompt-commander": "Prompt Commander", "recommendation-tamer": "Recommendation Tamer", "ai-court": "AI Court" },
 };
 const GAME_DIM: Record<Lang, Record<OfficialGame, string>> = {
-  zh: { "color-hunter": "感官", "dont-click-wrong": "反应", "instant-memory": "记忆", "ai-truth-detective": "核验" },
-  en: { "color-hunter": "SENSE", "dont-click-wrong": "REACT", "instant-memory": "MEMORY", "ai-truth-detective": "VERIFY" },
+  zh: { "color-hunter": "感官", "dont-click-wrong": "反应", "instant-memory": "记忆", "ai-truth-detective": "核验", "data-monster": "训练", "prompt-commander": "表达", "recommendation-tamer": "推荐", "ai-court": "责任" },
+  en: { "color-hunter": "SENSE", "dont-click-wrong": "REACT", "instant-memory": "MEMORY", "ai-truth-detective": "VERIFY", "data-monster": "TRAIN", "prompt-commander": "PROMPT", "recommendation-tamer": "RECOMMEND", "ai-court": "RESPONSIBLE" },
 };
 const GAME_COLOR: Record<OfficialGame, string> = {
   "color-hunter": "var(--coral)",
   "dont-click-wrong": "var(--teal)",
   "instant-memory": "var(--blue)",
   "ai-truth-detective": "var(--yellow)",
+  "data-monster": "var(--teal)",
+  "prompt-commander": "var(--coral)",
+  "recommendation-tamer": "var(--blue)",
+  "ai-court": "var(--yellow)",
 };
 
 const COPY = {
@@ -80,10 +85,13 @@ const COPY = {
     trainDesc: "进阶训练，系统提升感官与脑力。",
     aiTitle: "AI 探险护照",
     aiDone: (done: number, total: number) => `${done}/${total} 芯片`,
-    aiChip: "证据芯片",
-    aiLocked: "完成第一关，学会核验 AI 的说法。",
+    aiLocked: "尚未点亮",
     aiBest: (score: number, mastery: number) => `最佳 ${score} 分 · 掌握度 ${mastery}%`,
-    aiPlay: "进入 AI 侦探社 →",
+    aiPlay: "继续下一关 →",
+    aiComplete: "五关完成，去改造一个游戏 →",
+    dailyDone: (streak: number) => `今日任务已完成 · 连续 ${streak} 天`,
+    dailyTodo: "今日任务还未完成",
+    dailyPlay: "挑战今日任务",
     mastery: (p: number) => `掌握度 ${p}%`,
     claimTitle: "账号",
     claimHint: "注册正式账号会保留当前三件套战报和微应用。已有账号请直接登录。",
@@ -147,10 +155,13 @@ const COPY = {
     trainDesc: "Advanced training to systematically sharpen sense & brain.",
     aiTitle: "AI Adventure Passport",
     aiDone: (done: number, total: number) => `${done}/${total} CHIPS`,
-    aiChip: "EVIDENCE CHIP",
-    aiLocked: "Complete mission one and learn to verify AI claims.",
+    aiLocked: "LOCKED",
     aiBest: (score: number, mastery: number) => `Best ${score} · mastery ${mastery}%`,
-    aiPlay: "OPEN AI DETECTIVE →",
+    aiPlay: "CONTINUE NEXT MISSION →",
+    aiComplete: "ALL FIVE DONE — REMIX A GAME →",
+    dailyDone: (streak: number) => `Daily mission complete · ${streak}-day streak`,
+    dailyTodo: "Today's mission is waiting",
+    dailyPlay: "PLAY DAILY MISSION",
     mastery: (p: number) => `mastery ${p}%`,
     claimTitle: "Account",
     claimHint: "Create an account to keep this space's reports and micro-apps. Already registered? Sign in.",
@@ -537,13 +548,33 @@ export default function MePage() {
               <span className="mctag">{t.aiDone(aiProgress?.done ?? 0, aiProgress?.total ?? 5)}</span>
             </div>
             <div className="maipass">
-              <div className={aiProgress?.best ? "maichip on" : "maichip"} aria-hidden="true">🔎</div>
-              <div>
-                <b className="pixel">{t.aiChip}</b>
-                <p>{aiProgress?.best ? t.aiBest(aiProgress.best.score, aiProgress.best.pct) : t.aiLocked}</p>
-              </div>
+              {AI_QUEST_GAMES.map((game) => {
+                const best = aiProgress?.best[game];
+                const meta = AI_QUEST_META[game];
+                return (
+                  <a key={game} className={best ? "aiMission on" : "aiMission"} href={`${AI_QUEST_URL[game]}?lang=${lang}`}>
+                    <div className="maichip" aria-hidden="true">{meta.emoji}</div>
+                    <div>
+                      <b className="pixel">{meta.chip[lang]}</b>
+                      <p>{best ? t.aiBest(best.score, best.pct) : t.aiLocked}</p>
+                    </div>
+                  </a>
+                );
+              })}
             </div>
-            <a className="mlink" href={`${AI_QUEST_URL[AI_QUEST_GAMES[0]]}?lang=${lang}`}>{t.aiPlay}</a>
+            {aiProgress?.daily && (
+              <div className={aiProgress.daily.completed ? "dailyQuest done" : "dailyQuest"}>
+                <span>{aiProgress.daily.completed ? "✓" : "☀"}</span>
+                <div>
+                  <b>{aiProgress.daily.completed ? t.dailyDone(aiProgress.daily.streak) : t.dailyTodo}</b>
+                  <small>{AI_QUEST_META[aiProgress.daily.game].name[lang]}</small>
+                </div>
+                {!aiProgress.daily.completed && <a href={`${AI_QUEST_URL[aiProgress.daily.game]}?lang=${lang}&daily=${aiProgress.daily.date}`}>{t.dailyPlay} →</a>}
+              </div>
+            )}
+            <a className="mlink" href={aiProgress?.nextGame ? `${AI_QUEST_URL[aiProgress.nextGame]}?lang=${lang}` : `/studio?lang=${lang}&remix=prompt-commander`}>
+              {aiProgress?.nextGame ? t.aiPlay : t.aiComplete}
+            </a>
           </section>
 
           {/* 账号 */}
@@ -648,7 +679,7 @@ export default function MePage() {
                     <span className="mgame">{GAME_NAME[lang][r.game]}</span>
                     <span className="mtitle">{r.title}</span>
                     <b className="pixel mscore">{r.score}</b>
-                    <span className="mbeat">{r.game === AI_QUEST_GAMES[0] ? t.mastery(r.pct) : t.beat(r.pct)}</span>
+                    <span className="mbeat">{AI_QUEST_GAMES.includes(r.game as (typeof AI_QUEST_GAMES)[number]) ? t.mastery(r.pct) : t.beat(r.pct)}</span>
                     <span className="mdate">{fmtDate(r.created_at)}</span>
                   </li>
                 ))}
@@ -752,11 +783,23 @@ const STYLE = `
 .mdots { display: flex; gap: 8px; padding-bottom: 7px; }
 .mdots span { width: 21px; height: 21px; border: 3px solid var(--line); background: #fff; }
 .maiquest { background: linear-gradient(135deg, #ecfbf8, #f4f0ff); }
-.maipass { display: grid; grid-template-columns: 64px 1fr; align-items: center; gap: 13px; margin: 14px 0; }
+.maipass { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; margin: 14px 0; }
+.aiMission { color: var(--ink); text-decoration: none; min-width: 0; border: 3px solid var(--line); background: rgba(255,255,255,.68); padding: 10px; }
+.aiMission.on { background: #fff; box-shadow: 4px 4px 0 var(--ink); }
+.aiMission .maichip { margin-bottom: 9px; }
+.aiMission.on .maichip { filter: none; opacity: 1; background: var(--teal); }
+.aiMission b { display: block; font-size: 9px; line-height: 1.5; }
+.aiMission p { margin: 5px 0 0; font-size: 14px; color: var(--ink-soft); }
 .maichip { width: 58px; height: 58px; display: grid; place-items: center; border: 3px solid var(--line); background: #fff; filter: grayscale(1); opacity: .55; font-size: 28px; }
 .maichip.on { filter: none; opacity: 1; background: var(--teal); box-shadow: 4px 4px 0 var(--ink); }
 .maipass b { font-size: var(--me-small); line-height: 1.45; }
 .maipass p { margin: 4px 0 0; color: var(--ink-soft); font-size: 16px; }
+.dailyQuest { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px; border: 3px dashed var(--line); background: var(--yellow); padding: 10px; margin: 0 0 13px; }
+.dailyQuest.done { background: #d9f7e8; }
+.dailyQuest > span { font-size: 26px; }
+.dailyQuest b,.dailyQuest small { display: block; }
+.dailyQuest small { color: var(--ink-soft); margin-top: 3px; }
+.dailyQuest a { color: var(--ink); font-family: var(--font-press), monospace; font-size: 9px; }
 .mlink { display: inline-flex; min-height: 42px; align-items: center; justify-content: center; font-family: var(--font-press), "FpxCJK", monospace; font-size: var(--me-small); line-height: 1.35; color: var(--ink);
   background: var(--yellow); border: 3px solid var(--line); box-shadow: 3px 3px 0 var(--ink); padding: 10px 13px; text-decoration: none; white-space: nowrap; }
 .mlink.mini { flex: none; min-height: 36px; font-size: 10px; padding: 7px 10px; }
@@ -811,6 +854,11 @@ const STYLE = `
   .mcard { padding: 17px; }
   .mcardhead { align-items: flex-start; }
   .accountSummary { grid-template-columns: 1fr; }
+  .maipass { grid-template-columns: 1fr; }
+  .aiMission { display: grid; grid-template-columns: 54px 1fr; align-items: center; }
+  .aiMission .maichip { margin: 0; }
+  .dailyQuest { grid-template-columns: auto 1fr; }
+  .dailyQuest a { grid-column: 1 / -1; }
 }
 @media (max-width: 420px) {
   .mhead { align-items: flex-start; gap: 12px; }

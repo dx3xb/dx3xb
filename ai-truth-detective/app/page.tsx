@@ -168,6 +168,8 @@ export default function AiTruthDetective() {
   const [profileName, setProfileName] = useState("");
   const [challengerName, setChallengerName] = useState("");
   const [challengerScore, setChallengerScore] = useState(0);
+  const [dailyDate, setDailyDate] = useState("");
+  const [classCode, setClassCode] = useState("");
   const [qr, setQr] = useState("");
   const [copied, setCopied] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -187,6 +189,8 @@ export default function AiTruthDetective() {
     setSeed(nextSeed);
     setChallengerName(safeChallengeName(params.get("from")));
     setChallengerScore(Math.max(0, Math.min(99999, Number(params.get("score")) || 0)));
+    setDailyDate(/^\d{4}-\d{2}-\d{2}$/.test(params.get("daily") || "") ? params.get("daily") || "" : "");
+    setClassCode(/^[A-Z2-9]{6}$/.test((params.get("class") || "").toUpperCase()) ? (params.get("class") || "").toUpperCase() : "");
     document.documentElement.lang = nextLang;
     setHydrated(true);
     getAiProfile().then((profile) => setProfileName(safeChallengeName(profile.handle))).catch(() => undefined);
@@ -226,8 +230,9 @@ export default function AiTruthDetective() {
     url.searchParams.set("lang", lang);
     url.searchParams.set("from", reportName);
     url.searchParams.set("score", String(score));
+    if (classCode) url.searchParams.set("class", classCode);
     return url.toString();
-  }, [lang, reportName, score, seed]);
+  }, [classCode, lang, reportName, score, seed]);
 
   useEffect(() => {
     if (phase !== "report") return;
@@ -344,8 +349,8 @@ export default function AiTruthDetective() {
     title: result.title,
     lang,
     handle: reportName,
-    stats: { correct: correctCount, total: CASES_PER_RUN, tokensLeft, evidenceSpent, bestStreak, seed },
-  }), [bestStreak, correctCount, evidenceSpent, lang, mastery, reportName, result.title, score, seed, tokensLeft]);
+    stats: { correct: correctCount, total: CASES_PER_RUN, tokensLeft, evidenceSpent, bestStreak, seed, ...(dailyDate ? { dailyDate } : {}), ...(classCode ? { classCode } : {}) },
+  }), [bestStreak, classCode, correctCount, dailyDate, evidenceSpent, lang, mastery, reportName, result.title, score, seed, tokensLeft]);
 
   return (
     <main className="wrap" data-testid="game-root" data-hydrated={hydrated ? "true" : "false"}>

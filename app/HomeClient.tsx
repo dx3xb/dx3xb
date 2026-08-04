@@ -160,12 +160,20 @@ const COPY = {
     trioDesc: "三关连测你的感官辨别、反应控制、短时记忆——集齐解锁专属综合脑力报告，还能叫朋友来比。",
     trioStart: "开始挑战 →",
     trioReport: "我的总报告",
-    aiTag: "★ AI 探险第一关",
-    aiName: "AI 侦探社：谁在胡说",
-    aiDims: ["🔎 核验", "🧩 思辨", "◆ 证据芯片"],
-    aiDesc: "AI 说得一本正经，不代表每句话都站得住。5 个案件，揪出最不可靠的那一句，点亮你的第一枚 AI 探险芯片。",
-    aiStart: "开始查案 →",
+    aiTag: "★ AI 探险主线 · 五关",
+    aiName: "从会判断，到懂原理，再到能创造",
+    aiDims: ["🔎 核验", "🧬 数据", "⌨️ 提示", "🧭 推荐", "⚖️ 公平"],
+    aiDesc: "五款 60–90 秒的可验证小游戏，学会核验 AI、训练分类器、写清提示词、理解推荐与算法责任。每天还能挑战全站同题任务。",
+    aiStart: "从第一关开始 →",
     aiPassport: "查看探险护照",
+    aiClassroom: "班级挑战 / 教师模式",
+    aiGames: [
+      ["🔎", "AI 侦探社", "语言流畅不等于事实正确"],
+      ["🧬", "数据怪兽训练营", "标签与样本决定模型学到什么"],
+      ["⌨️", "提示词指挥官", "把模糊要求变成可执行任务"],
+      ["🧭", "推荐算法驯兽师", "看见反馈循环，跳出信息茧房"],
+      ["⚖️", "AI 法庭", "准确率之外还有公平与责任"],
+    ],
     toySub: "点亮的卡片直接玩；更多实验项目收进同一块施工区 🚧",
     upcomingTitle: (count: number) => `${count} 个新玩具施工中`,
     upcomingDesc: "随机玩法、AI 小魔法和像素实验正在搭建。",
@@ -224,12 +232,20 @@ const COPY = {
     trioDesc: "Three games test your sense, reaction and memory — finish all three to unlock your combined brain report, then dare your friends.",
     trioStart: "START →",
     trioReport: "My report",
-    aiTag: "★ AI ADVENTURE · MISSION 01",
-    aiName: "AI Detective: Who Is Bluffing?",
-    aiDims: ["🔎 VERIFY", "🧩 REASON", "◆ EVIDENCE CHIP"],
-    aiDesc: "AI can sound certain without being reliable. Crack five cases, catch the weakest claim, and unlock your first AI Adventure chip.",
-    aiStart: "OPEN THE CASE →",
+    aiTag: "★ AI ADVENTURE · FIVE MISSIONS",
+    aiName: "Judge it, understand it, then create with it",
+    aiDims: ["🔎 VERIFY", "🧬 DATA", "⌨️ PROMPT", "🧭 RECOMMEND", "⚖️ FAIRNESS"],
+    aiDesc: "Five verifiable 60–90 second games teach claim checking, classification, prompting, recommendation loops and responsible AI—with a shared daily mission.",
+    aiStart: "START MISSION ONE →",
     aiPassport: "My adventure passport",
+    aiClassroom: "Class challenge / Teacher mode",
+    aiGames: [
+      ["🔎", "AI Detective", "Fluent language is not proof"],
+      ["🧬", "Data Monster Camp", "Labels and samples shape a model"],
+      ["⌨️", "Prompt Commander", "Turn vague wishes into executable tasks"],
+      ["🧭", "Recommendation Tamer", "See the loop and widen the feed"],
+      ["⚖️", "AI Court", "Fairness and responsibility beyond accuracy"],
+    ],
     toySub: "Lit cards are playable; upcoming experiments share one construction zone 🚧",
     upcomingTitle: (count: number) => `${count} NEW TOYS IN PROGRESS`,
     upcomingDesc: "Random toys, AI magic and pixel experiments are taking shape.",
@@ -269,6 +285,14 @@ const COPY = {
     navHome: "TOP",
   },
 } as const;
+
+const AI_GAME_URLS = [
+  "https://ai-detective.dx3xb.com",
+  "https://data-monster.dx3xb.com",
+  "https://prompt-commander.dx3xb.com",
+  "https://recommendation-tamer.dx3xb.com",
+  "https://ai-court.dx3xb.com",
+] as const;
 
 function timeAgo(iso: string, lang: Lang) {
   const s = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
@@ -568,7 +592,7 @@ export function HomeClient({ initialLang, initialToys, initialCommunity }: HomeC
           </div>
         </section>
 
-        {/* AI 探险第一关 */}
+        {/* AI 探险主线 */}
         <section className="section">
           <div className="triohero aihero">
             <span className="triotag pixel">{t.aiTag}</span>
@@ -577,9 +601,19 @@ export function HomeClient({ initialLang, initialToys, initialCommunity }: HomeC
               {t.aiDims.map((d, i) => <span key={i}>{d}</span>)}
             </div>
             <p className="triodesc">{t.aiDesc}</p>
+            <div className="aiMissionGrid">
+              {t.aiGames.map((game, index) => (
+                <a key={AI_GAME_URLS[index]} href={`${AI_GAME_URLS[index]}/?lang=${lang}`}>
+                  <span aria-hidden="true">{game[0]}</span>
+                  <b>{game[1]}</b>
+                  <small>{game[2]}</small>
+                </a>
+              ))}
+            </div>
             <div className="trioactions">
               <a className="btn teal" href={`https://ai-detective.dx3xb.com/?lang=${lang}`}>{t.aiStart}</a>
               <a className="btn ghost" href={`/me?lang=${lang}`}>{t.aiPassport}</a>
+              <a className="btn ghost" href={`/class?lang=${lang}`}>{t.aiClassroom}</a>
             </div>
           </div>
         </section>

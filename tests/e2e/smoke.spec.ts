@@ -32,4 +32,16 @@ test("protected APIs reject missing credentials", async ({ request }) => {
   expect(library.status()).toBe(401);
   const funnel = await request.post("/api/funnel", { data: { event: "workshop_enter", microappId: "123e4567-e89b-12d3-a456-426614174000" } });
   expect(funnel.status()).toBe(401);
+  const classroom = await request.post("/api/classrooms", { data: { pack: "ai-foundations" } });
+  expect(classroom.status()).toBe(401);
+});
+
+test("classroom mode states its privacy boundary and offers printable packs", async ({ page }) => {
+  await page.goto("/class?lang=en");
+  await expect(page.getByRole("heading", { name: /One code puts the whole class/ })).toBeVisible();
+  await expect(page.getByText(/Students enter no names/)).toBeVisible();
+  await expect(page.getByText("AI Foundations Trio")).toBeVisible();
+  await page.getByRole("link", { name: /OPEN PRINTABLE ACTIVITY PACKS/ }).click();
+  await expect(page.getByRole("heading", { name: "dx3xb AI Literacy Game Activity Pack" })).toBeVisible();
+  await expect(page.getByText("MINOR-SAFETY BOUNDARIES")).toBeVisible();
 });
