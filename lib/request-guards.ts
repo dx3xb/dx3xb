@@ -20,6 +20,29 @@ export function cleanText(value: unknown, max: number) {
     .slice(0, max);
 }
 
+const PROMOTION_SIGNALS = [
+  /\bexplainer\b/i,
+  /\bmarketing\b/i,
+  /\bseo\b/i,
+  /\bbacklinks?\b/i,
+  /\bpromot(?:e|ion|ional)\b/i,
+  /\bshowcase\b/i,
+  /\bsales?\b/i,
+  /\bhire me\b/i,
+  /\bmy services?\b/i,
+  /\bwhats?app\b/i,
+  /\btelegram\b/i,
+  /推广|营销|代运营/i,
+  /商务合作|加微信|建站服务/i,
+];
+
+export function looksPromotional(value: unknown) {
+  const text = cleanText(value, 280);
+  const signals = PROMOTION_SIGNALS.reduce((count, pattern) => count + (pattern.test(text) ? 1 : 0), 0);
+  const hasLink = /https?:\/\/|www\./i.test(text);
+  return signals >= 2 || (signals >= 1 && hasLink);
+}
+
 export function clientIp(req: NextRequest) {
   const fwd = req.headers.get("x-forwarded-for");
   if (fwd) return fwd.split(",")[0]?.trim().slice(0, 64) || "";

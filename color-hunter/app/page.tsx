@@ -36,6 +36,7 @@ const COPY = {
     back: "← dx3xb",
     langBtn: "EN",
     disclaimer: "娱乐视觉测试，不作为医学色觉诊断。",
+    percentileNote: "当前百分位为娱乐性估算，后续接入真实玩家分布。",
     challengeNotice: (name: string, s: number) =>
       name
         ? `${name} 留下了 ${s} 分的同题挑战，超过 ta 战报更好看。`
@@ -49,8 +50,8 @@ const COPY = {
     anon: "匿名猎人",
     reportKicker: "dx3xb 视觉报告",
     verdictLead: (name: string, pct: number) =>
-      pct >= 60 ? `「${name}」的神眼，堪比` : `「${name}」的眼力，鉴定为`,
-    beat: (p: number) => `你打败了 ${p}% 的玩家`,
+      pct >= 60 ? `「${name}」的神眼，堪比` : `「${name}」的本局称号是`,
+    beat: (p: number) => `本局估算超过 ${p}% 的玩家`,
     challengeRow: "同题挑战：",
     challengeWin: "已超过对方",
     challengeLose: (d: number) => `还差 ${d} 分`,
@@ -66,9 +67,9 @@ const COPY = {
     qrCaption: "扫码即可挑战同一套题",
     qrAlt: "同题挑战二维码",
     nativeShareTitle: "色差猎人挑战",
-    titles: ["色弱警报", "正常观察者", "设计师眼睛", "鹰眼玩家", "印刷厂老板"],
+    titles: ["色彩新手", "正常观察者", "设计师眼睛", "鹰眼玩家", "印刷厂老板"],
     reportText: (name: string, score: number, title: string, pct: number, minDelta: string, url: string) =>
-      `我「${name}」在 dx3xb 色差猎人拿到 ${score} 分，${title}，打败了 ${pct}% 的玩家。最小识别色差 ΔE ${minDelta}。来挑战同一套题：${url}`,
+      `我「${name}」在 dx3xb 色差猎人拿到 ${score} 分，${title}，本局估算超过 ${pct}% 的玩家。最小识别色差 ΔE ${minDelta}。来挑战同一套题：${url}`,
   },
   en: {
     readyTitle: "color hunter",
@@ -85,6 +86,7 @@ const COPY = {
     back: "← dx3xb",
     langBtn: "中",
     disclaimer: "A fun vision test, not a medical color-vision diagnosis.",
+    percentileNote: "This percentile is an entertainment estimate; real player distribution is coming later.",
     challengeNotice: (name: string, s: number) =>
       name
         ? `${name} left a ${s}-point challenge on this puzzle. Beat them for a better report.`
@@ -99,7 +101,7 @@ const COPY = {
     reportKicker: "dx3xb vision report",
     verdictLead: (name: string, pct: number) =>
       pct >= 60 ? `${name}'s sharp eyes rival the` : `${name}'s eyes are rated as the`,
-    beat: (p: number) => `You beat ${p}% of players`,
+    beat: (p: number) => `Estimated above ${p}% of players for this run`,
     challengeRow: "Same-puzzle duel: ",
     challengeWin: "you took the lead",
     challengeLose: (d: number) => `${d} points to go`,
@@ -115,19 +117,19 @@ const COPY = {
     qrCaption: "Scan to take the exact same puzzle",
     qrAlt: "Same-puzzle challenge QR code",
     nativeShareTitle: "color hunter challenge",
-    titles: ["Color Alert", "Normal Observer", "Designer's Eye", "Eagle Eye", "Print-Shop Boss"],
+    titles: ["Color Rookie", "Normal Observer", "Designer's Eye", "Eagle Eye", "Print-Shop Boss"],
     reportText: (name: string, score: number, title: string, pct: number, minDelta: string, url: string) =>
-      `${name} scored ${score} in dx3xb color hunter — ${title}, beating ${pct}% of players. Smallest gap caught: ΔE ${minDelta}. Take the same puzzle: ${url}`,
+      `${name} scored ${score} in dx3xb color hunter — ${title}, estimated above ${pct}% of players for this run. Smallest gap caught: ΔE ${minDelta}. Take the same puzzle: ${url}`,
   },
 } satisfies Record<Lang, Record<string, unknown>>;
 
 function getInitialLang(): Lang {
-  if (typeof window === "undefined") return "en";
+  if (typeof window === "undefined") return "zh";
   const fromUrl = new URLSearchParams(window.location.search).get("lang");
   if (fromUrl === "zh" || fromUrl === "en") return fromUrl;
   const stored = window.localStorage.getItem("dx3xb_lang");
   if (stored === "zh" || stored === "en") return stored;
-  return "en";
+  return "zh";
 }
 
 function hashString(input: string) {
@@ -227,7 +229,7 @@ function formatTime(ms: number) {
 }
 
 export default function ColorHunter() {
-  const [lang, setLang] = useState<Lang>("en");
+  const [lang, setLang] = useState<Lang>("zh");
   const [seed, setSeed] = useState("dx3xb-local");
   const [phase, setPhase] = useState<Phase>("ready");
   const [level, setLevel] = useState(1);
@@ -246,6 +248,7 @@ export default function ColorHunter() {
   const [nameDraft, setNameDraft] = useState("");
   const [playerName, setPlayerName] = useState("");
   const [saving, setSaving] = useState(false);
+  const [hydrated, setHydrated] = useState(false);
 
   const reportRef = useRef<HTMLDivElement>(null);
   const t = COPY[lang];
@@ -263,7 +266,12 @@ export default function ColorHunter() {
     getProfileHandle().then((h) => {
       if (h) setNameDraft(sanitizeName(h));
     });
+    setHydrated(true);
   }, []);
+
+  useEffect(() => {
+    document.documentElement.lang = lang;
+  }, [lang]);
 
   const round = useMemo(() => makeRound(seed, level), [seed, level]);
   const currentPct = percentile(score, Math.max(level - 1, 1), minDelta, mistakes);
@@ -329,6 +337,7 @@ export default function ColorHunter() {
       const next: Lang = prev === "zh" ? "en" : "zh";
       if (typeof window !== "undefined") {
         window.localStorage.setItem("dx3xb_lang", next);
+        document.cookie = `dx3xb_lang=${next}; Path=/; Max-Age=31536000; SameSite=Lax; Domain=.dx3xb.com; Secure`;
         const url = new URL(window.location.href);
         url.searchParams.set("lang", next);
         window.history.replaceState(null, "", url.toString());
@@ -448,7 +457,7 @@ export default function ColorHunter() {
   }
 
   return (
-    <main className="wrap">
+    <main className="wrap" data-testid="game-root" data-hydrated={hydrated ? "true" : "false"}>
       <div className="backbar">
         <a className="backbtn" href="https://dx3xb.com">
           {t.back}
@@ -632,7 +641,7 @@ export default function ColorHunter() {
               </div>
             </div>
 
-            <p className="fineprint">{t.disclaimer}</p>
+            <p className="fineprint">{t.disclaimer} {t.percentileNote}</p>
           </div>
 
           <TrioFooter

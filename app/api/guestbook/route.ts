@@ -1,6 +1,7 @@
+import { createHmac } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { getServiceClient } from "@/lib/supabase";
-import { cleanText, clientIp, readJson, tooManyRequests } from "@/lib/request-guards";
+import { cleanText, clientIp, looksPromotional, readJson, tooManyRequests } from "@/lib/request-guards";
 
 export const runtime = "nodejs";
 
@@ -16,6 +17,14 @@ function geoOf(req: NextRequest) {
     region: req.headers.get("x-vercel-ip-country-region") || "",
     city,
   };
+}
+
+function visitorKey(req: NextRequest) {
+  const ip = clientIp(req);
+  if (!ip) return "";
+  const secret = process.env.GUESTBOOK_IP_SALT || process.env.SUPABASE_SERVICE_KEY;
+  if (!secret) return ip;
+  return createHmac("sha256", secret).update(ip).digest("hex").slice(0, 40);
 }
 
 export async function GET() {
@@ -61,6 +70,19 @@ export async function POST(request: NextRequest) {
   try {
     const { country, region, city } = geoOf(request);
     const supabase = getServiceClient();
+    const visitor = visitorKey(request);
+    if (visitor) {
+      const since = new Date(Date.now() - 60_000).toISOString();
+      const { count, error: limitError } = await supabase
+        .from("dx3xb_guestbook")
+        .select("id", { count: "exact", head: true })
+        .eq("ip", visitor)
+        .gte("created_at", since);
+      if (limitError) throw limitError;
+      if ((count ?? 0) >= 6) {
+        return NextResponse.json({ ok: false, error: "rate_limited" }, { status: 429 });
+      }
+    }
     if (parent_id) {
       const { data: parent, error: parentError } = await supabase
         .from("dx3xb_guestbook")
@@ -72,17 +94,19 @@ export async function POST(request: NextRequest) {
       if (parentError) throw parentError;
       if (!parent) return NextResponse.json({ ok: false, error: "bad_parent" }, { status: 400 });
     }
+    const moderated = looksPromotional(message);
     const { error } = await supabase.from("dx3xb_guestbook").insert({
       name,
       message,
       parent_id,
-      ip: clientIp(request),
+      ip: visitor,
       country,
       region,
       city: cleanText(city, 64),
+      hidden: moderated,
     });
     if (error) throw error;
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({ ok: true, moderated });
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);
     if (msg.includes("rate_limited")) return NextResponse.json({ ok: false, error: "rate_limited" }, { status: 429 });

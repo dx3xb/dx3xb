@@ -4,10 +4,27 @@ test("home and studio remain usable with keyboard", async ({ page }) => {
   await page.goto("/?lang=zh");
   await expect(page.locator("html")).toHaveAttribute("lang", "zh");
   await expect(page.locator("body")).toBeVisible();
+  await expect(page).toHaveTitle(/网络趣味工具铺/);
+  await expect(page.getByLabel("Email")).toBeVisible();
   await page.keyboard.press("Tab");
   await expect(page.locator(":focus")).toBeVisible();
   await page.goto("/studio?lang=en");
   await expect(page.locator("html")).toHaveAttribute("lang", "en");
+  await expect(page).toHaveTitle(/Studio/);
+});
+
+test("crawler discovery endpoints are available", async ({ request }) => {
+  const home = await request.get("/?lang=zh");
+  expect(home.status()).toBe(200);
+  expect(await home.text()).toContain("色差猎人");
+
+  const robots = await request.get("/robots.txt");
+  expect(robots.status()).toBe(200);
+  expect(await robots.text()).toContain("sitemap.xml");
+
+  const sitemap = await request.get("/sitemap.xml");
+  expect(sitemap.status()).toBe(200);
+  expect(await sitemap.text()).toContain("https://dx3xb.com");
 });
 
 test("protected APIs reject missing credentials", async ({ request }) => {
