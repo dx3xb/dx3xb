@@ -4,6 +4,7 @@ const childFiles = [
   "color-hunter/app/dx3xb-trio.tsx",
   "dont-click-wrong/app/dx3xb-trio.tsx",
   "instant-memory/app/dx3xb-trio.tsx",
+  "ai-truth-detective/app/dx3xb-ai.tsx",
 ];
 
 for (const file of childFiles) {
@@ -12,6 +13,16 @@ for (const file of childFiles) {
     throw new Error(`${file} must use the main-origin bridge instead of a Supabase session`);
   }
   if (!source.includes("trioBridgeCall")) throw new Error(`${file} is missing the session bridge`);
+}
+
+const nextConfig = await readFile("next.config.mjs", "utf8");
+for (const origin of [
+  "https://color-hunter.dx3xb.com",
+  "https://dont-click-wrong.dx3xb.com",
+  "https://instant-memory.dx3xb.com",
+  "https://ai-detective.dx3xb.com",
+]) {
+  if (!nextConfig.includes(origin)) throw new Error(`bridge CSP is missing ${origin}`);
 }
 
 const admin = await readFile("app/admin/page.tsx", "utf8");
