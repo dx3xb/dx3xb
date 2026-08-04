@@ -160,6 +160,12 @@ const COPY = {
     trioDesc: "三关连测你的感官辨别、反应控制、短时记忆——集齐解锁专属综合脑力报告，还能叫朋友来比。",
     trioStart: "开始挑战 →",
     trioReport: "我的总报告",
+    aiTag: "★ AI 探险第一关",
+    aiName: "AI 侦探社：谁在胡说",
+    aiDims: ["🔎 核验", "🧩 思辨", "◆ 证据芯片"],
+    aiDesc: "AI 说得一本正经，不代表每句话都站得住。5 个案件，揪出最不可靠的那一句，点亮你的第一枚 AI 探险芯片。",
+    aiStart: "开始查案 →",
+    aiPassport: "查看探险护照",
     toySub: "点亮的卡片直接玩；更多实验项目收进同一块施工区 🚧",
     upcomingTitle: (count: number) => `${count} 个新玩具施工中`,
     upcomingDesc: "随机玩法、AI 小魔法和像素实验正在搭建。",
@@ -218,6 +224,12 @@ const COPY = {
     trioDesc: "Three games test your sense, reaction and memory — finish all three to unlock your combined brain report, then dare your friends.",
     trioStart: "START →",
     trioReport: "My report",
+    aiTag: "★ AI ADVENTURE · MISSION 01",
+    aiName: "AI Detective: Who Is Bluffing?",
+    aiDims: ["🔎 VERIFY", "🧩 REASON", "◆ EVIDENCE CHIP"],
+    aiDesc: "AI can sound certain without being reliable. Crack five cases, catch the weakest claim, and unlock your first AI Adventure chip.",
+    aiStart: "OPEN THE CASE →",
+    aiPassport: "My adventure passport",
     toySub: "Lit cards are playable; upcoming experiments share one construction zone 🚧",
     upcomingTitle: (count: number) => `${count} NEW TOYS IN PROGRESS`,
     upcomingDesc: "Random toys, AI magic and pixel experiments are taking shape.",
@@ -552,6 +564,22 @@ export function HomeClient({ initialLang, initialToys, initialCommunity }: HomeC
             <div className="trioactions">
               <a className="btn" href={`https://color-hunter.dx3xb.com/?lang=${lang}`}>{t.trioStart}</a>
               <a className="btn ghost" href={`/trio?lang=${lang}`}>{t.trioReport}</a>
+            </div>
+          </div>
+        </section>
+
+        {/* AI 探险第一关 */}
+        <section className="section">
+          <div className="triohero aihero">
+            <span className="triotag pixel">{t.aiTag}</span>
+            <h2 className="pixel trioname">{t.aiName}</h2>
+            <div className="triodims">
+              {t.aiDims.map((d, i) => <span key={i}>{d}</span>)}
+            </div>
+            <p className="triodesc">{t.aiDesc}</p>
+            <div className="trioactions">
+              <a className="btn teal" href={`https://ai-detective.dx3xb.com/?lang=${lang}`}>{t.aiStart}</a>
+              <a className="btn ghost" href={`/me?lang=${lang}`}>{t.aiPassport}</a>
             </div>
           </div>
         </section>

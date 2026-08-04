@@ -15,6 +15,9 @@ export const DEFAULT_AVATAR_URL = "/icon-192.png";
 
 export const TRIO_GAMES = ["color-hunter", "dont-click-wrong", "instant-memory"] as const;
 export type TrioGame = (typeof TRIO_GAMES)[number];
+export const AI_QUEST_GAMES = ["ai-truth-detective"] as const;
+export type AiQuestGame = (typeof AI_QUEST_GAMES)[number];
+export type OfficialGame = TrioGame | AiQuestGame;
 type Lang = "zh" | "en";
 
 export const GAME_URL: Record<TrioGame, string> = {
@@ -23,6 +26,9 @@ export const GAME_URL: Record<TrioGame, string> = {
   "instant-memory": "https://instant-memory.dx3xb.com",
 };
 export const TRIO_REPORT_URL = "https://dx3xb.com/trio";
+export const AI_QUEST_URL: Record<AiQuestGame, string> = {
+  "ai-truth-detective": "https://ai-detective.dx3xb.com",
+};
 
 const GAME_NAME: Record<Lang, Record<TrioGame, string>> = {
   zh: { "color-hunter": "色差猎人", "dont-click-wrong": "不要点错", "instant-memory": "瞬间记忆" },
@@ -121,7 +127,7 @@ export type RunPayload = {
   stats?: Record<string, unknown>;
 };
 
-export async function recordRun(game: TrioGame, p: RunPayload): Promise<void> {
+export async function recordRun(game: OfficialGame, p: RunPayload): Promise<void> {
   try {
     const c = dx3xb();
     const id = await ensureSession();
@@ -174,6 +180,37 @@ export async function getTrioProgress(): Promise<TrioProgress> {
     return { done, best, nextGame, isAnonymous, allDone: done >= TRIO_GAMES.length };
   } catch {
     return { done: 0, best: {}, nextGame: TRIO_GAMES[0], isAnonymous: true, allDone: false };
+  }
+}
+
+export type AiQuestProgress = {
+  done: number;
+  total: number;
+  best: { score: number; pct: number; title: string } | null;
+  isAnonymous: boolean;
+};
+
+export async function getAiQuestProgress(): Promise<AiQuestProgress> {
+  try {
+    const c = dx3xb();
+    await ensureSession();
+    const [{ data: user }, { data }] = await Promise.all([
+      c.auth.getUser(),
+      c.from("dx3xb_runs").select("game,score,pct,title").in("game", [...AI_QUEST_GAMES]),
+    ]);
+    let best: AiQuestProgress["best"] = null;
+    for (const row of (data ?? []) as { game: AiQuestGame; score: number; pct: number; title: string }[]) {
+      if (!AI_QUEST_GAMES.includes(row.game) || (best && row.score <= best.score)) continue;
+      best = { score: row.score, pct: row.pct, title: row.title };
+    }
+    return {
+      done: best ? 1 : 0,
+      total: 5,
+      best,
+      isAnonymous: user.user?.is_anonymous !== false,
+    };
+  } catch {
+    return { done: 0, total: 5, best: null, isAnonymous: true };
   }
 }
 
@@ -363,7 +400,7 @@ export async function uploadAvatar(file: File): Promise<{ url?: string; error?: 
   return { url: body.url };
 }
 
-export type MyRun = { game: TrioGame; score: number; pct: number; title: string; created_at: string };
+export type MyRun = { game: OfficialGame; score: number; pct: number; title: string; created_at: string };
 export async function getMyRuns(limit = 40): Promise<MyRun[]> {
   try {
     const c = dx3xb();

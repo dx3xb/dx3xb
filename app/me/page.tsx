@@ -4,7 +4,10 @@ import { useEffect, useMemo, useState } from "react";
 import { persistLanguage } from "@/lib/language";
 import {
   DEFAULT_AVATAR_URL,
+  AI_QUEST_GAMES,
+  AI_QUEST_URL,
   getAvatarUrl,
+  getAiQuestProgress,
   getTrioProgress,
   getProfileHandle,
   getMyRuns,
@@ -23,6 +26,8 @@ import {
   uploadAvatar,
   type TrioGame,
   type TrioProgress,
+  type AiQuestProgress,
+  type OfficialGame,
   type MyRun,
 } from "../dx3xb-trio";
 import { getMyMicroapps, type Microapp } from "../dx3xb-apps";
@@ -31,18 +36,19 @@ type Lang = "zh" | "en";
 type AccountMode = "register" | "login" | "forgot" | "reset";
 type LibraryRow = { created_at?: string; played_at?: string; kind?: string; dx3xb_microapps: { slug: string; title: string; template?: string } };
 
-const GAME_NAME: Record<Lang, Record<TrioGame, string>> = {
-  zh: { "color-hunter": "色差猎人", "dont-click-wrong": "不要点错", "instant-memory": "瞬间记忆" },
-  en: { "color-hunter": "color hunter", "dont-click-wrong": "Don't Tap Wrong", "instant-memory": "instant memory" },
+const GAME_NAME: Record<Lang, Record<OfficialGame, string>> = {
+  zh: { "color-hunter": "色差猎人", "dont-click-wrong": "不要点错", "instant-memory": "瞬间记忆", "ai-truth-detective": "AI 侦探社" },
+  en: { "color-hunter": "color hunter", "dont-click-wrong": "Don't Tap Wrong", "instant-memory": "instant memory", "ai-truth-detective": "AI Detective" },
 };
-const GAME_DIM: Record<Lang, Record<TrioGame, string>> = {
-  zh: { "color-hunter": "感官", "dont-click-wrong": "反应", "instant-memory": "记忆" },
-  en: { "color-hunter": "SENSE", "dont-click-wrong": "REACT", "instant-memory": "MEMORY" },
+const GAME_DIM: Record<Lang, Record<OfficialGame, string>> = {
+  zh: { "color-hunter": "感官", "dont-click-wrong": "反应", "instant-memory": "记忆", "ai-truth-detective": "核验" },
+  en: { "color-hunter": "SENSE", "dont-click-wrong": "REACT", "instant-memory": "MEMORY", "ai-truth-detective": "VERIFY" },
 };
-const GAME_COLOR: Record<TrioGame, string> = {
+const GAME_COLOR: Record<OfficialGame, string> = {
   "color-hunter": "var(--coral)",
   "dont-click-wrong": "var(--teal)",
   "instant-memory": "var(--blue)",
+  "ai-truth-detective": "var(--yellow)",
 };
 
 const COPY = {
@@ -72,6 +78,13 @@ const COPY = {
     trainTitle: "思维训练程序",
     trainSoon: "敬请期待",
     trainDesc: "进阶训练，系统提升感官与脑力。",
+    aiTitle: "AI 探险护照",
+    aiDone: (done: number, total: number) => `${done}/${total} 芯片`,
+    aiChip: "证据芯片",
+    aiLocked: "完成第一关，学会核验 AI 的说法。",
+    aiBest: (score: number, mastery: number) => `最佳 ${score} 分 · 掌握度 ${mastery}%`,
+    aiPlay: "进入 AI 侦探社 →",
+    mastery: (p: number) => `掌握度 ${p}%`,
     claimTitle: "账号",
     claimHint: "注册正式账号会保留当前三件套战报和微应用。已有账号请直接登录。",
     registerTab: "注册",
@@ -132,6 +145,13 @@ const COPY = {
     trainTitle: "Mind-Training Program",
     trainSoon: "COMING SOON",
     trainDesc: "Advanced training to systematically sharpen sense & brain.",
+    aiTitle: "AI Adventure Passport",
+    aiDone: (done: number, total: number) => `${done}/${total} CHIPS`,
+    aiChip: "EVIDENCE CHIP",
+    aiLocked: "Complete mission one and learn to verify AI claims.",
+    aiBest: (score: number, mastery: number) => `Best ${score} · mastery ${mastery}%`,
+    aiPlay: "OPEN AI DETECTIVE →",
+    mastery: (p: number) => `mastery ${p}%`,
     claimTitle: "Account",
     claimHint: "Create an account to keep this space's reports and micro-apps. Already registered? Sign in.",
     registerTab: "Sign up",
@@ -226,6 +246,7 @@ async function waitForEmailLinkSession() {
 export default function MePage() {
   const [lang, setLang] = useState<Lang>("en");
   const [progress, setProgress] = useState<TrioProgress | null>(null);
+  const [aiProgress, setAiProgress] = useState<AiQuestProgress | null>(null);
   const [handle, setHandle] = useState("");
   const [email, setEmail] = useState<string | null>(null);
   const [runs, setRuns] = useState<MyRun[]>([]);
@@ -245,8 +266,9 @@ export default function MePage() {
   const t = COPY[lang];
 
   async function refreshSpace() {
-    const [prog, h, e, r, apps, avatar] = await Promise.all([
+    const [prog, aiProg, h, e, r, apps, avatar] = await Promise.all([
       getTrioProgress(),
+      getAiQuestProgress(),
       getProfileHandle(),
       getEmail(),
       getMyRuns(),
@@ -254,6 +276,7 @@ export default function MePage() {
       getAvatarUrl(),
     ]);
     setProgress(prog);
+    setAiProgress(aiProg);
     if (h) {
       setHandle(h);
       setClaimHandle(h);
@@ -425,6 +448,7 @@ export default function MePage() {
     setMyApps([]);
     setAvatarUrl(DEFAULT_AVATAR_URL);
     setProgress(null);
+    setAiProgress(null);
     setClaim("loggedOut");
     await ensureSession();
     await refreshSpace();
@@ -504,6 +528,22 @@ export default function MePage() {
             <a className="mlink" href={progress?.allDone ? TRIO_REPORT_URL + langQ : GAME_URL[progress?.nextGame ?? "color-hunter"] + langQ}>
               {progress?.allDone ? t.viewReport : t.goFinish}
             </a>
+          </section>
+
+          {/* AI 探险护照 */}
+          <section className="panel mcard maiquest">
+            <div className="mcardhead">
+              <h2 className="pixel mctitle">{t.aiTitle}</h2>
+              <span className="mctag">{t.aiDone(aiProgress?.done ?? 0, aiProgress?.total ?? 5)}</span>
+            </div>
+            <div className="maipass">
+              <div className={aiProgress?.best ? "maichip on" : "maichip"} aria-hidden="true">🔎</div>
+              <div>
+                <b className="pixel">{t.aiChip}</b>
+                <p>{aiProgress?.best ? t.aiBest(aiProgress.best.score, aiProgress.best.pct) : t.aiLocked}</p>
+              </div>
+            </div>
+            <a className="mlink" href={`${AI_QUEST_URL[AI_QUEST_GAMES[0]]}?lang=${lang}`}>{t.aiPlay}</a>
           </section>
 
           {/* 账号 */}
@@ -608,7 +648,7 @@ export default function MePage() {
                     <span className="mgame">{GAME_NAME[lang][r.game]}</span>
                     <span className="mtitle">{r.title}</span>
                     <b className="pixel mscore">{r.score}</b>
-                    <span className="mbeat">{t.beat(r.pct)}</span>
+                    <span className="mbeat">{r.game === AI_QUEST_GAMES[0] ? t.mastery(r.pct) : t.beat(r.pct)}</span>
                     <span className="mdate">{fmtDate(r.created_at)}</span>
                   </li>
                 ))}
@@ -711,6 +751,12 @@ const STYLE = `
 .mcombined span { display: block; margin-top: 7px; font-family: var(--font-press), "FpxCJK", monospace; font-size: var(--me-small); line-height: 1.45; color: var(--ink-soft); }
 .mdots { display: flex; gap: 8px; padding-bottom: 7px; }
 .mdots span { width: 21px; height: 21px; border: 3px solid var(--line); background: #fff; }
+.maiquest { background: linear-gradient(135deg, #ecfbf8, #f4f0ff); }
+.maipass { display: grid; grid-template-columns: 64px 1fr; align-items: center; gap: 13px; margin: 14px 0; }
+.maichip { width: 58px; height: 58px; display: grid; place-items: center; border: 3px solid var(--line); background: #fff; filter: grayscale(1); opacity: .55; font-size: 28px; }
+.maichip.on { filter: none; opacity: 1; background: var(--teal); box-shadow: 4px 4px 0 var(--ink); }
+.maipass b { font-size: var(--me-small); line-height: 1.45; }
+.maipass p { margin: 4px 0 0; color: var(--ink-soft); font-size: 16px; }
 .mlink { display: inline-flex; min-height: 42px; align-items: center; justify-content: center; font-family: var(--font-press), "FpxCJK", monospace; font-size: var(--me-small); line-height: 1.35; color: var(--ink);
   background: var(--yellow); border: 3px solid var(--line); box-shadow: 3px 3px 0 var(--ink); padding: 10px 13px; text-decoration: none; white-space: nowrap; }
 .mlink.mini { flex: none; min-height: 36px; font-size: 10px; padding: 7px 10px; }
