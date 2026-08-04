@@ -15,6 +15,7 @@ export default defineConfig({
     { command: "npm --prefix color-hunter run dev -- --port 3101", url: "http://127.0.0.1:3101", reuseExistingServer, timeout: 120_000 },
     { command: "npm --prefix dont-click-wrong run dev -- --port 3102", url: "http://127.0.0.1:3102", reuseExistingServer, timeout: 120_000 },
     { command: "npm --prefix instant-memory run dev -- --port 3103", url: "http://127.0.0.1:3103", reuseExistingServer, timeout: 120_000 },
+    { command: "npm --prefix ai-truth-detective run dev -- --port 3104", url: "http://127.0.0.1:3104", reuseExistingServer, timeout: 120_000 },
   ],
   projects: [
     {
@@ -34,6 +35,8 @@ export default defineConfig({
       { name: "reaction-mobile", testMatch: /dont-click-wrong\.spec\.ts/, use: { ...devices["Pixel 7"], baseURL: "http://127.0.0.1:3102" } },
       { name: "memory-desktop", testMatch: /instant-memory\.spec\.ts/, use: { ...devices["Desktop Chrome"], baseURL: "http://127.0.0.1:3103" } },
       { name: "memory-mobile", testMatch: /instant-memory\.spec\.ts/, use: { ...devices["Pixel 7"], baseURL: "http://127.0.0.1:3103" } },
+      { name: "ai-detective-desktop", testMatch: /ai-truth-detective\.spec\.ts/, use: { ...devices["Desktop Chrome"], baseURL: "http://127.0.0.1:3104" } },
+      { name: "ai-detective-mobile", testMatch: /ai-truth-detective\.spec\.ts/, use: { ...devices["Pixel 7"], baseURL: "http://127.0.0.1:3104" } },
     ] : []),
   ],
 });

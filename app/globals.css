@@ -476,6 +476,15 @@ html { scroll-behavior: smooth; }
   height: 7px;
   background: repeating-linear-gradient(90deg, var(--coral) 0 18px, var(--teal) 18px 36px, var(--blue) 36px 54px);
 }
+.triohero.aihero {
+  background:
+    radial-gradient(circle at 88% 22%, rgba(255, 208, 68, .72) 0 9%, transparent 9.5%),
+    linear-gradient(135deg, #eafbf8 0%, #f4f0ff 100%);
+}
+.triohero.aihero::after {
+  background: repeating-linear-gradient(90deg, var(--teal) 0 18px, var(--yellow) 18px 36px, var(--blue) 36px 54px);
+}
+.triohero.aihero .triotag { background: var(--teal); color: #fff; }
 .triotag {
   display: inline-block;
   font-size: 10px;

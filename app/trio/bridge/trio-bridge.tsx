@@ -1,18 +1,19 @@
 "use client";
 
 import { useEffect } from "react";
-import { dx3xb, ensureSession, getProfileHandle, getTrioProgress, recordRun, type RunPayload, type TrioGame } from "@/app/dx3xb-trio";
+import { AI_QUEST_GAMES, dx3xb, ensureSession, getAiQuestProgress, getProfileHandle, getTrioProgress, recordRun, type RunPayload, type TrioGame } from "@/app/dx3xb-trio";
 
 const ALLOWED_ORIGINS = new Set([
   "https://color-hunter.dx3xb.com",
   "https://dont-click-wrong.dx3xb.com",
   "https://instant-memory.dx3xb.com",
+  "https://ai-detective.dx3xb.com",
 ]);
 
 type BridgeRequest = {
   channel?: string;
   id?: string;
-  method?: "session" | "recordRun" | "progress" | "profile";
+  method?: "session" | "recordRun" | "progress" | "profile" | "recordAiRun" | "aiProgress";
   params?: Record<string, unknown>;
 };
 
@@ -36,6 +37,11 @@ export default function TrioBridge() {
           await ensureSession();
           const [{ data }, handle] = await Promise.all([dx3xb().auth.getUser(), getProfileHandle()]);
           result = { handle, email: data.user?.email ?? null, isAnonymous: data.user?.is_anonymous !== false };
+        } else if (request.method === "recordAiRun") {
+          await recordRun(AI_QUEST_GAMES[0], request.params?.run as RunPayload);
+          result = { ok: true };
+        } else if (request.method === "aiProgress") {
+          result = await getAiQuestProgress();
         } else {
           error = "unsupported_method";
         }
